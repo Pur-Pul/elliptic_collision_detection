@@ -1,25 +1,36 @@
 using System;
 using System.Collections.Generic;
-using System.Numerics;
-using UnityEditor.Search;
+using UnityEngine;
 
-class Octree : BBox
+public interface IItem
 {
-    private int _depth;
-    Octree[] octants;
-    List<BBox> items;
-    Octree parent;
-    public Octree(Vector3 bboxCenter, float bboxWidth, int depth=0, Octree p = null) : base(bboxCenter, bboxWidth)
+    BBox BBox { get; }
+}
+
+public class Octree<T> : BBox where T : class, IItem
+{
+    private int depth;
+    int max_depth = 5;
+    int max_items = 5;
+    Octree<T>[] octants;
+    List<T> items;
+    Octree<T> parent;
+    public Octree(Vector3 bboxCenter, float bboxWidth, int d=0, Octree<T> p = null) : base(bboxCenter, bboxWidth)
     {
-        _depth = depth;
-        octants = new Octree[8];
-        items = new List<BBox>();
+        depth = d;
+        octants = new Octree<T>[8];
+        items = new List<T>();
         parent = p;
+    }
+
+    public bool IsLeaf()
+    {
+        return octants[0] == null;
     }
 
     void Split()
     {
-        if (octants[0] != null)
+        if (depth >= max_depth || !IsLeaf())
         {
             return;
         }
@@ -29,33 +40,76 @@ class Octree : BBox
             int x = ((i & 1) == 0) ? -1 : 1;
             int y = ((i & 2) == 0) ? -1 : 1;
             int z = ((i & 4) == 0) ? -1 : 1;
-            octants[i] = new Octree(position + new Vector3(x*width/4f, y*width/4f, z*width/4f), width/2f, _depth + 1, this);
+            Vector3 new_center = position + new Vector3(x*width/4f, y*width/4f, z*width/4f);
+            octants[i] = new Octree<T>(new_center, width/2f, depth + 1, this);
         }
     }
 
-    public Octree Add(BBox item)
+    public bool Add(T item)
     {
-		if (octants.Length == 0)
+        if (!CheckContains(item.BBox)) { return false; }
+        if (depth == max_depth || items.Count < max_items)
         {
-            Split();
+            items.Add(item);
+            return true;
         }
-		for (int i = 0; i < octants.Length; i++) {
-			if (octants[i].CheckContains(item))
-            { 
-                return octants[i].Add(item);
-			}
-		}
-		items.Add(item);
-        return this;
+
+		if (IsLeaf()) { Split(); }
+        foreach (Octree<T> octant in octants)
+        {
+            if (octant.Add(item)) { return true; }
+        }
+        return false;
 	}
 
-    public void Remove(BBox item)
+    public void Query(BBox collider, List<T> found_items)
     {
+        if (!CheckOverlaps(collider)) { return; } 
+
+        foreach (T item in items)
+        {
+            if (collider.CheckOverlaps(item.BBox)) { found_items.Add(item); }
+        }
+
+        if (!IsLeaf())
+        {
+            foreach (Octree<T> octant in octants)
+            {
+                octant.Query(collider, found_items);
+            }
+        }
+    }
+
+    public bool CheckCollisions(T item)
+    {
+        List<T> found_items = new List<T>();
+        Query(item.BBox, found_items);
+        
+        foreach (T other in found_items)
+        {
+            if (item != other && item.BBox.CheckOverlaps(other.BBox))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public bool Remove(T item)
+    {
+        if (!CheckContains(item.BBox)) { return false; }
         items.Remove(item);
+
+		if (IsLeaf()) { return true; }
+        foreach (Octree<T> octant in octants)
+        {
+            if (octant.Remove(item)) { return true; }
+        }
+        return false;   
 	}
 
     public void Clear() {
-        if (octants[0] != null)
+        if (!IsLeaf())
         {
             for (int i = 0; i < octants.Length; i++) {
                 octants[i].Clear();
@@ -63,29 +117,5 @@ class Octree : BBox
             }
         }
 		items.Clear();
-	}
-
-    public (BBox, Vector3) Search(BBox collider, BBox _best_item = null, Vector3 _best_col_norm = new Vector3()) 
-    {
-        foreach (var item in items)
-        {
-			if (item == collider)
-            {
-                continue;
-            }
-			Vector3 col_norm = collider.CheckCollision(item);
-			if (col_norm.Length() >= _best_col_norm.Length()) {
-				_best_item = item;
-                _best_col_norm = col_norm;
-			}
-		}
-        for (int i = 0; i < octants.Length; i++) {
-			if (octants[i].CheckContains(collider))
-            { 
-                (_best_item, _best_col_norm) = octants[i].Search(collider);
-                break;
-			}
-		}
-        return (_best_item, _best_col_norm);
 	}
 }
