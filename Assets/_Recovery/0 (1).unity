@@ -148,7 +148,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2c2f128e51158ab2d90967952aa2cbb1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
-  ellipseRadius: 5
+  ellipseRadius: 10
   _spherePrefab: {fileID: 6387719191865624205, guid: d05b842beb00e5aa49900afca5d94d2f, type: 3}
 --- !u!4 &262863394
 Transform:
