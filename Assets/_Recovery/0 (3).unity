@@ -150,7 +150,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: '::'
   ellipseRadius: 5
   _spherePrefab: {fileID: 6387719191865624205, guid: d05b842beb00e5aa49900afca5d94d2f, type: 3}
-  lineMaterial: {fileID: 2100000, guid: 9267dcd20cfab33f3b785d771657512f, type: 2}
+  lineMaterial: {fileID: 10303, guid: 0000000000000000f000000000000000, type: 0}
 --- !u!4 &262863394
 Transform:
   m_ObjectHideFlags: 0

@@ -118,4 +118,21 @@ public class Octree<T> : BBox where T : class, IItem
         }
 		items.Clear();
 	}
+
+    public Face[] GetTreeFaces()
+    {
+        Face[] _faces = GetAABBFaces();
+        if (!IsLeaf())
+        {
+            foreach (Octree<T> octant in octants)
+            {
+                Face[] _child_faces = octant.GetTreeFaces();
+                Face[] _new_faces = new Face[_faces.Length + _child_faces.Length];
+                _faces.CopyTo(_new_faces, 0);
+                _child_faces.CopyTo(_new_faces, _faces.Length);
+                _faces = _new_faces;
+            }
+        }
+        return _faces;
+    }
 }

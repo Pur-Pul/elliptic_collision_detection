@@ -1,6 +1,27 @@
 using UnityEngine;
 using System;
 
+
+public class Face
+{
+    public Vector3 tl;
+    public Vector3 tr;
+    public Vector3 br;
+    public Vector3 bl;
+    public Face(Vector3 top_left, Vector3 top_right, Vector3 bottom_right, Vector3 bottom_left)
+    {
+        tl = top_left;
+        tr = top_right;
+        br = bottom_right;
+        bl = bottom_left;
+    }
+    public Vector3[] GetVertices()
+    {
+        Vector3[] _verts = { tl, tr, br, bl };
+        return _verts;
+    }
+}
+
 public class BBox
 {
     public float width;
@@ -10,6 +31,39 @@ public class BBox
     {
         position = pos;
         width = w;
+    }
+
+    public Face[] GetAABBFaces()
+    {
+        float max_x = position.x + width/2f;
+        float max_y = position.y + width/2f;
+        float max_z = position.z + width/2f;
+        float min_x = position.x - width/2f;
+        float min_y = position.y - width/2f;
+        float min_z = position.z - width/2f;
+        Vector3[] _vertices =
+        {
+            new Vector3(min_x, min_y, min_z), //left    top     front
+            new Vector3(max_x, min_y, min_z), //right   top     front
+            new Vector3(min_x, max_y, min_z), //left    bottom  front
+            new Vector3(max_x, max_y, min_z), //right   bottom  front
+            new Vector3(min_x, min_y, max_z), //left    top     back
+            new Vector3(max_x, min_y, max_z), //right   top     back
+            new Vector3(min_x, max_y, max_z), //left    bottom  back
+            new Vector3(max_x, max_y, max_z)  //right   bottom  back
+        };
+
+        Face[] _faces =
+        {
+            new Face(_vertices[0], _vertices[1], _vertices[3], _vertices[2]),   //front
+            new Face(_vertices[4], _vertices[0], _vertices[2], _vertices[6]),   //left
+            new Face(_vertices[1], _vertices[5], _vertices[7], _vertices[3]),  //right
+            new Face(_vertices[4], _vertices[5], _vertices[1], _vertices[0]),   //top
+            new Face(_vertices[2], _vertices[3], _vertices[7], _vertices[6]),  //bottom
+            new Face(_vertices[5], _vertices[4], _vertices[6], _vertices[7])  //back
+        };
+
+        return _faces;
     }
 
     public bool CheckContains(BBox other)
