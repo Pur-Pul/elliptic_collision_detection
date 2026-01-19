@@ -48,18 +48,20 @@ public class Octree<T> : BBox where T : class, IItem
     public bool Add(T item)
     {
         if (!CheckContains(item.BBox)) { return false; }
-        if (depth == max_depth || items.Count < max_items)
+        if (items.Count < max_items || depth == max_depth)
         {
             items.Add(item);
             return true;
         }
 
 		if (IsLeaf()) { Split(); }
+
         foreach (Octree<T> octant in octants)
         {
             if (octant.Add(item)) { return true; }
         }
-        return false;
+        items.Add(item);
+        return true;
 	}
 
     public void Query(BBox collider, List<T> found_items)
@@ -87,7 +89,8 @@ public class Octree<T> : BBox where T : class, IItem
         
         foreach (T other in found_items)
         {
-            if (item != other && item.BBox.CheckOverlaps(other.BBox))
+            if (item == other) { continue; }
+            if (item.BBox.CheckOverlaps(other.BBox))
             {
                 return true;
             }
@@ -98,14 +101,16 @@ public class Octree<T> : BBox where T : class, IItem
     public bool Remove(T item)
     {
         if (!CheckContains(item.BBox)) { return false; }
-        items.Remove(item);
+        if (items.Remove(item)) { 
+            return true;
+        }
 
-		if (IsLeaf()) { return true; }
+		if (IsLeaf()) { return false; }
         foreach (Octree<T> octant in octants)
         {
             if (octant.Remove(item)) { return true; }
         }
-        return false;   
+        return false;
 	}
 
     public void Clear() {

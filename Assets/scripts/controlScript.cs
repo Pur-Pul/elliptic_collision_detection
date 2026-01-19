@@ -3,13 +3,14 @@ using UnityEngine;
 
 public class controlScript : MonoBehaviour
 {
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
     public Octree<SphereScript> collisionTree;
     public float ellipseRadius;
     [SerializeField] private SphereScript _spherePrefab;
     [SerializeField] private Material lineMaterial;
     private Face[] faces;
     private List<SphereScript> spheres;
+    public int step;
+    public bool active;
     
     SphereScript SpawnSphere(Vector3 pos, Vector3 rotAxis, float rotAngle, Color color)
     {
@@ -41,9 +42,12 @@ public class controlScript : MonoBehaviour
         _vec = Vector3.Cross(_vec, vec);
         _vec.Normalize();
         return _vec;
-
     }
-
+    void Awake()
+    {
+        step = 0;
+        active = false;
+    }
     void Start()
     {
         spheres = new List<SphereScript>();
@@ -52,13 +56,12 @@ public class controlScript : MonoBehaviour
         {
             Vector3 _pos = randomVector3(ellipseRadius);
             Vector3 _rotAxis = randomOrthogonalVector3(1, _pos);
-            float _rotAngle = Random.Range(0.5f, 2f);
+            float _rotAngle = Random.Range(0.1f, 0.25f);
             _pos.Normalize();
             _pos *= ellipseRadius;
             spheres.Add(SpawnSphere(_pos, _rotAxis, _rotAngle, Random.ColorHSV()));
         }
     }
-
     void LateUpdate()
     {
         faces = collisionTree.GetTreeFaces();
@@ -70,8 +73,8 @@ public class controlScript : MonoBehaviour
             _sphere_faces.CopyTo(_new_faces, faces.Length);
             faces = _new_faces;
         }
+        if (active) { step++; }
     }
-
     void OnRenderObject()
     {
         if (faces == null || faces.Length == 0) return;

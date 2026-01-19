@@ -7,30 +7,39 @@ public class SphereScript : MonoBehaviour, IItem
     public BBox BBox { get; private set;}
     public controlScript control;
     public Material sphereMat;
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
+
     public Color color;
+    private int prevStep;
     void Awake()
     {
         Renderer r = GetComponent<Renderer>();
-        sphereMat = r.material; // 👈 this creates a unique instance
+        sphereMat = r.material;
+        prevStep = -1;
     }
     
     void Start()
     {
         BBox = new BBox(transform.position, transform.localScale.x);
+        control.collisionTree.Add(this);
         sphereMat.SetColor("_Color", color);
     }
 
-    // Update is called once per frame
     void Update()
     {
-        control.collisionTree.Remove(this);
-        transform.position = rotation * transform.position;
-        BBox.position = transform.position;
-        control.collisionTree.Add(this);
+        if (prevStep < control.step)
+        {
+            control.collisionTree.Remove(this);
+            transform.position = rotation * transform.position;
+            BBox.position = transform.position;
+            control.collisionTree.Add(this);
+            prevStep = control.step;
+        }
+        
+    }
+    void LateUpdate()
+    {
         if (control.collisionTree.CheckCollisions(this))
         {
-            //rotation = Quaternion.Inverse(rotation);
             sphereMat.SetColor("_Color", Color.red);
         } else
         {
