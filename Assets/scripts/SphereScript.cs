@@ -46,4 +46,9 @@ public class SphereScript : MonoBehaviour, IItem
             sphereMat.SetColor("_Color", color);
         }
     }
+
+    void OnDestroy()
+    {
+        control.collisionTree.Remove(this);
+    }
 }

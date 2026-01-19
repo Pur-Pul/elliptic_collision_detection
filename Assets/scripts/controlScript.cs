@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 
 public class controlScript : MonoBehaviour
@@ -11,6 +13,8 @@ public class controlScript : MonoBehaviour
     private List<SphereScript> spheres;
     public int step;
     public bool active;
+    public TMP_InputField bodyNumperInput;
+    private int sphere_n;
     
     SphereScript SpawnSphere(Vector3 pos, Vector3 rotAxis, float rotAngle, Color color)
     {
@@ -26,7 +30,7 @@ public class controlScript : MonoBehaviour
         Vector3 _vec = Vector3.zero;
         while (_vec.magnitude == 0)
         {
-            _vec = new Vector3(Random.Range(-1f, 1f), Random.Range(-1f, 1f), Random.Range(-1f, 1f));
+            _vec = new Vector3(UnityEngine.Random.Range(-1f, 1f), UnityEngine.Random.Range(-1f, 1f), UnityEngine.Random.Range(-1f, 1f));
         }
         _vec.Normalize();
         _vec *= magnitude;
@@ -48,20 +52,48 @@ public class controlScript : MonoBehaviour
         step = 0;
         active = false;
     }
+
+    void DestroySpheres()
+    {
+        foreach (SphereScript sphere in spheres)
+        {
+            Destroy(sphere.gameObject);
+        }
+        spheres.Clear();
+    }
+
+    public void GenerateSpheres()
+    {
+        DestroySpheres();
+        parseBodyNumber();
+        for (int i = 0; i < sphere_n; i++)
+        {
+            Vector3 _pos = randomVector3(ellipseRadius);
+            Vector3 _rotAxis = randomOrthogonalVector3(1, _pos);
+            float _rotAngle = UnityEngine.Random.Range(0.1f, 0.25f);
+            _pos.Normalize();
+            _pos *= ellipseRadius;
+            spheres.Add(SpawnSphere(_pos, _rotAxis, _rotAngle, UnityEngine.Random.ColorHSV()));
+        }
+        Debug.Log(sphere_n);
+    }
+
+    void parseBodyNumber()
+    {
+        if (!int.TryParse(bodyNumperInput.text, out sphere_n))
+        {
+            Debug.LogError("Invalid number input: " + bodyNumperInput.text);
+            sphere_n = 0;
+        }
+    }
+
     void Start()
     {
         spheres = new List<SphereScript>();
         collisionTree = new Octree<SphereScript>(Vector3.zero, 2*ellipseRadius + 2);
-        for (int i = 0; i < 10; i++)
-        {
-            Vector3 _pos = randomVector3(ellipseRadius);
-            Vector3 _rotAxis = randomOrthogonalVector3(1, _pos);
-            float _rotAngle = Random.Range(0.1f, 0.25f);
-            _pos.Normalize();
-            _pos *= ellipseRadius;
-            spheres.Add(SpawnSphere(_pos, _rotAxis, _rotAngle, Random.ColorHSV()));
-        }
+        GenerateSpheres();
     }
+
     void LateUpdate()
     {
         faces = collisionTree.GetTreeFaces();

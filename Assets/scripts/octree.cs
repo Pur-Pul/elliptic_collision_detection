@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 public interface IItem
@@ -12,6 +13,7 @@ public class Octree<T> : BBox where T : class, IItem
     private int depth;
     int max_depth = 5;
     int max_items = 5;
+    int number_contained_items = 0;
     Octree<T>[] octants;
     List<T> items;
     Octree<T> parent;
@@ -48,6 +50,7 @@ public class Octree<T> : BBox where T : class, IItem
     public bool Add(T item)
     {
         if (!CheckContains(item.BBox)) { return false; }
+        number_contained_items++;
         if (items.Count < max_items || depth == max_depth)
         {
             items.Add(item);
@@ -101,14 +104,22 @@ public class Octree<T> : BBox where T : class, IItem
     public bool Remove(T item)
     {
         if (!CheckContains(item.BBox)) { return false; }
-        if (items.Remove(item)) { 
+        if (items.Remove(item)) {
+            number_contained_items--;
             return true;
         }
 
 		if (IsLeaf()) { return false; }
         foreach (Octree<T> octant in octants)
         {
-            if (octant.Remove(item)) { return true; }
+            if (octant.Remove(item)) {
+                number_contained_items--;
+                if (number_contained_items == items.Count()) //Delete children if they are empty.
+                {
+                    Array.Clear(octants, 0, octants.Length);
+                }
+                return true;
+            }
         }
         return false;
 	}
