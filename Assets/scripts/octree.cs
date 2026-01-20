@@ -32,10 +32,7 @@ public class Octree<T> : BBox where T : class, IItem
 
     void Split()
     {
-        if (depth >= max_depth || !IsLeaf())
-        {
-            return;
-        }
+        if (depth >= max_depth || !IsLeaf()) { return; }
 
         for (int i = 0; i < octants.Length; i++)
         {

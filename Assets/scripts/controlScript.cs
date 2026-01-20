@@ -14,18 +14,20 @@ public class controlScript : MonoBehaviour
     public int step;
     public bool active;
     public TMP_InputField bodyNumperInput;
+    public TMP_InputField lastStepInput;
     private int sphere_n;
+    private int lastStep;
     
-    SphereScript SpawnSphere(Vector3 pos, Vector3 rotAxis, float rotAngle, Color color)
+    SphereScript SpawnSphere(Sequence sequence, Color color)
     {
         SphereScript sphere = Instantiate(_spherePrefab);
-        sphere.transform.position = pos;
-        sphere.rotation = Quaternion.AngleAxis(rotAngle, rotAxis);
+        sphere.transform.position = sequence.Get(0);
+        sphere.sequence = sequence;
         sphere.color = color;
         sphere.control = this;
         return sphere;
     }
-    Vector3 randomVector3(float magnitude)
+    Vector3 RandomVector3(float magnitude)
     {
         Vector3 _vec = Vector3.zero;
         while (_vec.magnitude == 0)
@@ -36,16 +38,21 @@ public class controlScript : MonoBehaviour
         _vec *= magnitude;
         return _vec;
     }
-    Vector3 randomOrthogonalVector3(float magnitude, Vector3 vec)
+    Vector3 RandomOrthogonalVector3(float magnitude, Vector3 vec)
     {
-        Vector3 _vec = randomVector3(1f);
+        Vector3 _vec = RandomVector3(1f);
         while (Vector3.Dot(vec, _vec) > 0.999f)
         {
-            _vec = randomVector3(1f);
+            _vec = RandomVector3(1f);
         }
         _vec = Vector3.Cross(_vec, vec);
         _vec.Normalize();
         return _vec;
+    }
+
+    public bool Ready()
+    {
+        return !(sphere_n <= 0 || lastStep <= 0);
     }
     void Awake()
     {
@@ -64,34 +71,31 @@ public class controlScript : MonoBehaviour
 
     public void GenerateSpheres()
     {
+        step = 0;
         DestroySpheres();
-        parseBodyNumber();
+        sphere_n = ParseInputNumber(bodyNumperInput);
+        lastStep = ParseInputNumber(lastStepInput);
         for (int i = 0; i < sphere_n; i++)
         {
-            Vector3 _pos = randomVector3(ellipseRadius);
-            Vector3 _rotAxis = randomOrthogonalVector3(1, _pos);
-            float _rotAngle = UnityEngine.Random.Range(0.1f, 0.25f);
-            _pos.Normalize();
-            _pos *= ellipseRadius;
-            spheres.Add(SpawnSphere(_pos, _rotAxis, _rotAngle, UnityEngine.Random.ColorHSV()));
+            spheres.Add(SpawnSphere(Sequence.RandomSequence(lastStep, ellipseRadius), UnityEngine.Random.ColorHSV()));
         }
-        Debug.Log(sphere_n);
     }
 
-    void parseBodyNumber()
+    int ParseInputNumber(TMP_InputField input)
     {
-        if (!int.TryParse(bodyNumperInput.text, out sphere_n))
+        int number;
+        if (!int.TryParse(input.text, out number))
         {
-            Debug.LogError("Invalid number input: " + bodyNumperInput.text);
-            sphere_n = 0;
+            Debug.LogError("Invalid number input: " + input.text);
+            number = 0;
         }
+        return number;
     }
 
     void Start()
     {
         spheres = new List<SphereScript>();
         collisionTree = new Octree<SphereScript>(Vector3.zero, 2*ellipseRadius + 2);
-        GenerateSpheres();
     }
 
     void LateUpdate()
@@ -105,12 +109,23 @@ public class controlScript : MonoBehaviour
             _sphere_faces.CopyTo(_new_faces, faces.Length);
             faces = _new_faces;
         }
-        if (active) { step++; }
+        if (active) {
+            step++;
+            if (step > lastStep)
+            {
+                active = false;
+                step = 0;
+                foreach (SphereScript sphere in spheres)
+                {
+                    sphere.Reset();
+                }
+            }
+        }
     }
     void OnRenderObject()
     {
-        if (faces == null || faces.Length == 0) return;
-        if (lineMaterial == null) return;
+        if (faces == null || faces.Length == 0) { return; }
+        if (lineMaterial == null) { return; }
 
         lineMaterial.SetPass(0);
         lineMaterial.color = Color.magenta;

@@ -3,11 +3,10 @@ using UnityEngine.SocialPlatforms;
 
 public class SphereScript : MonoBehaviour, IItem
 {   
-    public Quaternion rotation;
     public BBox BBox { get; private set;}
     public controlScript control;
     public Material sphereMat;
-
+    public Sequence sequence;
     public Color color;
     private int prevStep;
     void Awake()
@@ -24,13 +23,30 @@ public class SphereScript : MonoBehaviour, IItem
         sphereMat.SetColor("_Color", color);
     }
 
+    void Move()
+    {
+        transform.position = sequence.Get(control.step);
+        BBox.position = transform.position;
+    }
+
+    public void Reset()
+    {
+        control.collisionTree.Remove(this);
+        prevStep = -1;
+        sequence.Reset();
+        Move();
+        control.collisionTree.Add(this);
+    }
+
     void Update()
     {
-        if (prevStep < control.step)
+        
+        if (prevStep != control.step)
         {
             control.collisionTree.Remove(this);
-            transform.position = rotation * transform.position;
-            BBox.position = transform.position;
+
+            Move();
+            
             control.collisionTree.Add(this);
             prevStep = control.step;
         }
