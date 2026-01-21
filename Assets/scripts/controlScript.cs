@@ -1,6 +1,7 @@
-using System;
 using System.Collections.Generic;
+using System.IO;
 using TMPro;
+using UnityEditor;
 using UnityEngine;
 
 public class ControlScript : MonoBehaviour
@@ -17,15 +18,19 @@ public class ControlScript : MonoBehaviour
     public TMP_InputField lastStepInput;
     private int sphere_n;
     private int lastStep;
+    private List<Sequence> sequences;
     
-    SphereScript SpawnSphere(Sequence sequence, Color color)
+    void SpawnSpheres()
     {
-        SphereScript sphere = Instantiate(_spherePrefab);
-        sphere.transform.position = sequence.Get(0);
-        sphere.sequence = sequence;
-        sphere.color = color;
-        sphere.control = this;
-        return sphere;
+        foreach (Sequence s in sequences)
+        {
+            SphereScript sphere = Instantiate(_spherePrefab);
+            spheres.Add(sphere);
+            sphere.transform.position = s.SlerpGet(0);
+            sphere.sequence = s;
+            sphere.color = Random.ColorHSV();
+            sphere.control = this;
+        }
     }
 
     public bool Ready()
@@ -45,6 +50,7 @@ public class ControlScript : MonoBehaviour
             Destroy(sphere.gameObject);
         }
         spheres.Clear();
+        sequences.Clear();
     }
 
     public void GenerateSpheres()
@@ -53,10 +59,32 @@ public class ControlScript : MonoBehaviour
         DestroySpheres();
         sphere_n = ParseInputNumber(bodyNumperInput);
         lastStep = ParseInputNumber(lastStepInput);
+        
         for (int i = 0; i < sphere_n; i++)
         {
-            spheres.Add(SpawnSphere(Sequence.RandomSequence(lastStep, ellipseRadius), UnityEngine.Random.ColorHSV()));
+            Sequence s = Sequence.RandomSequence(lastStep, ellipseRadius);
+            sequences.Add(s);
         }
+        SpawnSpheres();
+    }
+
+    public void LoadFromFile()
+    {
+        string f = EditorUtility.OpenFilePanel("Load sequence from file", Directory.GetCurrentDirectory(), "xml");
+        if (f == "") { return; }
+        List<Sequence> sl = SequenceUtils.FromFile(f);
+        DestroySpheres();
+        sequences = sl;
+        lastStep = SequenceUtils.GetLastStep(sl);
+        step = 0;
+        sphere_n = sequences.Count;
+        SpawnSpheres();
+    }
+
+    public void SaveToFile()
+    {
+        string currentDir = Directory.GetCurrentDirectory();
+        SequenceUtils.SaveToFile(Path.Combine(currentDir, "file.xml"), sequences);
     }
 
     int ParseInputNumber(TMP_InputField input)
@@ -71,8 +99,9 @@ public class ControlScript : MonoBehaviour
 
     void Start()
     {
-        spheres = new List<SphereScript>();
-        collisionTree = new Octree<SphereScript>(Vector3.zero, 2*ellipseRadius + 2);
+        spheres = new();
+        sequences = new();
+        collisionTree = new(Vector3.zero, 2*ellipseRadius + 2);
     }
 
     void LateUpdate()

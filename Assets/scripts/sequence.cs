@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Xml.Serialization;
+using NUnit.Framework.Internal;
 using UnityEngine;
 
 public class Keyframe
@@ -22,6 +24,15 @@ public class Sequence
     {
         keyframes = new_keyframes;
     }
+    public List<Keyframe> Get()
+    {
+        return keyframes;
+    }
+    public int GetLastStep()
+    {
+        if (keyframes.Count == 0) { return 0; }
+        return keyframes.Last().Frame;
+    }
     public void Insert(int step, Vector3 position)
     {
         Keyframe k = new Keyframe();
@@ -34,7 +45,7 @@ public class Sequence
         float t = (step - keyframes[cursor-1].Frame) / (float)(keyframes[cursor].Frame - keyframes[cursor-1].Frame);
         return Vector3.Slerp(keyframes[cursor-1].Position, keyframes[cursor].Position, t);
     }
-    public Vector3 Get(int step)
+    public Vector3 SlerpGet(int step)
     {
         if (keyframes[cursor].Frame < step && cursor < keyframes.Count-1) { cursor++; }
         return Slerp(step);
@@ -59,24 +70,60 @@ public class Sequence
         seq.Randomize(lastStep, radius);
         return seq;
     }
-    public static Sequence FromFile(string filePath)
+}
+
+public class SequenceUtils
+{
+    public static List<Sequence> GetSequenceList(List<List<Keyframe>> keyframeListList)
     {
-        XmlSerializer formatter = new(typeof(List<Keyframe>));
+        List<Sequence> sequences = new();
+        foreach (List<Keyframe> keyframelist in keyframeListList)
+        {
+            Sequence s = new();
+            s.Set(keyframelist);
+            sequences.Add(s);
+        }
+        return sequences;
+    }
+
+    public static List<List<Keyframe>> GetKeyframeList(List<Sequence> sequences)
+    {
+        List<List<Keyframe>> kll = new();
+        foreach (Sequence seq in sequences)
+        {
+            kll.Add(seq.Get());
+        }
+        return kll;
+    }
+
+    public static void SaveToFile(string filePath, List<Sequence> sequences)
+    {
+        FileStream outFile = File.Create(filePath);
+        XmlSerializer formatter = new(typeof(List<List<Keyframe>>));
+        formatter.Serialize(outFile, GetKeyframeList(sequences));
+    }
+
+    public static List<Sequence> FromFile(string filePath)
+    {
+        XmlSerializer formatter = new(typeof(List<List<Keyframe>>));
         FileStream f = new(filePath, FileMode.Open);
         byte[] buffer = new byte[f.Length];
         f.Read(buffer, 0, (int)f.Length);
         MemoryStream stream = new(buffer);
 
-        Sequence s = new();
-        s.Set((List<Keyframe>)formatter.Deserialize(stream));
-
-        return s;
+        List<List<Keyframe>> keyframeListList = (List<List<Keyframe>>)formatter.Deserialize(stream);
+        List<Sequence> sl = GetSequenceList(keyframeListList);
+        
+        return sl;
     }
-
-    public void SaveToFile(string filePath)
+    public static int GetLastStep(List<Sequence> sl)
     {
-        FileStream outFile = File.Create(filePath);
-        XmlSerializer formatter = new(typeof(List<Keyframe>));
-        formatter.Serialize(outFile, keyframes);
+        int LastStep = -1;
+        foreach (Sequence s in sl)
+        {
+            if (LastStep == -1) { LastStep = s.GetLastStep(); }
+            else if (LastStep != s.GetLastStep()) { Debug.LogError("Sequence list contains varying length sequences."); }
+        }
+        return LastStep == -1 ? 0 : LastStep;
     }
 }

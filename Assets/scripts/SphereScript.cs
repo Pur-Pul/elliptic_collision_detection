@@ -25,7 +25,7 @@ public class SphereScript : MonoBehaviour, IItem
 
     void Move()
     {
-        transform.position = sequence.Get(control.step);
+        transform.position = sequence.SlerpGet(control.step);
         BBox.position = transform.position;
     }
 
