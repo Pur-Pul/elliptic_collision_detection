@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 
-public class controlScript : MonoBehaviour
+public class ControlScript : MonoBehaviour
 {
     public Octree<SphereScript> collisionTree;
     public float ellipseRadius;
@@ -26,28 +26,6 @@ public class controlScript : MonoBehaviour
         sphere.color = color;
         sphere.control = this;
         return sphere;
-    }
-    Vector3 RandomVector3(float magnitude)
-    {
-        Vector3 _vec = Vector3.zero;
-        while (_vec.magnitude == 0)
-        {
-            _vec = new Vector3(UnityEngine.Random.Range(-1f, 1f), UnityEngine.Random.Range(-1f, 1f), UnityEngine.Random.Range(-1f, 1f));
-        }
-        _vec.Normalize();
-        _vec *= magnitude;
-        return _vec;
-    }
-    Vector3 RandomOrthogonalVector3(float magnitude, Vector3 vec)
-    {
-        Vector3 _vec = RandomVector3(1f);
-        while (Vector3.Dot(vec, _vec) > 0.999f)
-        {
-            _vec = RandomVector3(1f);
-        }
-        _vec = Vector3.Cross(_vec, vec);
-        _vec.Normalize();
-        return _vec;
     }
 
     public bool Ready()
@@ -83,8 +61,7 @@ public class controlScript : MonoBehaviour
 
     int ParseInputNumber(TMP_InputField input)
     {
-        int number;
-        if (!int.TryParse(input.text, out number))
+        if (!int.TryParse(input.text, out int number))
         {
             Debug.LogError("Invalid number input: " + input.text);
             number = 0;

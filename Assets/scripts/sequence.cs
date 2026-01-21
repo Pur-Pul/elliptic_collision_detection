@@ -1,39 +1,43 @@
 using System.Collections.Generic;
+using System.IO;
+using System.Xml.Serialization;
 using UnityEngine;
+
+public class Keyframe
+{
+    public int Frame { get; set; }
+    public Vector3 Position { get; set; }
+}
 
 public class Sequence
 {
-    List<(int, Vector3)> keyframes;
+    List<Keyframe> keyframes;
     int cursor;
     public Sequence()
     {
-        keyframes = new List<(int, Vector3)>();
+        keyframes = new List<Keyframe>();
         cursor = 1;
     }
-    public void Insert(int step, Vector3 keyframe)
+    public void Set(List<Keyframe> new_keyframes)
     {
-        keyframes.Add((step, keyframe));
+        keyframes = new_keyframes;
+    }
+    public void Insert(int step, Vector3 position)
+    {
+        Keyframe k = new Keyframe();
+        k.Frame = step;
+        k.Position = position;
+        keyframes.Add(k);
     }
     Vector3 Slerp(int step)
     {
-        float t = (step - keyframes[cursor-1].Item1) / (float)(keyframes[cursor].Item1 - keyframes[cursor-1].Item1);
-        return Vector3.Slerp(keyframes[cursor-1].Item2, keyframes[cursor].Item2, t);
+        float t = (step - keyframes[cursor-1].Frame) / (float)(keyframes[cursor].Frame - keyframes[cursor-1].Frame);
+        return Vector3.Slerp(keyframes[cursor-1].Position, keyframes[cursor].Position, t);
     }
     public Vector3 Get(int step)
     {
-        if (keyframes[cursor].Item1 < step && cursor < keyframes.Count-1) { cursor++; }
+        if (keyframes[cursor].Frame < step && cursor < keyframes.Count-1) { cursor++; }
         return Slerp(step);
-    }
-    Vector3 RandomVector3(float magnitude)
-    {
-        Vector3 _vec = Vector3.zero;
-        while (_vec.magnitude == 0)
-        {
-            _vec = new Vector3(Random.Range(-1f, 1f), Random.Range(-1f, 1f), Random.Range(-1f, 1f));
-        }
-        _vec.Normalize();
-        _vec *= magnitude;
-        return _vec;
     }
     public void Randomize(int lastStep, float radius)
     {
@@ -42,7 +46,7 @@ public class Sequence
         for (int i = 0; i < keyframe_n; i++)
         {
             int step = Mathf.RoundToInt(i / (float)(keyframe_n - 1) * lastStep);
-            Insert(step, RandomVector3(radius));
+            Insert(step, VectorUtils.RandomVector3(radius));
         }
     }
     public void Reset()
@@ -51,8 +55,28 @@ public class Sequence
     }
     public static Sequence RandomSequence(int lastStep, float radius)
     {
-        Sequence seq = new Sequence();
+        Sequence seq = new();
         seq.Randomize(lastStep, radius);
         return seq;
+    }
+    public static Sequence FromFile(string filePath)
+    {
+        XmlSerializer formatter = new(typeof(List<Keyframe>));
+        FileStream f = new(filePath, FileMode.Open);
+        byte[] buffer = new byte[f.Length];
+        f.Read(buffer, 0, (int)f.Length);
+        MemoryStream stream = new(buffer);
+
+        Sequence s = new();
+        s.Set((List<Keyframe>)formatter.Deserialize(stream));
+
+        return s;
+    }
+
+    public void SaveToFile(string filePath)
+    {
+        FileStream outFile = File.Create(filePath);
+        XmlSerializer formatter = new(typeof(List<Keyframe>));
+        formatter.Serialize(outFile, keyframes);
     }
 }

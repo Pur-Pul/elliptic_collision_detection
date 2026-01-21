@@ -4,7 +4,7 @@ using UnityEngine.UI;
 
 public class StartButtonScript : MonoBehaviour
 {
-    public controlScript control;
+    public ControlScript control;
     public TMP_Text text;
     public Button button;
     public void ToggleActive()

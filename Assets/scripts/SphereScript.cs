@@ -4,7 +4,7 @@ using UnityEngine.SocialPlatforms;
 public class SphereScript : MonoBehaviour, IItem
 {   
     public BBox BBox { get; private set;}
-    public controlScript control;
+    public ControlScript control;
     public Material sphereMat;
     public Sequence sequence;
     public Color color;
