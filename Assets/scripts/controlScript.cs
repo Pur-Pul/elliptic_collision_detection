@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using TMPro;
@@ -28,7 +29,7 @@ public class ControlScript : MonoBehaviour
             spheres.Add(sphere);
             sphere.transform.position = s.SlerpGet(0);
             sphere.sequence = s;
-            sphere.color = Random.ColorHSV();
+            sphere.color = UnityEngine.Random.ColorHSV();
             sphere.control = this;
         }
     }
@@ -84,7 +85,7 @@ public class ControlScript : MonoBehaviour
     public void SaveToFile()
     {
         string currentDir = Directory.GetCurrentDirectory();
-        SequenceUtils.SaveToFile(Path.Combine(currentDir, "file.xml"), sequences);
+        Debug.Log(Path.Combine(currentDir, $"out/{DateTime.Now.ToString("yyyy.MM.dd_hh:mm:ss")}.xml"));//, sequences);
     }
 
     int ParseInputNumber(TMP_InputField input)

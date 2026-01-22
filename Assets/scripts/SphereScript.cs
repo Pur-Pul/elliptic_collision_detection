@@ -18,7 +18,7 @@ public class SphereScript : MonoBehaviour, IItem
     
     void Start()
     {
-        BBox = new BBox(transform.position, transform.localScale.x);
+        BBox = new BBoxSphere(transform.position, transform.localScale.x/2f);
         control.collisionTree.Add(this);
         sphereMat.SetColor("_Color", color);
     }

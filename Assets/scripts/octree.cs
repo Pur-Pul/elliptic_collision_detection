@@ -66,11 +66,11 @@ public class Octree<T> : BBox where T : class, IItem
 
     public void Query(BBox collider, List<T> found_items)
     {
-        if (!CheckOverlaps(collider)) { return; } 
+        if (!CheckAABB(collider)) { return; } 
 
         foreach (T item in items)
         {
-            if (collider.CheckOverlaps(item.BBox)) { found_items.Add(item); }
+            if (collider.CheckAABB(item.BBox)) { found_items.Add(item); }
         }
 
         if (!IsLeaf())
@@ -90,7 +90,7 @@ public class Octree<T> : BBox where T : class, IItem
         foreach (T other in found_items)
         {
             if (item == other) { continue; }
-            if (item.BBox.CheckOverlaps(other.BBox))
+            if (item.BBox.CheckCollision(other.BBox))
             {
                 return true;
             }
