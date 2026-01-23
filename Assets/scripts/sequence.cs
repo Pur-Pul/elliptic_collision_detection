@@ -98,6 +98,7 @@ public class SequenceUtils
 
     public static void SaveToFile(string filePath, List<Sequence> sequences)
     {
+        Directory.CreateDirectory(Path.GetDirectoryName(filePath));
         FileStream outFile = File.Create(filePath);
         XmlSerializer formatter = new(typeof(List<List<Keyframe>>));
         formatter.Serialize(outFile, GetKeyframeList(sequences));

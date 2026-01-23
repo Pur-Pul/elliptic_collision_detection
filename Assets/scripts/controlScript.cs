@@ -85,7 +85,7 @@ public class ControlScript : MonoBehaviour
     public void SaveToFile()
     {
         string currentDir = Directory.GetCurrentDirectory();
-        Debug.Log(Path.Combine(currentDir, $"out/{DateTime.Now.ToString("yyyy.MM.dd_hh:mm:ss")}.xml"));//, sequences);
+        SequenceUtils.SaveToFile(Path.Combine(currentDir, $"out/{DateTime.Now.ToString("yyyy.MM.dd_hh:mm:ss")}.xml"), sequences);
     }
 
     int ParseInputNumber(TMP_InputField input)
