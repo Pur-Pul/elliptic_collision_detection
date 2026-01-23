@@ -11,7 +11,7 @@ public class ControlScript : MonoBehaviour
     public float ellipseRadius;
     [SerializeField] private SphereScript _spherePrefab;
     [SerializeField] private Material lineMaterial;
-    private Face[] faces;
+    private Vector3[][] edges;
     private List<SphereScript> spheres;
     public int step;
     public bool active;
@@ -107,14 +107,14 @@ public class ControlScript : MonoBehaviour
 
     void LateUpdate()
     {
-        faces = collisionTree.GetTreeFaces();
+        edges = collisionTree.GetTreeEdges();
         foreach (SphereScript sphere in spheres)
         {
-            Face[] _sphere_faces = sphere.BBox.GetAABBFaces();
-            Face[] _new_faces = new Face[faces.Length + _sphere_faces.Length];
-            faces.CopyTo(_new_faces, 0);
-            _sphere_faces.CopyTo(_new_faces, faces.Length);
-            faces = _new_faces;
+            Vector3[][] _sphere_edges = sphere.BBox.GetAABBEdges();
+            Vector3[][] _new_edges = new Vector3[edges.Length + _sphere_edges.Length][];
+            edges.CopyTo(_new_edges, 0);
+            _sphere_edges.CopyTo(_new_edges, edges.Length);
+            edges = _new_edges;
         }
         if (active) {
             step++;
@@ -131,21 +131,20 @@ public class ControlScript : MonoBehaviour
     }
     void OnRenderObject()
     {
-        if (faces == null || faces.Length == 0) { return; }
+        if (edges == null || edges.Length == 0) { return; }
         if (lineMaterial == null) { return; }
 
         lineMaterial.SetPass(0);
         lineMaterial.color = Color.magenta;
-        GL.Begin(GL.LINES);
-        foreach (Face f in faces)
+        
+        foreach (Vector3[] edge in edges)
         {
-            DrawEdge(f.tl, f.tr);
-            DrawEdge(f.tr, f.br);
-            DrawEdge(f.br, f.bl);
-            DrawEdge(f.bl, f.tl);
+            GL.Begin(GL.LINES);
+            for (int i = 1; i < edge.Length; i++)
+            DrawEdge(edge[i-1], edge[i]);
+            GL.End();
         }
-
-        GL.End();
+        
     }
 
     void DrawEdge(Vector3 a, Vector3 b)

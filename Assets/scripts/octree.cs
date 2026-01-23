@@ -16,13 +16,11 @@ public class Octree<T> : BBox where T : class, IItem
     int number_contained_items = 0;
     Octree<T>[] octants;
     List<T> items;
-    Octree<T> parent;
-    public Octree(Vector3 bboxCenter, float bboxWidth, int d=0, Octree<T> p = null) : base(bboxCenter, bboxWidth)
+    public Octree(Vector3 bboxCenter, float bboxWidth, int d=0) : base(bboxCenter, bboxWidth)
     {
         depth = d;
         octants = new Octree<T>[8];
         items = new List<T>();
-        parent = p;
     }
 
     public bool IsLeaf()
@@ -40,7 +38,7 @@ public class Octree<T> : BBox where T : class, IItem
             int y = ((i & 2) == 0) ? -1 : 1;
             int z = ((i & 4) == 0) ? -1 : 1;
             Vector3 new_center = position + new Vector3(x*width/4f, y*width/4f, z*width/4f);
-            octants[i] = new Octree<T>(new_center, width/2f, depth + 1, this);
+            octants[i] = new Octree<T>(new_center, width/2f, depth + 1);
         }
     }
 
@@ -111,7 +109,7 @@ public class Octree<T> : BBox where T : class, IItem
         {
             if (octant.Remove(item)) {
                 number_contained_items--;
-                if (number_contained_items == items.Count()) //Delete children if they are empty.
+                if (number_contained_items == items.Count) //Delete children if they are empty.
                 {
                     Array.Clear(octants, 0, octants.Length);
                 }
@@ -132,20 +130,20 @@ public class Octree<T> : BBox where T : class, IItem
 		items.Clear();
 	}
 
-    public Face[] GetTreeFaces()
+    public Vector3[][] GetTreeEdges()
     {
-        Face[] _faces = GetAABBFaces();
+        Vector3[][] _edges = GetAABBEdges();
         if (!IsLeaf())
         {
             foreach (Octree<T> octant in octants)
             {
-                Face[] _child_faces = octant.GetTreeFaces();
-                Face[] _new_faces = new Face[_faces.Length + _child_faces.Length];
-                _faces.CopyTo(_new_faces, 0);
-                _child_faces.CopyTo(_new_faces, _faces.Length);
-                _faces = _new_faces;
+                Vector3[][] _child_edges = octant.GetTreeEdges();
+                Vector3[][] _new_edges = new Vector3[_edges.Length + _child_edges.Length][];
+                _edges.CopyTo(_new_edges, 0);
+                _child_edges.CopyTo(_new_edges, _edges.Length);
+                _edges = _new_edges;
             }
         }
-        return _faces;
+        return _edges;
     }
 }

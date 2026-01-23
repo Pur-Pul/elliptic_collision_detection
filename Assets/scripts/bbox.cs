@@ -8,6 +8,15 @@ public class Face
     public Vector3 tr;
     public Vector3 br;
     public Vector3 bl;
+    
+    public Vector3[] Edges {
+        get => new[] {
+            tl, tr,
+            tr, br,
+            br, bl,
+            bl, tl
+        };
+    }
     public Face(Vector3 top_left, Vector3 top_right, Vector3 bottom_right, Vector3 bottom_left)
     {
         tl = top_left;
@@ -32,7 +41,7 @@ public class BBox
         width = w;
     }
 
-    public Face[] GetAABBFaces()
+    public Vector3[][] GetAABBEdges()
     {
         float max_x = position.x + width/2f;
         float max_y = position.y + width/2f;
@@ -42,27 +51,31 @@ public class BBox
         float min_z = position.z - width/2f;
         Vector3[] _vertices =
         {
-            new Vector3(min_x, min_y, min_z), //left    top     front
-            new Vector3(max_x, min_y, min_z), //right   top     front
-            new Vector3(min_x, max_y, min_z), //left    bottom  front
-            new Vector3(max_x, max_y, min_z), //right   bottom  front
-            new Vector3(min_x, min_y, max_z), //left    top     back
-            new Vector3(max_x, min_y, max_z), //right   top     back
-            new Vector3(min_x, max_y, max_z), //left    bottom  back
-            new Vector3(max_x, max_y, max_z)  //right   bottom  back
+            new (min_x, min_y, min_z), //left    top     front
+            new (max_x, min_y, min_z), //right   top     front
+            new (min_x, max_y, min_z), //left    bottom  front
+            new (max_x, max_y, min_z), //right   bottom  front
+            new (min_x, min_y, max_z), //left    top     back
+            new (max_x, min_y, max_z), //right   top     back
+            new (min_x, max_y, max_z), //left    bottom  back
+            new (max_x, max_y, max_z)  //right   bottom  back
         };
 
         Face[] _faces =
         {
-            new Face(_vertices[0], _vertices[1], _vertices[3], _vertices[2]),   //front
-            new Face(_vertices[4], _vertices[0], _vertices[2], _vertices[6]),   //left
-            new Face(_vertices[1], _vertices[5], _vertices[7], _vertices[3]),  //right
-            new Face(_vertices[4], _vertices[5], _vertices[1], _vertices[0]),   //top
-            new Face(_vertices[2], _vertices[3], _vertices[7], _vertices[6]),  //bottom
-            new Face(_vertices[5], _vertices[4], _vertices[6], _vertices[7])  //back
+            new (_vertices[0], _vertices[1], _vertices[3], _vertices[2]),   //front
+            new (_vertices[4], _vertices[0], _vertices[2], _vertices[6]),   //left
+            new (_vertices[1], _vertices[5], _vertices[7], _vertices[3]),   //right
+            new (_vertices[4], _vertices[5], _vertices[1], _vertices[0]),   //top
+            new (_vertices[2], _vertices[3], _vertices[7], _vertices[6]),   //bottom
+            new (_vertices[5], _vertices[4], _vertices[6], _vertices[7])    //back
         };
-
-        return _faces;
+        Vector3[][] _edges = new Vector3[6][];
+        for (int i = 0; i < _faces.Length; i++)
+        {
+            _edges[i] = _faces[i].Edges;
+        }
+        return _edges;
     }
 
     public Vector3 MinVec()
