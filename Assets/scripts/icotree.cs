@@ -14,13 +14,16 @@ public class IcoTree<T>: EllipticBBox where T : class, IEllipcticItem
     private int d;
     EllipticTriangle t;
     int max_depth = 5;
-    int max_items = 5;
+    int max_items = 2;
     int number_contained_items = 0;
-    public IcoTree(EllipticTriangle triangle, int depth)
-        : base(triangle.InCenter, triangle.InRadius)
+    public IcoTree(EllipticTriangle triangle=null, int depth=0)
     {
+        children = new();
+        items = new();
         t = triangle;
         d = depth;
+        Position = t == null ? Vector3.zero : t.InCenter;
+        ERad = t == null ? 1f : t.InRadius;
     }
 
     public bool IsLeaf() => children.Count == 0;
@@ -171,7 +174,9 @@ public class IcoTree<T>: EllipticBBox where T : class, IEllipcticItem
 
     public Vector3 [][] GetTreeEdges()
     {
-        Vector3[][] _edges = { t.Edges };
+        Vector3[][] _edges = t == null 
+            ? new Vector3[][] {} 
+            : new Vector3[][] { t.Edges };
         if (!IsLeaf())
         {
             foreach (IcoTree<T> child in children)

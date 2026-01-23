@@ -2,24 +2,20 @@ using UnityEngine;
 
 public class EllipticBBox
 {
-    float eRad;
-    Vector3 pos;
-    public EllipticBBox(Vector3 position, float ellipticRadius)
-    {
-        eRad = ellipticRadius;
-        pos = position;
-    }
-
+    public float ERad { get; set; }
+    public Vector3 Position { get; set; }
     public bool CheckOverlaps(EllipticBBox bbox)
     {
-        float centerDist = EllipticDistance(pos, bbox.pos);
-        return centerDist < bbox.eRad + eRad;
+        if (ERad >= 1) { return true; }
+        float centerDist = EllipticDistance(Position, bbox.Position);
+        return centerDist < bbox.ERad + ERad;
     }
 
     public bool CheckContains(EllipticBBox bbox)
     {
-        float centerDist = EllipticDistance(pos, bbox.pos);
-        return centerDist + bbox.eRad < eRad;
+        if (ERad >= 1) { return true; }
+        float centerDist = EllipticDistance(Position, bbox.Position);
+        return centerDist + bbox.ERad < ERad;
     }
 
     public static float EllipticDistance(Vector3 a, Vector3 b)
@@ -27,6 +23,20 @@ public class EllipticBBox
         float d = Vector3.Dot(a, b);
         return (d - 1)/(-2f);
     }
+
+    public static float EuclideanToEllipticDistance(float dist)
+    {
+        // law of cosines 
+        // assumes a unitsphere.
+        // assumes the distance is bewtween two points on the unitsphere.
+        // c^2 = a^2 + b^2 − 2ab cos(C) | a = b = 1
+        // c^2 = 1 + 1 - 2 cos(C) | -2
+        // c^2 - 2 = -2 cos(C) | /(-2)
+        // cos(C) = (c^2 - 2) / (-2)
+        float d = (dist*dist - 2) / (-2);
+        return (d - 1)/(-2f);
+    }
+    
     public bool CheckCollision(EllipticBBox bbox)
     {
         return CheckOverlaps(bbox);
@@ -151,11 +161,7 @@ public class EllipticTriangle
             (Length12 + Length23 - Length31)
         );
         float inRadius = area / semiperimeter;
-        // law of cosines 
-        // assumes the radius of the sphere is 1.
-        // c^2 = a^2 + b^2 − 2ab cos(C) | a = b = 1
-        // c^2 = 1 + 1 - 2 cos(C) | -2, /(-2)
-        // cos(C) = (c^2 - 2) / (-2)
-        return (inRadius*inRadius - 2) / (-2);
+
+        return EllipticBBox.EuclideanToEllipticDistance(inRadius);
     }
 }

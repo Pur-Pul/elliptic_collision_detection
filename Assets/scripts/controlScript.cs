@@ -7,7 +7,8 @@ using UnityEngine;
 
 public class ControlScript : MonoBehaviour
 {
-    public Octree<SphereScript> collisionTree;
+    //public Octree<SphereScript> collisionTree;
+    public IcoTree<SphereScript> collisionTree;
     public float ellipseRadius;
     [SerializeField] private SphereScript _spherePrefab;
     [SerializeField] private Material lineMaterial;
@@ -102,7 +103,8 @@ public class ControlScript : MonoBehaviour
     {
         spheres = new();
         sequences = new();
-        collisionTree = new(Vector3.zero, 2*ellipseRadius + 2);
+        //collisionTree = new(Vector3.zero, 2*ellipseRadius + 2);
+        collisionTree = new();
     }
 
     void LateUpdate()
@@ -110,7 +112,7 @@ public class ControlScript : MonoBehaviour
         edges = collisionTree.GetTreeEdges();
         foreach (SphereScript sphere in spheres)
         {
-            Vector3[][] _sphere_edges = sphere.BBox.GetAABBEdges();
+            Vector3[][] _sphere_edges = {};//sphere.BBox.GetAABBEdges();
             Vector3[][] _new_edges = new Vector3[edges.Length + _sphere_edges.Length][];
             edges.CopyTo(_new_edges, 0);
             _sphere_edges.CopyTo(_new_edges, edges.Length);
@@ -136,12 +138,13 @@ public class ControlScript : MonoBehaviour
 
         lineMaterial.SetPass(0);
         lineMaterial.color = Color.magenta;
-        
+        Vector3 scalar = new(ellipseRadius, ellipseRadius, ellipseRadius);
         foreach (Vector3[] edge in edges)
         {
             GL.Begin(GL.LINES);
             for (int i = 1; i < edge.Length; i++)
-            DrawEdge(edge[i-1], edge[i]);
+            
+            DrawEdge(Vector3.Scale(edge[i-1], scalar), Vector3.Scale(edge[i], scalar));
             GL.End();
         }
         
