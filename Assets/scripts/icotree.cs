@@ -2,15 +2,10 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-public interface IEllipcticItem
-{
-    EllipticBBox BBox { get; }
-}
-
-public class IcoTree<T>: EllipticBBox where T : class, IEllipcticItem
+public class IcoTree<T>: EllipticBBox, ICollisionTree where T : class, IItem
 {
     List<IcoTree<T>> children;
-    List<IEllipcticItem> items;
+    List<IItem> items;
     private int d;
     EllipticTriangle t;
     int max_depth = 5;
@@ -23,7 +18,8 @@ public class IcoTree<T>: EllipticBBox where T : class, IEllipcticItem
         t = triangle;
         d = depth;
         Position = t == null ? Vector3.zero : t.InCenter;
-        ERad = t == null ? 1f : t.InRadius;
+        Width = t == null ? 4f : t.InRadius;
+        Debug.Log($"{depth} : {eRad}");
     }
 
     public bool IsLeaf() => children.Count == 0;
@@ -85,9 +81,19 @@ public class IcoTree<T>: EllipticBBox where T : class, IEllipcticItem
 		}
 	}
 
+    public bool Add(IItem item)
+    {
+        return item switch
+        {
+            T i => Add(i),
+            _ => false
+        };
+    }
+
     public bool Add(T item)
     {
         if (!CheckContains(item.BBox)) { return false; }
+        
         number_contained_items++;
         if (items.Count < max_items || d == max_depth)
         {
@@ -105,12 +111,12 @@ public class IcoTree<T>: EllipticBBox where T : class, IEllipcticItem
         return true;
 	}
 
-    public void Query(EllipticBBox collider, List<T> found_items)
+    public void Query(IBoundingVolume collider, List<T> found_items)
     {
-        if (!CheckOverlaps(collider)) { return; } 
+        if (!CheckFastOverlaps(collider)) { return; } 
         foreach (T item in items)
         {
-            if (collider.CheckOverlaps(item.BBox)) { found_items.Add(item); }
+            if (collider.CheckFastOverlaps(item.BBox)) { found_items.Add(item); }
         }
 
         if (!IsLeaf())
@@ -120,6 +126,15 @@ public class IcoTree<T>: EllipticBBox where T : class, IEllipcticItem
                 child.Query(collider, found_items);
             }
         }
+    }
+
+    public bool CheckCollisions(IItem item)
+    {
+        return item switch
+        {
+            T i => CheckCollisions(i),
+            _ => false
+        };
     }
 
     public bool CheckCollisions(T item)
@@ -136,6 +151,15 @@ public class IcoTree<T>: EllipticBBox where T : class, IEllipcticItem
             }
         }
         return false;
+    }
+
+    public bool Remove(IItem item)
+    {
+        return item switch
+        {
+            T i => Remove(i),
+            _ => false
+        };
     }
 
     public bool Remove(T item)

@@ -1,10 +1,9 @@
 using UnityEngine;
-using UnityEngine.SocialPlatforms;
 
-public class SphereScript : MonoBehaviour, IEllipcticItem
+public class SphereScript : MonoBehaviour, IItem
 {   
     //public BBox BBox { get; private set;}
-    public EllipticBBox BBox { get; private set;}
+    public IBoundingVolume BBox { get; set; }
     public ControlScript control;
     public Material sphereMat;
     public Sequence sequence;
@@ -19,8 +18,6 @@ public class SphereScript : MonoBehaviour, IEllipcticItem
     
     void Start()
     {
-        //BBox = new BBoxSphere(transform.position, transform.localScale.x/2f);
-        BBox = new EllipticBBox() {Position = transform.position, ERad = EllipticBBox.EuclideanToEllipticDistance(transform.localScale.x/2f)};
         control.collisionTree.Add(this);
         sphereMat.SetColor("_Color", color);
     }
@@ -29,6 +26,7 @@ public class SphereScript : MonoBehaviour, IEllipcticItem
     {
         transform.position = sequence.SlerpGet(control.step);
         BBox.Position = transform.position;
+        BBox.Width = transform.localScale.x;
     }
 
     public void Reset()

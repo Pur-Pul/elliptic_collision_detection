@@ -7,8 +7,7 @@ using UnityEngine;
 
 public class ControlScript : MonoBehaviour
 {
-    //public Octree<SphereScript> collisionTree;
-    public IcoTree<SphereScript> collisionTree;
+    public ICollisionTree collisionTree;
     public float ellipseRadius;
     [SerializeField] private SphereScript _spherePrefab;
     [SerializeField] private Material lineMaterial;
@@ -18,6 +17,7 @@ public class ControlScript : MonoBehaviour
     public bool active;
     public TMP_InputField bodyNumperInput;
     public TMP_InputField lastStepInput;
+    public TMP_Dropdown MethodDropdown;
     private int sphere_n;
     private int lastStep;
     private List<Sequence> sequences;
@@ -68,6 +68,33 @@ public class ControlScript : MonoBehaviour
             sequences.Add(s);
         }
         SpawnSpheres();
+        SetMethod();
+    }
+
+    public void SetMethod()
+    {
+        switch (MethodDropdown.value)
+        {
+            case 0:
+                collisionTree = new Octree<SphereScript>();
+                collisionTree.Width = 2*ellipseRadius + 2;
+                break;
+            case 1:
+                collisionTree = new IcoTree<SphereScript>();
+                break;
+        }
+        for (int i = 0; i < sphere_n; i++)
+        {
+            switch (MethodDropdown.value)
+            {
+                case 0:
+                    spheres[i].BBox = new BBoxSphere();
+                    break;
+                case 1:
+                    spheres[i].BBox = new EllipticBBox();
+                    break;
+            }
+        }
     }
 
     public void LoadFromFile()
@@ -103,12 +130,11 @@ public class ControlScript : MonoBehaviour
     {
         spheres = new();
         sequences = new();
-        //collisionTree = new(Vector3.zero, 2*ellipseRadius + 2);
-        collisionTree = new();
     }
 
     void LateUpdate()
     {
+        if (collisionTree == null) { return; }
         edges = collisionTree.GetTreeEdges();
         foreach (SphereScript sphere in spheres)
         {

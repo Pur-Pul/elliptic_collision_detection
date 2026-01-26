@@ -1,14 +1,8 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 
-public interface IItem
-{
-    BBox BBox { get; }
-}
-
-public class Octree<T> : BBox where T : class, IItem
+public class Octree<T>: BBox, ICollisionTree where T : class, IItem
 {
     private int depth;
     int max_depth = 5;
@@ -16,8 +10,10 @@ public class Octree<T> : BBox where T : class, IItem
     int number_contained_items = 0;
     Octree<T>[] octants;
     List<T> items;
-    public Octree(Vector3 bboxCenter, float bboxWidth, int d=0) : base(bboxCenter, bboxWidth)
+    public Octree(Vector3? bboxCenter = null, float bboxWidth = 0, int d = 0)
     {
+        Position = bboxCenter ?? Vector3.zero;
+        Width = bboxWidth;
         depth = d;
         octants = new Octree<T>[8];
         items = new List<T>();
@@ -37,9 +33,18 @@ public class Octree<T> : BBox where T : class, IItem
             int x = ((i & 1) == 0) ? -1 : 1;
             int y = ((i & 2) == 0) ? -1 : 1;
             int z = ((i & 4) == 0) ? -1 : 1;
-            Vector3 new_center = position + new Vector3(x*width/4f, y*width/4f, z*width/4f);
-            octants[i] = new Octree<T>(new_center, width/2f, depth + 1);
+            Vector3 new_center = Position + new Vector3(x*Width/4f, y*Width/4f, z*Width/4f);
+            octants[i] = new Octree<T>(new_center, Width/2f, depth + 1);
         }
+    }
+
+    public bool Add(IItem item)
+    {
+        return item switch
+        {
+            T i => Add(i),
+            _ => false
+        };
     }
 
     public bool Add(T item)
@@ -62,13 +67,12 @@ public class Octree<T> : BBox where T : class, IItem
         return true;
 	}
 
-    public void Query(BBox collider, List<T> found_items)
+    public void Query(IBoundingVolume collider, List<T> found_items)
     {
-        if (!CheckAABB(collider)) { return; } 
-
+        if (!CheckFastOverlaps(collider)) { return; } 
         foreach (T item in items)
         {
-            if (collider.CheckAABB(item.BBox)) { found_items.Add(item); }
+            if (collider.CheckFastOverlaps(item.BBox)) { found_items.Add(item); }
         }
 
         if (!IsLeaf())
@@ -79,23 +83,37 @@ public class Octree<T> : BBox where T : class, IItem
             }
         }
     }
-
+    public bool CheckCollisions(IItem item)
+    {
+        return item switch
+        {
+            T i => CheckCollisions(i),
+            _ => false
+        };
+    }
     public bool CheckCollisions(T item)
     {
-        List<T> found_items = new List<T>();
+        List<T> found_items = new ();
         Query(item.BBox, found_items);
-        
         foreach (T other in found_items)
         {
             if (item == other) { continue; }
             if (item.BBox.CheckCollision(other.BBox))
             {
+                Debug.Log("collision");
                 return true;
             }
         }
         return false;
     }
-
+    public bool Remove(IItem item)
+    {
+        return item switch
+        {
+            T i => Remove(i),
+            _ => false
+        };
+    }
     public bool Remove(T item)
     {
         if (!CheckContains(item.BBox)) { return false; }

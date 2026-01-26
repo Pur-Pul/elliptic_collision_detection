@@ -1,21 +1,49 @@
 using UnityEngine;
 
-public class EllipticBBox
+public class EllipticBBox : IBoundingVolume
 {
-    public float ERad { get; set; }
+    private float width;
+    public float eRad;
+    public float Width { 
+        get => width;
+        set
+        {
+            width = EuclideanToEllipticDistance(value);
+            eRad = EuclideanToEllipticDistance(value/2f);
+        }
+    }
     public Vector3 Position { get; set; }
-    public bool CheckOverlaps(EllipticBBox bbox)
+
+    public bool CheckFastOverlaps(IBoundingVolume other)
     {
-        if (ERad >= 1) { return true; }
+        return other switch
+        {
+            EllipticBBox bbox => CheckFastOverlaps(bbox),
+            _ => false
+        };
+    }
+
+    public bool CheckFastOverlaps(EllipticBBox bbox)
+    {
+        if (eRad >= 1) { return true; }
         float centerDist = EllipticDistance(Position, bbox.Position);
-        return centerDist < bbox.ERad + ERad;
+        return centerDist < bbox.eRad + eRad;
+    }
+
+    public bool CheckContains(IBoundingVolume other)
+    {
+        return other switch
+        {
+            EllipticBBox bbox => CheckContains(bbox),
+            _ => false
+        };
     }
 
     public bool CheckContains(EllipticBBox bbox)
-    {
-        if (ERad >= 1) { return true; }
+    {   
+        if (eRad >= 1) { return true; }
         float centerDist = EllipticDistance(Position, bbox.Position);
-        return centerDist + bbox.ERad < ERad;
+        return centerDist + bbox.eRad < eRad;
     }
 
     public static float EllipticDistance(Vector3 a, Vector3 b)
@@ -36,10 +64,20 @@ public class EllipticBBox
         float d = (dist*dist - 2) / (-2);
         return (d - 1)/(-2f);
     }
-    
+
+
+    public bool CheckCollision(IBoundingVolume other)
+    {
+        return other switch
+        {
+            EllipticBBox bbox => CheckCollision(bbox),
+            _ => false
+        };
+    }
+
     public bool CheckCollision(EllipticBBox bbox)
     {
-        return CheckOverlaps(bbox);
+        return CheckFastOverlaps(bbox);
         //return bbox switch
         //{
         //    BBoxSphere sphere => CheckSphere(sphere),

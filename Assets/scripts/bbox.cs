@@ -31,24 +31,19 @@ public class Face
     }
 }
 
-public class BBox
+public class BBox : IBoundingVolume
 {
-    public float width;
-    public Vector3 position;
-    public BBox(Vector3 pos, float w)
-    {
-        position = pos;
-        width = w;
-    }
+    public virtual float Width { get; set; }
+    public Vector3 Position { get; set; }
 
     public Vector3[][] GetAABBEdges()
     {
-        float max_x = position.x + width/2f;
-        float max_y = position.y + width/2f;
-        float max_z = position.z + width/2f;
-        float min_x = position.x - width/2f;
-        float min_y = position.y - width/2f;
-        float min_z = position.z - width/2f;
+        float max_x = Position.x + Width/2f;
+        float max_y = Position.y + Width/2f;
+        float max_z = Position.z + Width/2f;
+        float min_x = Position.x - Width/2f;
+        float min_y = Position.y - Width/2f;
+        float min_z = Position.z - Width/2f;
         Vector3[] _vertices =
         {
             new (min_x, min_y, min_z), //left    top     front
@@ -81,50 +76,68 @@ public class BBox
     public Vector3 MinVec()
     {
         return new Vector3(
-            position.x - width/2f,
-            position.y - width/2f,
-            position.z - width/2f
+            Position.x - Width/2f,
+            Position.y - Width/2f,
+            Position.z - Width/2f
         );
     }
 
     public Vector3 MaxVec()
     {
         return new Vector3(
-            position.x + width/2f,
-            position.y + width/2f,
-            position.z + width/2f
+            Position.x + Width/2f,
+            Position.y + Width/2f,
+            Position.z + Width/2f
         );
+    }
+
+    public bool CheckContains(IBoundingVolume other)
+    {
+        return other switch
+        {
+            BBox bbox => CheckContains(bbox),
+            _ => false
+        };
     }
 
     public bool CheckContains(BBox other)
     {
         return (
-			position.x + width/2f >= other.position.x + other.width/2f &&
-            position.y + width/2f >= other.position.y + other.width/2f &&
-            position.z + width/2f >= other.position.z + other.width/2f &&
-            position.x - width/2f <= other.position.x - other.width/2f &&
-            position.y - width/2f <= other.position.y - other.width/2f &&
-            position.z - width/2f <= other.position.z - other.width/2f
+			Position.x + Width/2f >= other.Position.x + other.Width/2f &&
+            Position.y + Width/2f >= other.Position.y + other.Width/2f &&
+            Position.z + Width/2f >= other.Position.z + other.Width/2f &&
+            Position.x - Width/2f <= other.Position.x - other.Width/2f &&
+            Position.y - Width/2f <= other.Position.y - other.Width/2f &&
+            Position.z - Width/2f <= other.Position.z - other.Width/2f
 		);
     }
 
-    public virtual bool CheckAABB(BBox other)
+    public bool CheckFastOverlaps(IBoundingVolume other)
+    {
+        return other switch
+        {
+            BBox bbox => CheckFastOverlaps(bbox),
+            _ => false
+        };
+    }
+
+    public virtual bool CheckFastOverlaps(BBox other)
     {
         return !(
-			position.x + width/2f <= other.position.x - other.width/2f || position.x - width/2f >= other.position.x + other.width/2f ||
-            position.y + width/2f <= other.position.y - other.width/2f || position.y - width/2f >= other.position.y + other.width/2f ||
-            position.z + width/2f <= other.position.z - other.width/2f || position.z - width/2f >= other.position.z + other.width/2f
+			Position.x + Width/2f <= other.Position.x - other.Width/2f || Position.x - Width/2f >= other.Position.x + other.Width/2f ||
+            Position.y + Width/2f <= other.Position.y - other.Width/2f || Position.y - Width/2f >= other.Position.y + other.Width/2f ||
+            Position.z + Width/2f <= other.Position.z - other.Width/2f || Position.z - Width/2f >= other.Position.z + other.Width/2f
 		);
     }
 
     public virtual Vector3 CheckPoint (Vector3 point)
     {
-        float max_x = position.x + width/2f;
-        float max_y = position.y + width/2f;
-        float max_z = position.z + width/2f;
-        float min_x = position.x - width/2f;
-        float min_y = position.y - width/2f;
-        float min_z = position.z - width/2f;
+        float max_x = Position.x + Width/2f;
+        float max_y = Position.y + Width/2f;
+        float max_z = Position.z + Width/2f;
+        float min_x = Position.x - Width/2f;
+        float min_y = Position.y - Width/2f;
+        float min_z = Position.z - Width/2f;
 
         float overlapx = Math.Min(max_x, point.x) - Math.Max(min_x, point.x);
         float overlapy = Math.Min(max_y, point.y) - Math.Max(min_y, point.y);
@@ -132,15 +145,15 @@ public class BBox
 
         if (overlapx <= overlapy && overlapx <= overlapz)
         {
-            return new Vector3(position.x < point.x ? -overlapx : overlapx, 0, 0);
+            return new Vector3(Position.x < point.x ? -overlapx : overlapx, 0, 0);
         }
         else if (overlapy <= overlapx && overlapy <= overlapz)
         {
-            return new Vector3(0, position.y < point.y ? -overlapy : overlapy, 0);   
+            return new Vector3(0, Position.y < point.y ? -overlapy : overlapy, 0);   
         }
         else
         {
-            return new Vector3(0, 0, position.z < point.z ? -overlapz : overlapz);   
+            return new Vector3(0, 0, Position.z < point.z ? -overlapz : overlapz);   
         }
     }
 	
@@ -148,62 +161,51 @@ public class BBox
     {
         return false;
     }
-	
-	public virtual bool CheckQuadrilateral (BBoxQuadrilateral quad)
+    public bool CheckCollision(IBoundingVolume other)
     {
-        return false;
-    }
-
-    public bool CheckCollision(BBox bbox)
-    {
-        return bbox switch
+        return other switch
         {
             BBoxSphere sphere => CheckSphere(sphere),
-            BBoxQuadrilateral quad => CheckQuadrilateral(quad),
-            BBox aabb => CheckAABB(aabb),
-            _ => false,
+            BBox aabb => CheckFastOverlaps(aabb),
+            _ => false
         };
     }
 }
 
 public class BBoxSphere : BBox
-{
-    public float radius;
-    public float radius2;
-    public BBoxSphere(Vector3 pos, float r) : base(pos, r*2f)
+{   
+    private float radius;
+    private float radius2;
+    public float Radius { get => radius; set { radius = value; } }
+    public override float Width
     {
-        radius = r;
-        radius2 = (float)Math.Pow(r, 2);
+        get => radius * 2f;
+        set
+        {
+            Radius = value/2f;
+            radius2 = Radius*Radius;
+        }
     }
-    public override bool CheckAABB(BBox aabb)
+    public override bool CheckFastOverlaps(BBox aabb)
     // solid Sphere - solid AABB collision check method by Jim Arvo, in "Graphics Gems", Academic Press, 1990.
     // https://web.archive.org/web/20100323053111/http://www.ics.uci.edu/~arvo/code/BoxSphereIntersect.c
     {
         Vector3 aabb_min = aabb.MinVec();
         Vector3 aabb_max = aabb.MaxVec();
         float dmin = 0;
-        if (position.x < aabb_min.x)        { dmin += (float)Math.Pow(position.x - aabb_min.x, 2); }
-        else if (position.x > aabb_max.x)   { dmin += (float)Math.Pow(position.x - aabb_max.x, 2); }
+        if (Position.x < aabb_min.x)        { dmin += (float)Math.Pow(Position.x - aabb_min.x, 2); }
+        else if (Position.x > aabb_max.x)   { dmin += (float)Math.Pow(Position.x - aabb_max.x, 2); }
 
-        if (position.y < aabb_min.y)        { dmin += (float)Math.Pow(position.x - aabb_min.y, 2); }
-        else if (position.y > aabb_max.y)   { dmin += (float)Math.Pow(position.x - aabb_max.y, 2); }
+        if (Position.y < aabb_min.y)        { dmin += (float)Math.Pow(Position.x - aabb_min.y, 2); }
+        else if (Position.y > aabb_max.y)   { dmin += (float)Math.Pow(Position.x - aabb_max.y, 2); }
 
-        if (position.z < aabb_min.z)        { dmin += (float)Math.Pow(position.x - aabb_min.z, 2); }
-        else if (position.z > aabb_max.z)   { dmin += (float)Math.Pow(position.x - aabb_max.z, 2); }
+        if (Position.z < aabb_min.z)        { dmin += (float)Math.Pow(Position.x - aabb_min.z, 2); }
+        else if (Position.z > aabb_max.z)   { dmin += (float)Math.Pow(Position.x - aabb_max.z, 2); }
         return dmin <= radius2;
     }
     public override bool CheckSphere(BBoxSphere sphere)
     {
-        float centerDist = radius + sphere.radius;
-        return (position - sphere.position).sqrMagnitude < centerDist * centerDist;
-    }
-}
-
-public class BBoxQuadrilateral : BBox
-{
-    public float radius;
-    public BBoxQuadrilateral(Vector3 pos, float width) : base(pos, width)
-    {
-        
+        float centerDist = Radius + sphere.Radius;
+        return (Position - sphere.Position).sqrMagnitude < centerDist * centerDist;
     }
 }
