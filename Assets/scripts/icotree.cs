@@ -214,4 +214,25 @@ public class IcoTree<T>: EllipticBBox, ICollisionTree where T : class, IItem
         }
         return _edges;
     }
+
+    public void Draw(Mesh mesh)
+    {
+        Vector3[][] _edges = GetTreeEdges();
+        Vector3[] vertices = new Vector3[_edges.Length * 3];
+        int[] polygons = new int[_edges.Length * 3];
+
+        for(int i = 0; i < _edges.Length; i++)
+        {
+            vertices[i*3] = _edges[i][0];
+            vertices[i*3 + 1] = _edges[i][1];
+            vertices[i*3 + 2] = _edges[i][2];
+            polygons[i*3] = i*3;
+            polygons[i*3 + 1] = i*3+1;
+            polygons[i*3 + 2] = i*3+2;
+        }
+
+        mesh.Clear();
+        mesh.vertices = vertices;
+        mesh.triangles = polygons;
+    }
 }

@@ -12,15 +12,16 @@ public class ControlScript : MonoBehaviour
     [SerializeField] private SphereScript _spherePrefab;
     [SerializeField] private Material lineMaterial;
     private Vector3[][] edges;
-    private List<SphereScript> spheres;
+    public List<SphereScript> spheres;
     public int step;
     public bool active;
     public TMP_InputField bodyNumperInput;
     public TMP_InputField lastStepInput;
     public TMP_Dropdown MethodDropdown;
-    private int sphere_n;
+    public int sphere_n;
     private int lastStep;
     private List<Sequence> sequences;
+    Mesh mesh;
     
     void SpawnSpheres()
     {
@@ -130,6 +131,8 @@ public class ControlScript : MonoBehaviour
     {
         spheres = new();
         sequences = new();
+        mesh = new Mesh();
+        GetComponent<MeshFilter>().mesh = mesh;
     }
 
     void LateUpdate()
@@ -159,33 +162,8 @@ public class ControlScript : MonoBehaviour
     }
     void OnRenderObject()
     {
-        if (edges == null || edges.Length == 0) { return; }
-        if (lineMaterial == null) { return; }
-
-        lineMaterial.SetPass(0);
-        lineMaterial.color = Color.magenta;
-        Vector3 scalar = new(ellipseRadius, ellipseRadius, ellipseRadius);
-        foreach (Vector3[] edge in edges)
-        {
-            GL.Begin(GL.LINES);
-            for (int i = 1; i < edge.Length; i++)
-            
-            DrawEdge(Vector3.Scale(edge[i-1], scalar), Vector3.Scale(edge[i], scalar));
-            GL.End();
-        }
+        if (collisionTree == null) { return; }
+        collisionTree.Draw(mesh);
         
-    }
-
-    void DrawEdge(Vector3 a, Vector3 b)
-    {
-        Vector3 _right = Vector3.Cross(a, b);
-        _right.Normalize();
-        Vector3 offset = _right * 0.01f;
-        GL.Vertex(a);
-        GL.Vertex(b);
-        GL.Vertex(a + offset);
-        GL.Vertex(b + offset);
-        GL.Vertex(a - offset);
-        GL.Vertex(b - offset);
     }
 }

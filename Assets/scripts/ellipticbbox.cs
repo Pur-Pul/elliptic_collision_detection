@@ -8,7 +8,7 @@ public class EllipticBBox : IBoundingVolume
         get => width;
         set
         {
-            width = EuclideanToEllipticDistance(value);
+            width = value;
             eRad = EuclideanToEllipticDistance(value/2f);
         }
     }
@@ -78,13 +78,6 @@ public class EllipticBBox : IBoundingVolume
     public bool CheckCollision(EllipticBBox bbox)
     {
         return CheckFastOverlaps(bbox);
-        //return bbox switch
-        //{
-        //    BBoxSphere sphere => CheckSphere(sphere),
-        //    BBoxQuadrilateral quad => CheckQuadrilateral(quad),
-        //    BBox aabb => CheckAABB(aabb),
-        //    _ => false,
-        //};
     }
 }
 
@@ -157,7 +150,7 @@ public class EllipticTriangle
 
     public Vector3[] Edges
     {
-        get => new[] { C1, C2, C3, C1 };
+        get => new[] { C1, C2, C3 };
     }
 
     public Vector3 InCenter => inCenter ??= ComputeEllipticInCenter();

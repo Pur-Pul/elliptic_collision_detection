@@ -20,6 +20,7 @@ public class SphereScript : MonoBehaviour, IItem
     {
         control.collisionTree.Add(this);
         sphereMat.SetColor("_Color", color);
+        GetComponent<MeshRenderer>().enabled= false;
     }
 
     void Move()

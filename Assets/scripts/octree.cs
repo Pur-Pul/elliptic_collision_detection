@@ -100,7 +100,6 @@ public class Octree<T>: BBox, ICollisionTree where T : class, IItem
             if (item == other) { continue; }
             if (item.BBox.CheckCollision(other.BBox))
             {
-                Debug.Log("collision");
                 return true;
             }
         }
@@ -163,5 +162,9 @@ public class Octree<T>: BBox, ICollisionTree where T : class, IItem
             }
         }
         return _edges;
+    }
+    public void Draw(Mesh mesh)
+    {
+        
     }
 }
