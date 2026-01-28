@@ -21,7 +21,7 @@ public class ControlScript : MonoBehaviour
     public int sphere_n;
     private int lastStep;
     private List<Sequence> sequences;
-    Mesh mesh;
+    public CameraScript cam;
     
     void SpawnSpheres()
     {
@@ -78,7 +78,7 @@ public class ControlScript : MonoBehaviour
         {
             case 0:
                 collisionTree = new Octree<SphereScript>();
-                collisionTree.Width = 2*ellipseRadius + 2;
+                collisionTree.Width = 2*ellipseRadius + 0.2f;
                 break;
             case 1:
                 collisionTree = new IcoTree<SphereScript>();
@@ -131,8 +131,6 @@ public class ControlScript : MonoBehaviour
     {
         spheres = new();
         sequences = new();
-        mesh = new Mesh();
-        GetComponent<MeshFilter>().mesh = mesh;
     }
 
     void LateUpdate()
@@ -160,10 +158,15 @@ public class ControlScript : MonoBehaviour
             }
         }
     }
-    void OnRenderObject()
+    void OnDrawGizmos()
     {
         if (collisionTree == null) { return; }
-        collisionTree.Draw(mesh);
-        
+        foreach (Vector3[] edge in collisionTree.GetTreeEdges())
+        {
+            Vector3 cam_pos = cam.transform.position;
+            float dist = Mathf.Min((cam_pos - edge[0]).magnitude, (cam_pos - edge[1]).magnitude);
+            float t = (dist - (cam_pos.magnitude - 1f))/2f;            
+            Debug.DrawLine(edge[0], edge[1], Color.Lerp(Color.magenta, Color.black, t));
+        }
     }
 }

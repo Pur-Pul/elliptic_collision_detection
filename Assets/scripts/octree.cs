@@ -163,8 +163,4 @@ public class Octree<T>: BBox, ICollisionTree where T : class, IItem
         }
         return _edges;
     }
-    public void Draw(Mesh mesh)
-    {
-        
-    }
 }

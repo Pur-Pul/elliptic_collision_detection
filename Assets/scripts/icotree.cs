@@ -18,8 +18,7 @@ public class IcoTree<T>: EllipticBBox, ICollisionTree where T : class, IItem
         t = triangle;
         d = depth;
         Position = t == null ? Vector3.zero : t.InCenter;
-        Width = t == null ? 4f : t.InRadius;
-        Debug.Log($"{depth} : {eRad}");
+        eRad = t == null ? 1f : t.InRadius;
     }
 
     public bool IsLeaf() => children.Count == 0;
@@ -28,7 +27,7 @@ public class IcoTree<T>: EllipticBBox, ICollisionTree where T : class, IItem
 		if (children.Count > 0) { return; }
 		if (d == 0) {
 			float _aspect = (1f + (float)Math.Sqrt(5))/2f;
-			Vector3[] vertices = {
+			Vector3[] vertices = new Vector3[] {
 				new(-1,				_aspect,		0),
 				new(1,				_aspect,		0),
 				new(-1,				-_aspect,		0),
@@ -78,6 +77,7 @@ public class IcoTree<T>: EllipticBBox, ICollisionTree where T : class, IItem
             {
                 children.Add(new(triangle, d+1));
             }
+            
 		}
 	}
 
@@ -92,6 +92,7 @@ public class IcoTree<T>: EllipticBBox, ICollisionTree where T : class, IItem
 
     public bool Add(T item)
     {
+        //Debug.Log($"{CheckContains(item.BBox)}, {d}");
         if (!CheckContains(item.BBox)) { return false; }
         
         number_contained_items++;
@@ -200,7 +201,7 @@ public class IcoTree<T>: EllipticBBox, ICollisionTree where T : class, IItem
     {
         Vector3[][] _edges = t == null 
             ? new Vector3[][] {} 
-            : new Vector3[][] { t.Edges };
+            : t.Edges;
         if (!IsLeaf())
         {
             foreach (IcoTree<T> child in children)
@@ -213,26 +214,5 @@ public class IcoTree<T>: EllipticBBox, ICollisionTree where T : class, IItem
             }
         }
         return _edges;
-    }
-
-    public void Draw(Mesh mesh)
-    {
-        Vector3[][] _edges = GetTreeEdges();
-        Vector3[] vertices = new Vector3[_edges.Length * 3];
-        int[] polygons = new int[_edges.Length * 3];
-
-        for(int i = 0; i < _edges.Length; i++)
-        {
-            vertices[i*3] = _edges[i][0];
-            vertices[i*3 + 1] = _edges[i][1];
-            vertices[i*3 + 2] = _edges[i][2];
-            polygons[i*3] = i*3;
-            polygons[i*3 + 1] = i*3+1;
-            polygons[i*3 + 2] = i*3+2;
-        }
-
-        mesh.Clear();
-        mesh.vertices = vertices;
-        mesh.triangles = polygons;
     }
 }

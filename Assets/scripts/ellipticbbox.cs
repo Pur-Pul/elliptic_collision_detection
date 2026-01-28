@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 public class EllipticBBox : IBoundingVolume
@@ -43,6 +44,7 @@ public class EllipticBBox : IBoundingVolume
     {   
         if (eRad >= 1) { return true; }
         float centerDist = EllipticDistance(Position, bbox.Position);
+        //($"Dist + rad: {centerDist + bbox.eRad} | own eRad: {eRad}");
         return centerDist + bbox.eRad < eRad;
     }
 
@@ -148,9 +150,33 @@ public class EllipticTriangle
         get => length31 ??= (C3 - C1).magnitude;
     }
 
-    public Vector3[] Edges
+    public Vector3[][] Edges
     {
-        get => new[] { C1, C2, C3 };
+        get {
+        int n = (int)Mathf.Round(20*EllipticBBox.EllipticDistance(C1, C2))+1;
+       
+        Vector3[][] edges = new Vector3[3*n][];
+        for (int i = 0; i < n; i++)
+        {
+            float t = (float)i / n;
+            edges[i] = new[]
+            { 
+                i == 0 ? C1 : edges[i-1][1],
+                Vector3.Slerp(C1, C2, t)
+            };
+            edges[n + i] = new[]
+            { 
+                i == 0 ? C2 : edges[n+i-1][1],
+                Vector3.Slerp(C2, C3, t)
+            };
+            edges[2*n + i] = new[]
+            { 
+                i == 0 ? C3 : edges[2*n+i-1][1],
+                Vector3.Slerp(C3, C1, t)
+            };
+        }
+        return edges;
+        }
     }
 
     public Vector3 InCenter => inCenter ??= ComputeEllipticInCenter();
@@ -172,27 +198,21 @@ public class EllipticTriangle
     }
     public Vector3 ComputeEllipticInCenter()
     {
-        float semiperimeter = Length12 + Length23 + Length31;
+        float perimeter = Length12 + Length23 + Length31;
         Vector3 centroid = new(
-            (C1.x + C2.x + C3.x) / semiperimeter,
-            (C1.y + C2.y + C3.y) / semiperimeter,
-            (C1.z + C2.z + C3.z) / semiperimeter
+            (C1.x + C2.x + C3.x) / perimeter,
+            (C1.y + C2.y + C3.y) / perimeter,
+            (C1.z + C2.z + C3.z) / perimeter
         );
         centroid.Normalize();
         return centroid;
     }
     public float ComputeEllipticInRadius()
     {
-        float semiperimeter = Length12 + Length23 + Length31;
+        // Semiperimeter
+        float sp = (Length12 + Length23 + Length31) / 2f;
         // Herons formula for triangle area.
-        float area = 0.25f * Mathf.Sqrt(
-            (Length12 + Length23 + Length31)    *
-            (-Length12 + Length23 + Length31)   *
-            (Length12 - Length23 + Length31)    *
-            (Length12 + Length23 - Length31)
-        );
-        float inRadius = area / semiperimeter;
-
+        float inRadius = Mathf.Sqrt((sp - Length12) * (sp - Length23) * (sp - Length23) / sp);
         return EllipticBBox.EuclideanToEllipticDistance(inRadius);
     }
 }

@@ -9,12 +9,12 @@ public class Face
     public Vector3 br;
     public Vector3 bl;
     
-    public Vector3[] Edges {
+    public Vector3[][] Edges {
         get => new[] {
-            tl, tr,
-            tr, br,
-            br, bl,
-            bl, tl
+            new[] { tl, tr },
+            new[] { tr, br },
+            new[] { br, bl },
+            new[] { bl, tl }
         };
     }
     public Face(Vector3 top_left, Vector3 top_right, Vector3 bottom_right, Vector3 bottom_left)
@@ -65,10 +65,14 @@ public class BBox : IBoundingVolume
             new (_vertices[2], _vertices[3], _vertices[7], _vertices[6]),   //bottom
             new (_vertices[5], _vertices[4], _vertices[6], _vertices[7])    //back
         };
-        Vector3[][] _edges = new Vector3[6][];
+        Vector3[][] _edges = new Vector3[24][];
         for (int i = 0; i < _faces.Length; i++)
         {
-            _edges[i] = _faces[i].Edges;
+            Vector3[][] _face_edges = _faces[i].Edges;
+            _edges[i*4] = _face_edges[0];
+            _edges[i*4+1] = _face_edges[1];
+            _edges[i*4+2] = _face_edges[2];
+            _edges[i*4+3] = _face_edges[3];
         }
         return _edges;
     }

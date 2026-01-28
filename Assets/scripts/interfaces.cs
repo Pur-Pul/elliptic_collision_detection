@@ -20,5 +20,4 @@ public interface ICollisionTree : IBoundingVolume
     public bool Remove(IItem item);
     public bool CheckCollisions(IItem item);
     public Vector3[][] GetTreeEdges();
-    public void Draw(Mesh mesh);
 }
