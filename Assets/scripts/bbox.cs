@@ -248,4 +248,25 @@ public class OBBox : BBox
     public Vector3 Right { get; set; }
     public Vector3 Up { get; set; }
     public Vector3 Forward { get; set; }
+    float RightWidth { get; set; }
+    float UpWidth { get; set; }
+    float ForwardWidth { get; set; }
+
+    //https://dev.to/pratyush_mohanty_6b8f2749/the-math-behind-bounding-box-collision-detection-aabb-vs-obbseparate-axis-theorem-1gdn
+    bool SATAxis(OBBox bbox, Vector3 axis, float scalar)
+    {
+        float left = MathF.Abs(Vector3.Dot(bbox.Position - Position, axis));
+        
+        float right = scalar + 
+        MathF.Abs(Vector3.Dot(bbox.RightWidth * bbox.Right, axis)) +
+        MathF.Abs(Vector3.Dot(bbox.UpWidth * bbox.Up, axis)) + 
+        MathF.Abs(Vector3.Dot(bbox.ForwardWidth * bbox.Forward, axis));
+
+        return left <= right;
+    }
+    
+    bool SAT(OBBox bbox)
+    {
+        return SATAxis(bbox, Right, RightWidth) || SATAxis(bbox, Up, UpWidth) || SATAxis(bbox, Forward, ForwardWidth);
+    }
 }
