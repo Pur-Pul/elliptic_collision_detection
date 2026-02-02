@@ -26,7 +26,7 @@ public class worldScript : MonoBehaviour
         {
             points[i] = control.spheres[i].transform.position;
             rads[i] = EllipticBBox.EuclideanToEllipticDistance(control.spheres[i].BBox.Width/2);
-            colors[i] = control.spheres[i].color;
+            colors[i] = control.spheres[i].drawColor;
         }
         posBuffer.SetData(points);
         radBuffer.SetData(rads);

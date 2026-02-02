@@ -69,10 +69,13 @@ public class Octree<T>: BBox, ICollisionTree where T : class, IItem
 
     public void Query(IBoundingVolume collider, List<T> found_items)
     {
-        if (!CheckFastOverlaps(collider)) { return; } 
+        if (!CheckFastOverlaps(collider)) { return; }
         foreach (T item in items)
         {
-            if (collider.CheckFastOverlaps(item.BBox)) { found_items.Add(item); }
+            if (collider.CheckFastOverlaps(item.BBox)) 
+            {
+                found_items.Add(item); 
+            }
         }
 
         if (!IsLeaf())

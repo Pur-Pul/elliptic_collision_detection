@@ -8,6 +8,7 @@ public class SphereScript : MonoBehaviour, IItem
     public Material sphereMat;
     public Sequence sequence;
     public Color color;
+    public Color drawColor;
     private int prevStep;
     void Awake()
     {
@@ -20,7 +21,8 @@ public class SphereScript : MonoBehaviour, IItem
     {
         control.collisionTree.Add(this);
         sphereMat.SetColor("_Color", color);
-        GetComponent<MeshRenderer>().enabled= false;
+        drawColor = color;
+        //GetComponent<MeshRenderer>().enabled= false;
     }
 
     void Move()
@@ -47,8 +49,8 @@ public class SphereScript : MonoBehaviour, IItem
             control.collisionTree.Remove(this);
 
             Move();
-            
             control.collisionTree.Add(this);
+            
             prevStep = control.step;
         }
         
@@ -58,9 +60,11 @@ public class SphereScript : MonoBehaviour, IItem
         if (control.collisionTree.CheckCollisions(this))
         {
             sphereMat.SetColor("_Color", Color.red);
+            drawColor = Color.red;
         } else
         {
             sphereMat.SetColor("_Color", color);
+            drawColor = color;
         }
     }
 
