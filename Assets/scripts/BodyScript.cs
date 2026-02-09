@@ -27,7 +27,8 @@ public class BodyScript : MonoBehaviour, IItem
 
     void Move()
     {
-        transform.position = sequence.SlerpGet(control.step);
+        transform.position = sequence.SlerpPosition(control.step);
+        transform.rotation = sequence.SlerpOrientation(control.step);
         BBox.Position = transform.position;
         BBox.Width = transform.localScale.x;
     }

@@ -2,12 +2,14 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Xml.Serialization;
+using Unity.VisualScripting;
 using UnityEngine;
 
 public class Keyframe
 {
     public int Frame { get; set; }
     public Vector3 Position { get; set; }
+    public Quaternion Orientation { get; set; }
 }
 
 public class KeyframeList
@@ -30,6 +32,7 @@ public class Sequence
 {
     KeyframeList keyframes;
     int cursor;
+    private Vector3 origin = Vector3.back;
     public Sequence()
     {
         keyframes = new KeyframeList();
@@ -48,31 +51,45 @@ public class Sequence
         if (keyframes.Count == 0) { return 0; }
         return keyframes.Last().Frame;
     }
-    public void Insert(int step, Vector3 position)
+    public Vector3 SlerpPosition(int step)
     {
-        Keyframe k = new Keyframe();
-        k.Frame = step;
-        k.Position = position;
-        keyframes.Add(k);
-    }
-    Vector3 Slerp(int step)
-    {
+        if (keyframes[cursor].Frame < step && cursor < keyframes.Count-1) { cursor++; }
         float t = (step - keyframes[cursor-1].Frame) / (float)(keyframes[cursor].Frame - keyframes[cursor-1].Frame);
         return Vector3.Slerp(keyframes[cursor-1].Position, keyframes[cursor].Position, t);
     }
-    public Vector3 SlerpGet(int step)
+    public Quaternion SlerpOrientation(int step)
     {
         if (keyframes[cursor].Frame < step && cursor < keyframes.Count-1) { cursor++; }
-        return Slerp(step);
+        float t = (step - keyframes[cursor-1].Frame) / (float)(keyframes[cursor].Frame - keyframes[cursor-1].Frame);
+        return Quaternion.Slerp(keyframes[cursor-1].Orientation, keyframes[cursor].Orientation, t);
     }
+
     public void Randomize(int lastStep, float radius)
     {
         keyframes.Clear();
         int keyframe_n = Random.Range(2, 10);
         for (int i = 0; i < keyframe_n; i++)
         {
-            int step = Mathf.RoundToInt(i / (float)(keyframe_n - 1) * lastStep);
-            Insert(step, VectorUtils.RandomVector3(radius));
+            Keyframe k = new()
+            {
+                Frame = Mathf.RoundToInt(i / (float)(keyframe_n - 1) * lastStep),
+                Position = VectorUtils.RandomVector3(radius)
+            };
+
+            Vector3 prevPos = i == 0 ? origin : keyframes[i - 1].Position;
+            Quaternion prevOrientation = i == 0 ? Quaternion.identity : keyframes[i - 1].Orientation;
+
+            Vector3 axis = Vector3.Cross(prevPos, k.Position);
+            axis.Normalize();
+
+            float angle = Vector3.Angle(prevPos, k.Position);
+            k.Orientation = Quaternion.AngleAxis(angle, axis) * prevOrientation;
+
+            //Vector3 forward = k.Position;
+            //forward.Normalize();
+            //k.Orientation = Quaternion.AngleAxis(Random.Range(-179, 179), forward) * k.Orientation;
+
+            keyframes.Add(k);
         }
     }
     public void Reset()

@@ -41,7 +41,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 547945954991713548}
-  m_Mesh: {fileID: 10207, guid: 0000000000000000e000000000000000, type: 0}
+  m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
 --- !u!23 &3540824291669581923
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -104,6 +104,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: '::'
   control: {fileID: 0}
-  sphereMat: {fileID: 2100000, guid: 9267dcd20cfab33f3b785d771657512f, type: 2}
+  bodyMat: {fileID: 0}
   color: {r: 0, g: 0, b: 0, a: 0}
   drawColor: {r: 0, g: 0, b: 0, a: 0}

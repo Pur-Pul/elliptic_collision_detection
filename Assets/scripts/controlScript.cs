@@ -29,7 +29,8 @@ public class ControlScript : MonoBehaviour
         {
             BodyScript body = Instantiate(_bodyPrefab);
             bodies.Add(body);
-            body.transform.position = s.SlerpGet(0);
+            body.transform.position = s.SlerpPosition(0);
+            body.transform.rotation = s.SlerpOrientation(0);
             body.sequence = s;
             body.color = UnityEngine.Random.ColorHSV();
             body.control = this;
