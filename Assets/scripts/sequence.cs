@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Xml.Serialization;
-using NUnit.Framework.Internal;
 using UnityEngine;
 
 public class Keyframe
@@ -11,20 +10,36 @@ public class Keyframe
     public Vector3 Position { get; set; }
 }
 
+public class KeyframeList
+{
+    public List<Keyframe> Keyframes { get; set; } = new ();
+    public string BodyType { get; set; } = "sphere";
+
+    public int Count => Keyframes.Count;
+    public void Add(Keyframe keyframe) => Keyframes.Add(keyframe);
+    public Keyframe Last() => Keyframes.Last();
+    public Keyframe this[int index]
+    {
+        get => Keyframes[index];
+        set => Keyframes[index] = value;
+    }
+    public void Clear() => Keyframes.Clear();
+}
+
 public class Sequence
 {
-    List<Keyframe> keyframes;
+    KeyframeList keyframes;
     int cursor;
     public Sequence()
     {
-        keyframes = new List<Keyframe>();
+        keyframes = new KeyframeList();
         cursor = 1;
     }
-    public void Set(List<Keyframe> new_keyframes)
+    public void Set(KeyframeList new_keyframes)
     {
         keyframes = new_keyframes;
     }
-    public List<Keyframe> Get()
+    public KeyframeList Get()
     {
         return keyframes;
     }
@@ -74,10 +89,10 @@ public class Sequence
 
 public class SequenceUtils
 {
-    public static List<Sequence> GetSequenceList(List<List<Keyframe>> keyframeListList)
+    public static List<Sequence> GetSequenceList(List<KeyframeList> keyframeListList)
     {
         List<Sequence> sequences = new();
-        foreach (List<Keyframe> keyframelist in keyframeListList)
+        foreach (KeyframeList keyframelist in keyframeListList)
         {
             Sequence s = new();
             s.Set(keyframelist);
@@ -86,9 +101,9 @@ public class SequenceUtils
         return sequences;
     }
 
-    public static List<List<Keyframe>> GetKeyframeList(List<Sequence> sequences)
+    public static List<KeyframeList> GetKeyframeList(List<Sequence> sequences)
     {
-        List<List<Keyframe>> kll = new();
+        List<KeyframeList> kll = new();
         foreach (Sequence seq in sequences)
         {
             kll.Add(seq.Get());
@@ -100,19 +115,19 @@ public class SequenceUtils
     {
         Directory.CreateDirectory(Path.GetDirectoryName(filePath));
         FileStream outFile = File.Create(filePath);
-        XmlSerializer formatter = new(typeof(List<List<Keyframe>>));
+        XmlSerializer formatter = new(typeof(List<KeyframeList>));
         formatter.Serialize(outFile, GetKeyframeList(sequences));
     }
 
     public static List<Sequence> FromFile(string filePath)
     {
-        XmlSerializer formatter = new(typeof(List<List<Keyframe>>));
+        XmlSerializer formatter = new(typeof(List<KeyframeList>));
         FileStream f = new(filePath, FileMode.Open);
         byte[] buffer = new byte[f.Length];
         f.Read(buffer, 0, (int)f.Length);
         MemoryStream stream = new(buffer);
 
-        List<List<Keyframe>> keyframeListList = (List<List<Keyframe>>)formatter.Deserialize(stream);
+        List<KeyframeList> keyframeListList = (List<KeyframeList>)formatter.Deserialize(stream);
         List<Sequence> sl = GetSequenceList(keyframeListList);
         
         return sl;

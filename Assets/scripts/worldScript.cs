@@ -9,7 +9,6 @@ public class worldScript : MonoBehaviour
     ComputeBuffer radBuffer;
     ComputeBuffer colorBuffer;
 
-
     void Start()
     {
         posBuffer = new ComputeBuffer(256, sizeof(float) * 3);
@@ -19,14 +18,14 @@ public class worldScript : MonoBehaviour
 
     void Update()
     {
-        Vector3[] points = new Vector3[control.sphere_n];
-        float[] rads = new float[control.sphere_n];
-        Color[] colors = new Color[control.sphere_n];
-        for (int i = 0; i < control.sphere_n; i++)
+        Vector3[] points = new Vector3[control.body_n];
+        float[] rads = new float[control.body_n];
+        Color[] colors = new Color[control.body_n];
+        for (int i = 0; i < control.body_n; i++)
         {
-            points[i] = control.spheres[i].transform.position;
-            rads[i] = EllipticBBox.EuclideanToEllipticDistance(control.spheres[i].BBox.Width/2);
-            colors[i] = control.spheres[i].drawColor;
+            points[i] = control.bodies[i].transform.position;
+            rads[i] = EllipticBBox.EuclideanToEllipticDistance(control.bodies[i].BBox.Width/2);
+            colors[i] = control.bodies[i].drawColor;
         }
         posBuffer.SetData(points);
         radBuffer.SetData(rads);
@@ -35,7 +34,7 @@ public class worldScript : MonoBehaviour
         material.SetBuffer("_Points", posBuffer);
         material.SetBuffer("_ERadius", radBuffer);
         material.SetBuffer("_Colors", colorBuffer); 
-        material.SetInt("_PointCount", control.sphere_n);
+        material.SetInt("_PointCount", control.body_n);
     }
 
     void OnDestroy()

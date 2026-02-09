@@ -1,11 +1,11 @@
 using UnityEngine;
 
-public class SphereScript : MonoBehaviour, IItem
+public class BodyScript : MonoBehaviour, IItem
 {   
     //public BBox BBox { get; private set;}
     public IBoundingVolume BBox { get; set; }
     public ControlScript control;
-    public Material sphereMat;
+    public Material bodyMat;
     public Sequence sequence;
     public Color color;
     public Color drawColor;
@@ -13,14 +13,14 @@ public class SphereScript : MonoBehaviour, IItem
     void Awake()
     {
         Renderer r = GetComponent<Renderer>();
-        sphereMat = r.material;
+        bodyMat = r.material;
         prevStep = -1;
     }
     
     void Start()
     {
         control.collisionTree.Add(this);
-        sphereMat.SetColor("_Color", color);
+        bodyMat.SetColor("_Color", color);
         drawColor = color;
         //GetComponent<MeshRenderer>().enabled= false;
     }
@@ -59,11 +59,11 @@ public class SphereScript : MonoBehaviour, IItem
     {
         if (control.collisionTree.CheckCollisions(this))
         {
-            sphereMat.SetColor("_Color", Color.red);
+            bodyMat.SetColor("_Color", Color.red);
             drawColor = Color.red;
         } else
         {
-            sphereMat.SetColor("_Color", color);
+            bodyMat.SetColor("_Color", color);
             drawColor = color;
         }
     }

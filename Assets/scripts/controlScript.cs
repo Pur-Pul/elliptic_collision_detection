@@ -9,36 +9,36 @@ public class ControlScript : MonoBehaviour
 {
     public ICollisionTree collisionTree;
     public float ellipseRadius;
-    [SerializeField] private SphereScript _spherePrefab;
+    [SerializeField] private BodyScript _bodyPrefab;
     [SerializeField] private Material lineMaterial;
     private Vector3[][] edges;
-    public List<SphereScript> spheres;
+    public List<BodyScript> bodies;
     public int step;
     public bool active;
     public TMP_InputField bodyNumperInput;
     public TMP_InputField lastStepInput;
     public TMP_Dropdown MethodDropdown;
-    public int sphere_n;
+    public int body_n;
     private int lastStep;
     private List<Sequence> sequences;
     public CameraScript cam;
     
-    void SpawnSpheres()
+    void SpawnBodies()
     {
         foreach (Sequence s in sequences)
         {
-            SphereScript sphere = Instantiate(_spherePrefab);
-            spheres.Add(sphere);
-            sphere.transform.position = s.SlerpGet(0);
-            sphere.sequence = s;
-            sphere.color = UnityEngine.Random.ColorHSV();
-            sphere.control = this;
+            BodyScript body = Instantiate(_bodyPrefab);
+            bodies.Add(body);
+            body.transform.position = s.SlerpGet(0);
+            body.sequence = s;
+            body.color = UnityEngine.Random.ColorHSV();
+            body.control = this;
         }
     }
 
     public bool Ready()
     {
-        return !(sphere_n <= 0 || lastStep <= 0);
+        return !(body_n <= 0 || lastStep <= 0);
     }
     void Awake()
     {
@@ -46,29 +46,29 @@ public class ControlScript : MonoBehaviour
         active = false;
     }
 
-    void DestroySpheres()
+    void DestroyBodies()
     {
-        foreach (SphereScript sphere in spheres)
+        foreach (BodyScript body in bodies)
         {
-            Destroy(sphere.gameObject);
+            Destroy(body.gameObject);
         }
-        spheres.Clear();
+        bodies.Clear();
         sequences.Clear();
     }
 
-    public void GenerateSpheres()
+    public void GenerateBodies()
     {
         step = 0;
-        DestroySpheres();
-        sphere_n = ParseInputNumber(bodyNumperInput);
+        DestroyBodies();
+        body_n = ParseInputNumber(bodyNumperInput);
         lastStep = ParseInputNumber(lastStepInput);
         
-        for (int i = 0; i < sphere_n; i++)
+        for (int i = 0; i < body_n; i++)
         {
             Sequence s = Sequence.RandomSequence(lastStep, ellipseRadius);
             sequences.Add(s);
         }
-        SpawnSpheres();
+        SpawnBodies();
         SetMethod();
     }
 
@@ -77,22 +77,22 @@ public class ControlScript : MonoBehaviour
         switch (MethodDropdown.value)
         {
             case 0:
-                collisionTree = new Octree<SphereScript>();
+                collisionTree = new Octree<BodyScript>();
                 collisionTree.Width = 2*ellipseRadius + 0.2f;
                 break;
             case 1:
-                collisionTree = new IcoTree<SphereScript>();
+                collisionTree = new IcoTree<BodyScript>();
                 break;
         }
-        for (int i = 0; i < sphere_n; i++)
+        for (int i = 0; i < body_n; i++)
         {
             switch (MethodDropdown.value)
             {
                 case 0:
-                    spheres[i].BBox = new BBoxSphere();
+                    bodies[i].BBox = new BBoxSphere();
                     break;
                 case 1:
-                    spheres[i].BBox = new EllipticBBox();
+                    bodies[i].BBox = new EllipticBBox();
                     break;
             }
         }
@@ -103,12 +103,12 @@ public class ControlScript : MonoBehaviour
         string f = EditorUtility.OpenFilePanel("Load sequence from file", Directory.GetCurrentDirectory(), "xml");
         if (f == "") { return; }
         List<Sequence> sl = SequenceUtils.FromFile(f);
-        DestroySpheres();
+        DestroyBodies();
         sequences = sl;
         lastStep = SequenceUtils.GetLastStep(sl);
         step = 0;
-        sphere_n = sequences.Count;
-        SpawnSpheres();
+        body_n = sequences.Count;
+        SpawnBodies();
     }
 
     public void SaveToFile()
@@ -129,7 +129,7 @@ public class ControlScript : MonoBehaviour
 
     void Start()
     {
-        spheres = new();
+        bodies = new();
         sequences = new();
     }
 
@@ -137,12 +137,12 @@ public class ControlScript : MonoBehaviour
     {
         if (collisionTree == null) { return; }
         edges = collisionTree.GetTreeEdges();
-        foreach (SphereScript sphere in spheres)
+        foreach (BodyScript body in bodies)
         {
-            Vector3[][] _sphere_edges = {};//sphere.BBox.GetAABBEdges();
-            Vector3[][] _new_edges = new Vector3[edges.Length + _sphere_edges.Length][];
+            Vector3[][] _body_edges = {};//body.BBox.GetAABBEdges();
+            Vector3[][] _new_edges = new Vector3[edges.Length + _body_edges.Length][];
             edges.CopyTo(_new_edges, 0);
-            _sphere_edges.CopyTo(_new_edges, edges.Length);
+            _body_edges.CopyTo(_new_edges, edges.Length);
             edges = _new_edges;
         }
         if (active) {
@@ -151,13 +151,14 @@ public class ControlScript : MonoBehaviour
             {
                 active = false;
                 step = 0;
-                foreach (SphereScript sphere in spheres)
+                foreach (BodyScript body in bodies)
                 {
-                    sphere.Reset();
+                    body.Reset();
                 }
             }
         }
     }
+    
     void OnDrawGizmos()
     {
         if (collisionTree == null) { return; }

@@ -257,16 +257,20 @@ public class OBBox : BBox
     {
         float left = MathF.Abs(Vector3.Dot(bbox.Position - Position, axis));
         
-        float right = scalar + 
-        MathF.Abs(Vector3.Dot(bbox.RightWidth * bbox.Right, axis)) +
-        MathF.Abs(Vector3.Dot(bbox.UpWidth * bbox.Up, axis)) + 
-        MathF.Abs(Vector3.Dot(bbox.ForwardWidth * bbox.Forward, axis));
+        float right = 
+            scalar + 
+            MathF.Abs(Vector3.Dot(bbox.RightWidth * bbox.Right, axis)) +
+            MathF.Abs(Vector3.Dot(bbox.UpWidth * bbox.Up, axis)) + 
+            MathF.Abs(Vector3.Dot(bbox.ForwardWidth * bbox.Forward, axis));
 
         return left <= right;
     }
     
     bool SAT(OBBox bbox)
     {
-        return SATAxis(bbox, Right, RightWidth) || SATAxis(bbox, Up, UpWidth) || SATAxis(bbox, Forward, ForwardWidth);
+        return 
+            SATAxis(bbox, Right, RightWidth) || 
+            SATAxis(bbox, Up, UpWidth) || 
+            SATAxis(bbox, Forward, ForwardWidth);
     }
 }
