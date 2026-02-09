@@ -327,16 +327,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: '::'
   ellipseRadius: 1
-  _spherePrefab: {fileID: 6387719191865624205, guid: d05b842beb00e5aa49900afca5d94d2f, type: 3}
+  _bodyPrefab: {fileID: 6387719191865624205, guid: d05b842beb00e5aa49900afca5d94d2f, type: 3}
   lineMaterial: {fileID: 2100000, guid: 9267dcd20cfab33f3b785d771657512f, type: 2}
-  spheres: []
-  lr: {fileID: 0}
+  bodies: []
   step: 0
   active: 0
   bodyNumperInput: {fileID: 1456393733}
   lastStepInput: {fileID: 202830690}
   MethodDropdown: {fileID: 610142009}
-  sphere_n: 0
+  body_n: 0
   cam: {fileID: 330585548}
 --- !u!4 &262863394
 Transform:
@@ -1367,8 +1366,8 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 262863393}
-        m_TargetAssemblyTypeName: controlScript, Assembly-CSharp
-        m_MethodName: GenerateSpheres
+        m_TargetAssemblyTypeName: ControlScript, Assembly-CSharp
+        m_MethodName: GenerateBodies
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}

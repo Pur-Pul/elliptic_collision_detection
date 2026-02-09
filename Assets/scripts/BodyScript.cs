@@ -60,6 +60,13 @@ public class BodyScript : MonoBehaviour, IItem
         transform.rotation = sequence.SlerpOrientation(control.step);
         BBox.Position = transform.position;
         BBox.Width = transform.localScale.x;
+
+        if (BBox is OBBox obbox)
+        {
+            obbox.Right = transform.right;
+            obbox.Up = transform.up;
+            obbox.Forward = transform.forward;
+        }
     }
 
     public void Reset()

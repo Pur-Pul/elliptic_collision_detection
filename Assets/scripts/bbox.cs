@@ -49,6 +49,14 @@ public class BBox : IBoundingVolume
             width = value;
         }
     }
+
+    public virtual Vector3 Right { get => Vector3.right; }
+    public virtual Vector3 Up { get => Vector3.up; }
+    public virtual Vector3 Forward { get => Vector3.forward; }
+    public virtual float RightWidth { get => Width; }
+    public virtual float UpWidth { get => Width; }
+    public virtual float ForwardWidth { get => Width; }
+
     private Vector3 position;
     public Vector3 Position 
     {
@@ -195,11 +203,14 @@ public class BBox : IBoundingVolume
         return false;
     }
     
+    public virtual bool CheckOBB (OBBox obb) => obb.SAT(this);
+        
     public bool CheckCollision(IBoundingVolume other)
     {
         return other switch
         {
             BBoxSphere sphere => CheckSphere(sphere),
+            OBBox obb => CheckOBB(obb),
             BBox aabb => CheckFastOverlaps(aabb),
             _ => false
         };
@@ -241,36 +252,61 @@ public class BBoxSphere : BBox
         float centerDist = Radius + sphere.Radius;
         return (Position - sphere.Position).sqrMagnitude < centerDist * centerDist;
     }
+    public override bool CheckOBB(OBBox obb) => obb.CheckSphere(this);
 }
 
 public class OBBox : BBox
 {
-    public Vector3 Right { get; set; }
-    public Vector3 Up { get; set; }
-    public Vector3 Forward { get; set; }
-    float RightWidth { get; set; }
-    float UpWidth { get; set; }
-    float ForwardWidth { get; set; }
+    public new Vector3 Right { get; set; }
+    public new Vector3 Up { get; set; }
+    public new Vector3 Forward { get; set; }
+    //public new float RightWidth { get; set; }
+    //public new float UpWidth { get; set; }
+    //public new float ForwardWidth { get; set; }
 
     //https://dev.to/pratyush_mohanty_6b8f2749/the-math-behind-bounding-box-collision-detection-aabb-vs-obbseparate-axis-theorem-1gdn
-    bool SATAxis(OBBox bbox, Vector3 axis, float scalar)
+    bool SATAxis(BBox bbox, Vector3 axis, float scalar)
     {
         float left = MathF.Abs(Vector3.Dot(bbox.Position - Position, axis));
         
         float right = 
             scalar + 
-            MathF.Abs(Vector3.Dot(bbox.RightWidth * bbox.Right, axis)) +
-            MathF.Abs(Vector3.Dot(bbox.UpWidth * bbox.Up, axis)) + 
-            MathF.Abs(Vector3.Dot(bbox.ForwardWidth * bbox.Forward, axis));
+            MathF.Abs(Vector3.Dot(bbox.RightWidth/2 * bbox.Right, axis)) +
+            MathF.Abs(Vector3.Dot(bbox.UpWidth/2 * bbox.Up, axis)) + 
+            MathF.Abs(Vector3.Dot(bbox.ForwardWidth/2 * bbox.Forward, axis));
 
         return left <= right;
     }
     
-    bool SAT(OBBox bbox)
+    public bool SAT(BBox bbox)
     {
         return 
-            SATAxis(bbox, Right, RightWidth) || 
-            SATAxis(bbox, Up, UpWidth) || 
-            SATAxis(bbox, Forward, ForwardWidth);
+            SATAxis(bbox, Right, RightWidth/2) || 
+            SATAxis(bbox, Up, UpWidth/2) || 
+            SATAxis(bbox, Forward, ForwardWidth/2);
+    }
+
+    public override bool CheckOBB (OBBox obb)
+    {
+        return SAT(obb);
+    }
+
+    public override bool CheckSphere(BBoxSphere sphere) //https://gamedev.stackexchange.com/questions/163873/separating-axis-theorem-obb-vs-sphere
+    {
+        Vector3 obbToSphere = sphere.Position - Position;
+
+        Vector3 local_pos = new (
+            Vector3.Dot(obbToSphere, Right),
+            Vector3.Dot(obbToSphere, Up),
+            Vector3.Dot(obbToSphere, Forward)
+        );
+
+        Vector3 closestPointLocal = new(
+            Mathf.Clamp(local_pos.x, -RightWidth/2, RightWidth/2),
+            Mathf.Clamp(local_pos.y, -UpWidth/2, UpWidth/2),
+            Mathf.Clamp(local_pos.z, -ForwardWidth/2, ForwardWidth/2)
+        );
+
+        return (closestPointLocal - local_pos).sqrMagnitude < sphere.Radius * sphere.Radius;
     }
 }
