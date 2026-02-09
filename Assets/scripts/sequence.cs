@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Xml.Serialization;
-using Unity.VisualScripting;
 using UnityEngine;
 
 public class Keyframe
@@ -33,6 +32,13 @@ public class Sequence
     KeyframeList keyframes;
     int cursor;
     private Vector3 origin = Vector3.back;
+    public string BodyType { 
+        get => keyframes.BodyType; 
+        set
+        {
+            keyframes.BodyType = value;
+        }
+    }
     public Sequence()
     {
         keyframes = new KeyframeList();
@@ -99,9 +105,11 @@ public class Sequence
     public static Sequence RandomSequence(int lastStep, float radius)
     {
         Sequence seq = new();
+        seq.BodyType = BODY_TYPES[Random.Range(0, 2)];
         seq.Randomize(lastStep, radius);
         return seq;
     }
+    public static readonly string[] BODY_TYPES = { "sphere", "obb" };
 }
 
 public class SequenceUtils

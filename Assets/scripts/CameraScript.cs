@@ -25,12 +25,12 @@ public class CameraScript : MonoBehaviour
             transform.position = Quaternion.Inverse(upRot) * transform.position;
             transform.rotation = Quaternion.Inverse(upRot) * transform.rotation;
         }
-        if (Keyboard.current.rightArrowKey.IsPressed())
+        if (Keyboard.current.leftArrowKey.IsPressed())
         {
             transform.position = rightRot * transform.position;
             transform.rotation = rightRot * transform.rotation;
         }
-        if (Keyboard.current.leftArrowKey.IsPressed())
+        if (Keyboard.current.rightArrowKey.IsPressed())
         {
             transform.position = Quaternion.Inverse(rightRot) * transform.position;
             transform.rotation = Quaternion.Inverse(rightRot) * transform.rotation;

@@ -28,12 +28,12 @@ public class ControlScript : MonoBehaviour
         foreach (Sequence s in sequences)
         {
             BodyScript body = Instantiate(_bodyPrefab);
-            bodies.Add(body);
             body.transform.position = s.SlerpPosition(0);
             body.transform.rotation = s.SlerpOrientation(0);
             body.sequence = s;
             body.color = UnityEngine.Random.ColorHSV();
             body.control = this;
+            bodies.Add(body);
         }
     }
 
@@ -87,15 +87,7 @@ public class ControlScript : MonoBehaviour
         }
         for (int i = 0; i < body_n; i++)
         {
-            switch (MethodDropdown.value)
-            {
-                case 0:
-                    bodies[i].BBox = new BBoxSphere();
-                    break;
-                case 1:
-                    bodies[i].BBox = new EllipticBBox();
-                    break;
-            }
+            bodies[i].SetMethod(MethodDropdown.value);
         }
     }
 
@@ -110,6 +102,7 @@ public class ControlScript : MonoBehaviour
         step = 0;
         body_n = sequences.Count;
         SpawnBodies();
+        SetMethod();
     }
 
     public void SaveToFile()

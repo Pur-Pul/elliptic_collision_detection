@@ -1,5 +1,6 @@
 using UnityEngine;
 
+[RequireComponent(typeof(MeshRenderer))]
 public class BodyScript : MonoBehaviour, IItem
 {   
     //public BBox BBox { get; private set;}
@@ -10,9 +11,13 @@ public class BodyScript : MonoBehaviour, IItem
     public Color color;
     public Color drawColor;
     private int prevStep;
+    private MeshRenderer meshRenderer;
+    private MeshFilter meshFilter;
     void Awake()
     {
         Renderer r = GetComponent<Renderer>();
+        meshRenderer = GetComponent<MeshRenderer>();
+        meshFilter = GetComponent<MeshFilter>();
         bodyMat = r.material;
         prevStep = -1;
     }
@@ -22,7 +27,31 @@ public class BodyScript : MonoBehaviour, IItem
         control.collisionTree.Add(this);
         bodyMat.SetColor("_Color", color);
         drawColor = color;
-        //GetComponent<MeshRenderer>().enabled= false;
+    }
+
+    public void SetMethod(int method)
+    {
+        switch (method)
+        {
+            case 0:
+                meshRenderer.enabled = true;
+                switch (sequence.BodyType)
+                {
+                    case "sphere":
+                        meshFilter.mesh = GameObject.CreatePrimitive(PrimitiveType.Sphere).GetComponent<MeshFilter>().sharedMesh;
+                        BBox = new BBoxSphere();    
+                        break;
+                    case "obb":
+                        meshFilter.mesh = GameObject.CreatePrimitive(PrimitiveType.Cube).GetComponent<MeshFilter>().sharedMesh;
+                        BBox = new OBBox();    
+                        break;
+                }
+                break;
+            case 1:
+                meshRenderer.enabled = false;
+                BBox = new EllipticBBox();
+                break;
+        }
     }
 
     void Move()
