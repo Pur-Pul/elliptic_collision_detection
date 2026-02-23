@@ -25,7 +25,7 @@ public class BodyScript : MonoBehaviour, IItem
     void Start()
     {
         control.collisionTree.Add(this);
-        bodyMat.SetColor("_Color", color);
+        bodyMat.SetColor("_BaseColor", color);
         drawColor = color;
     }
 
@@ -96,11 +96,11 @@ public class BodyScript : MonoBehaviour, IItem
     {
         if (control.collisionTree.CheckCollisions(this))
         {
-            bodyMat.SetColor("_Color", Color.red);
+            bodyMat.SetColor("_BaseColor", Color.red);
             drawColor = Color.red;
         } else
         {
-            bodyMat.SetColor("_Color", color);
+            bodyMat.SetColor("_BaseColor", color);
             drawColor = color;
         }
     }
