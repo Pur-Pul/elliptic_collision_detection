@@ -105,11 +105,11 @@ public class Sequence
     public static Sequence RandomSequence(int lastStep, float radius)
     {
         Sequence seq = new();
-        seq.BodyType = BODY_TYPES[Random.Range(0, 2)];
+        seq.BodyType = BODY_TYPES[Random.Range(0, BODY_TYPES.Length)];
         seq.Randomize(lastStep, radius);
         return seq;
     }
-    public static readonly string[] BODY_TYPES = { "sphere", "obb" };
+    public static readonly string[] BODY_TYPES = { "sphere" };//, "obb" };
 }
 
 public class SequenceUtils
