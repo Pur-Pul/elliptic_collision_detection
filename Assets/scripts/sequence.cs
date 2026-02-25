@@ -109,7 +109,7 @@ public class Sequence
         seq.Randomize(lastStep, radius);
         return seq;
     }
-    public static readonly string[] BODY_TYPES = { "sphere" };//, "obb" };
+    public static readonly string[] BODY_TYPES = { "sphere", "obb" };
 }
 
 public class SequenceUtils

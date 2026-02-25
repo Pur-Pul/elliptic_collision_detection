@@ -1,46 +1,78 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 public class worldScript : MonoBehaviour
 {
     public ControlScript control;
     public Material material;
-    ComputeBuffer posBuffer;
-    ComputeBuffer radBuffer;
-    ComputeBuffer colorBuffer;
+    ComputeBuffer BodyBuffer;
 
     void Start()
     {
-        posBuffer = new ComputeBuffer(256, sizeof(float) * 3);
-        radBuffer = new ComputeBuffer(256, sizeof(float));
-        colorBuffer = new ComputeBuffer(256, sizeof(float) * 4);
+        BodyBuffer = new ComputeBuffer(256, sizeof(float) * 16);
     }
 
     void Update()
     {
-        Vector3[] points = new Vector3[control.body_n];
-        float[] rads = new float[control.body_n];
-        Color[] colors = new Color[control.body_n];
+        List<Matrix4x4> BSList = new();
+        List<Matrix4x4> OBBList = new();
         for (int i = 0; i < control.body_n; i++)
         {
-            points[i] = control.bodies[i].transform.position;
-            rads[i] = EllipticBBox.EuclideanToEllipticDistance(control.bodies[i].BBox.Width/2);
-            colors[i] = control.bodies[i].drawColor;
+            Vector3 pos;
+            Vector3 right;
+            Vector3 up;
+            float width;
+            float height;
+            float radius;
+            Matrix4x4 m = new Matrix4x4();
+            switch(control.bodies[i].sequence.BodyType)
+            {
+                case "sphere":
+                    pos = control.bodies[i].transform.position;
+                    radius = EllipticBBox.EuclideanToEllipticDistance(control.bodies[i].BBox.Width/2);
+                    m.SetRow(0, new Vector4(pos.x, pos.y, pos.z, 0));
+                    m.SetRow(1, new Vector4(radius, 0, 0, 0));
+                    m.SetRow(2, control.bodies[i].drawColor);
+                    m.SetRow(3, Vector4.zero);
+                    BSList.Add(m);
+                    break;
+                case "obb":
+                    pos = control.bodies[i].transform.position;
+                    right = control.bodies[i].transform.right;
+                    up = control.bodies[i].transform.up;
+                    width = control.bodies[i].transform.localScale.x;
+                    height = control.bodies[i].transform.localScale.x;
+                    m.SetRow(0, new Vector4(pos.x, pos.y, pos.z, 0));
+                    m.SetRow(1, new Vector4(right.x, right.y, right.z, width));
+                    m.SetRow(2, new Vector4(up.x, up.y, up.z, height));
+                    m.SetRow(3, control.bodies[i].drawColor);
+                    OBBList.Add(m);
+                    break;
+                default:
+                    break;
+            }
         }
-        posBuffer.SetData(points);
-        radBuffer.SetData(rads);
-        colorBuffer.SetData(colors);
+        
+        Matrix4x4[] BodyData = new Matrix4x4[control.body_n+1];
+        BodyData[0].SetRow(0, new Vector4(control.body_n, BSList.Count, OBBList.Count, 0));
 
-        material.SetBuffer("_Points", posBuffer);
-        material.SetBuffer("_ERadius", radBuffer);
-        material.SetBuffer("_Colors", colorBuffer); 
-        material.SetInt("_PointCount", control.body_n);
+        for (int i = 0; i < BSList.Count; i++)
+        {
+            BodyData[1 + i] = BSList[i];
+        }
+
+        // Then OBBs
+        for (int i = 0; i < OBBList.Count; i++)
+        {
+            BodyData[1 + BSList.Count + i] = OBBList[i];
+        }
+        BodyBuffer.SetData(BodyData);
+        material.SetBuffer("_Bodies", BodyBuffer);
     }
 
     void OnDestroy()
     {
-        posBuffer.Release();
-        radBuffer.Release();
-        colorBuffer.Release();
+        BodyBuffer.Release();
     }
 }
