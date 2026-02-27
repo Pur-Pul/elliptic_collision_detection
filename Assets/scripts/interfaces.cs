@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 public interface IBoundingVolume
@@ -12,12 +13,13 @@ public interface IBoundingVolume
 public interface IItem
 {
     IBoundingVolume BBox { get; }
+    public int Id { get; }
 }
 
 public interface ICollisionTree : IBoundingVolume
 {
     public bool Add(IItem item);
     public bool Remove(IItem item);
-    public bool CheckCollisions(IItem item);
+    public List<IItem> CheckCollisions(IItem item);
     public Vector3[][] GetTreeEdges();
 }

@@ -14,17 +14,50 @@ public class ControlScript : MonoBehaviour
     private Vector3[][] edges;
     public List<BodyScript> bodies;
     public int step;
-    public bool active;
+    bool active;
+    public bool Active
+    {
+        get => active;
+        set
+        {
+            active = value;
+            if (active && step == 0 && CollisionList != null)
+            {
+                CollisionList.Reset();
+            }
+        }
+    }
     public TMP_InputField bodyNumperInput;
     public TMP_InputField lastStepInput;
     public TMP_Dropdown MethodDropdown;
+    public TMP_Dropdown RecordDropdown;
     public int body_n;
     private int lastStep;
     private List<Sequence> sequences;
     public CameraScript cam;
+    public CollisionList baselineList;
+    public CollisionList evaluateList;
+    public CollisionList CollisionList
+    {
+        get
+        {
+            switch (RecordDropdown.value)
+            {
+                case 1:
+                    return baselineList;
+                case 2:
+                    return evaluateList;
+                case 0:
+                default:
+                    return null;
+            }
+        }
+    }
     
     void SpawnBodies()
     {
+        baselineList.IdN = sequences.Count;
+        evaluateList.IdN = sequences.Count;
         foreach (Sequence s in sequences)
         {
             BodyScript body = Instantiate(_bodyPrefab);
@@ -44,7 +77,7 @@ public class ControlScript : MonoBehaviour
     void Awake()
     {
         step = 0;
-        active = false;
+        Active = false;
     }
 
     void DestroyBodies()
@@ -126,6 +159,8 @@ public class ControlScript : MonoBehaviour
     {
         bodies = new();
         sequences = new();
+        baselineList = new();
+        evaluateList = new();
     }
 
     void LateUpdate()
@@ -140,11 +175,11 @@ public class ControlScript : MonoBehaviour
             _body_edges.CopyTo(_new_edges, edges.Length);
             edges = _new_edges;
         }
-        if (active) {
+        if (Active) {
             step++;
             if (step > lastStep)
             {
-                active = false;
+                Active = false;
                 step = 0;
                 foreach (BodyScript body in bodies)
                 {

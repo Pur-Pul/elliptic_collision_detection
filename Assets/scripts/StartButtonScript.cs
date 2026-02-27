@@ -9,16 +9,16 @@ public class StartButtonScript : MonoBehaviour
     public Button button;
     public void ToggleActive()
     {
-        control.active = !control.active;
+        control.Active = !control.Active;
     }
     void Update()
     {
         if (!control.Ready()) { button.interactable = false; }
         else { button.interactable = true; }
-        if (control.active)
+        if (control.Active)
         {
             text.text = "Pause";
-        } else if (!control.active && control.step > 0)
+        } else if (!control.Active && control.step > 0)
         {
             text.text = "Continue";
         } else

@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 [RequireComponent(typeof(MeshRenderer))]
@@ -9,6 +11,7 @@ public class BodyScript : MonoBehaviour, IItem
     public Sequence sequence;
     public Color color;
     public Color drawColor;
+    public int Id { get => sequence.Id; }
     private int prevStep;
     private MeshRenderer meshRenderer;
     private MeshFilter meshFilter;
@@ -99,7 +102,8 @@ public class BodyScript : MonoBehaviour, IItem
     }
     void LateUpdate()
     {
-        if (control.collisionTree.CheckCollisions(this))
+        List<IItem> collisions = control.collisionTree.CheckCollisions(this);
+        if (collisions.Count > 0)
         {
             bodyMat.SetColor("_BaseColor", Color.red);
             drawColor = Color.red;
@@ -108,6 +112,10 @@ public class BodyScript : MonoBehaviour, IItem
             bodyMat.SetColor("_BaseColor", color);
             drawColor = color;
         }
+        if (control.CollisionList != null)
+        {
+            control.CollisionList.Collision(Id, collisions.Select(item => item.Id).ToList(), control.step);
+        } 
     }
 
     void OnDestroy()

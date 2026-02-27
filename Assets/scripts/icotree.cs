@@ -129,29 +129,30 @@ public class IcoTree<T>: EllipticBBox, ICollisionTree where T : class, IItem
         }
     }
 
-    public bool CheckCollisions(IItem item)
+    public List<IItem> CheckCollisions(IItem item)
     {
         return item switch
         {
             T i => CheckCollisions(i),
-            _ => false
+            _ => new()
         };
     }
 
-    public bool CheckCollisions(T item)
+    public List<IItem> CheckCollisions(T item)
     {
         List<T> found_items = new ();
         Query(item.BBox, found_items);
+        List<IItem> collisions = new();
         
         foreach (T other in found_items)
         {
             if (item == other) { continue; }
             if (item.BBox.CheckCollision(other.BBox))
             {
-                return true;
+                collisions.Add(other);
             }
         }
-        return false;
+        return collisions;
     }
 
     public bool Remove(IItem item)
