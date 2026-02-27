@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -15,6 +16,7 @@ public class KeyframeList
 {
     public List<Keyframe> Keyframes { get; set; } = new ();
     public string BodyType { get; set; } = "sphere";
+    public int id = -1;
 
     public int Count => Keyframes.Count;
     public void Add(Keyframe keyframe) => Keyframes.Add(keyframe);
@@ -37,6 +39,12 @@ public class Sequence
         set
         {
             keyframes.BodyType = value;
+        }
+    }
+    public int Id { 
+        get => keyframes.id; set
+        {
+            keyframes.id = value;
         }
     }
     public Sequence()
@@ -73,7 +81,7 @@ public class Sequence
     public void Randomize(int lastStep, float radius)
     {
         keyframes.Clear();
-        int keyframe_n = Random.Range(2, 10);
+        int keyframe_n = UnityEngine.Random.Range(2, 10);
         for (int i = 0; i < keyframe_n; i++)
         {
             Keyframe k = new()
@@ -105,7 +113,7 @@ public class Sequence
     public static Sequence RandomSequence(int lastStep, float radius)
     {
         Sequence seq = new();
-        seq.BodyType = BODY_TYPES[Random.Range(0, BODY_TYPES.Length)];
+        seq.BodyType = BODY_TYPES[UnityEngine.Random.Range(0, BODY_TYPES.Length)];
         seq.Randomize(lastStep, radius);
         return seq;
     }

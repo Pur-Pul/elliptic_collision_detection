@@ -67,6 +67,7 @@ public class ControlScript : MonoBehaviour
         for (int i = 0; i < body_n; i++)
         {
             Sequence s = Sequence.RandomSequence(lastStep, ellipseRadius);
+            s.Id = i;
             sequences.Add(s);
         }
         SpawnBodies();

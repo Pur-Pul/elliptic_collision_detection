@@ -82,12 +82,12 @@ Shader "Custom/sphere"
                 }
                 for (int i = 1+sphere_n; i < 1 + sphere_n + obb_n; i++)
                 {
-                    float3 center = normalize(_Bodies[i][0].xyz);
+                    float3 center = _Bodies[i][0].xyz;
 
-                    float3 right = normalize(_Bodies[i][1].xyz);
+                    float3 right = _Bodies[i][1].xyz;
                     float width = _Bodies[i][1].w;
 
-                    float3 up = normalize(_Bodies[i][2].xyz);
+                    float3 up = _Bodies[i][2].xyz;
                     float height = _Bodies[i][2].w;
 
                     float4 color = _Bodies[i][3];

@@ -3,7 +3,6 @@ using UnityEngine;
 [RequireComponent(typeof(MeshRenderer))]
 public class BodyScript : MonoBehaviour, IItem
 {   
-    //public BBox BBox { get; private set;}
     public IBoundingVolume BBox { get; set; }
     public ControlScript control;
     public Material bodyMat;
