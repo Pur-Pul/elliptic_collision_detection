@@ -100,7 +100,7 @@ public class BodyScript : MonoBehaviour, IItem
         }
         
     }
-    void LateUpdate()
+    public void CheckForCollision()
     {
         List<IItem> collisions = control.collisionTree.CheckCollisions(this);
         if (collisions.Count > 0)

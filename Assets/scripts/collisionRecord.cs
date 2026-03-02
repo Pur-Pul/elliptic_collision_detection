@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine;
 
-public class CollisionList
+public class CollisionRecord
 {
     List<int>[] activeColliderIds;
+    public string method;
     Dictionary<long, List<(int, int)>> collisions;
     private int idN = 0;
     public int IdN { 
@@ -15,7 +17,7 @@ public class CollisionList
             Reset();
         }
     }
-    public CollisionList(){
+    public CollisionRecord(){
         activeColliderIds = new List<int>[idN];
         collisions = new();
     }
@@ -41,13 +43,15 @@ public class CollisionList
 
         foreach (int colliderId in stoppedColliderIds)
         {
-            long collisionId = GetCollisionId(colliderId, id);
+            if (id > colliderId) { continue; } //Stop a collision only once.
+            long collisionId = GetCollisionId(id, colliderId);
             int start = collisions[collisionId][^1].Item1;
             collisions[collisionId][^1] = (start, step);
         }
         foreach (int colliderId in newColliderIds)
         {
-            long collisionId = GetCollisionId(colliderId, id);
+            if (id > colliderId) { continue; } //Record a collision only once.
+            long collisionId = GetCollisionId(id, colliderId);
             collisions[collisionId] = collisions.TryGetValue(collisionId, out var list)
                 ? list
                 : new List<(int,int)>();
@@ -56,30 +60,46 @@ public class CollisionList
         activeColliderIds[id] = activeColliderIds[id].Except(stoppedColliderIds).Concat(newColliderIds).ToList();
     }
 
-    public static float CalculateAccuracy(CollisionList baseline, CollisionList toEvaluate)
+    public void Finish(int step)
+    {
+        for (int id = 0; id < IdN; id++) {
+            foreach (int colliderId in activeColliderIds[id])
+            {
+                long collisionId = GetCollisionId(colliderId, id);
+                int start = collisions[collisionId][^1].Item1;
+                collisions[collisionId][^1] = (start, step);
+            }
+            activeColliderIds[id].Clear();
+        }
+    }
+
+    public static float[] CalculateAccuracy(CollisionRecord baseline, CollisionRecord artifact)
     {
         int intersect = 0;
         int basePositives = 0;
-        int evaluatePositives = 0;
-        foreach (int collisionId in toEvaluate.collisions.Keys)
+        int artifactPositives = 0;
+        foreach (int collisionId in artifact.collisions.Keys)
         {
             List<(int, int)> baseList = baseline.collisions.TryGetValue(collisionId, out var list)
                 ? list
                 : new List<(int,int)>();
-            List<(int, int)> evaluateList = toEvaluate.collisions[collisionId];
+            List<(int, int)> artifactList = artifact.collisions[collisionId];
 
             // Count the number of reported positives in both lists.
-            foreach ((int start, int end) in evaluateList)
-                evaluatePositives += end - start;
+            foreach ((int start, int end) in artifactList)
+            {
+                artifactPositives += end - start;
+            }
 
             foreach ((int start, int end) in baseList)
+            {
                 basePositives += end - start;
-
+            }
             int i = 0;
             int j = 0;
-            while (i < evaluateList.Count && j < baseList.Count)
+            while (i < artifactList.Count && j < baseList.Count)
             {
-                (int e_start, int e_end) = evaluateList[i];
+                (int e_start, int e_end) = artifactList[i];
                 (int b_start, int b_end) = baseList[j];
 
                 // Compute intersect.
@@ -101,10 +121,17 @@ public class CollisionList
                 }  
             }
         }
-        float recall = (float)intersect/evaluatePositives;
-        float precision = (float)intersect/basePositives;
-        float IoU = (float)intersect/(evaluatePositives + basePositives - intersect);
-        float f1 = (float)intersect/(evaluatePositives + basePositives);
-        return recall;
+        float precision = (float)intersect/artifactPositives;
+        float recall = (float)intersect/basePositives;
+        float f1 = 2f*(float)precision*recall/(precision + recall);
+ 
+        float[] return_array =
+        {
+            precision,
+            recall,
+            f1
+        };
+
+        return return_array;
     }
 }

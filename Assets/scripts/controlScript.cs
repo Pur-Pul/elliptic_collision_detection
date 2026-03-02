@@ -11,7 +11,6 @@ public class ControlScript : MonoBehaviour
     public float ellipseRadius;
     [SerializeField] private BodyScript _bodyPrefab;
     [SerializeField] private Material lineMaterial;
-    private Vector3[][] edges;
     public List<BodyScript> bodies;
     public int step;
     bool active;
@@ -24,6 +23,7 @@ public class ControlScript : MonoBehaviour
             if (active && step == 0 && CollisionList != null)
             {
                 CollisionList.Reset();
+                CollisionList.method = MethodDropdown.options[MethodDropdown.value].text;
             }
         }
     }
@@ -31,13 +31,14 @@ public class ControlScript : MonoBehaviour
     public TMP_InputField lastStepInput;
     public TMP_Dropdown MethodDropdown;
     public TMP_Dropdown RecordDropdown;
+    public TMP_Text AccuracyText;
     public int body_n;
     private int lastStep;
     private List<Sequence> sequences;
     public CameraScript cam;
-    public CollisionList baselineList;
-    public CollisionList evaluateList;
-    public CollisionList CollisionList
+    public CollisionRecord baselineList;
+    public CollisionRecord artifactList;
+    public CollisionRecord CollisionList
     {
         get
         {
@@ -46,7 +47,7 @@ public class ControlScript : MonoBehaviour
                 case 1:
                     return baselineList;
                 case 2:
-                    return evaluateList;
+                    return artifactList;
                 case 0:
                 default:
                     return null;
@@ -57,7 +58,7 @@ public class ControlScript : MonoBehaviour
     void SpawnBodies()
     {
         baselineList.IdN = sequences.Count;
-        evaluateList.IdN = sequences.Count;
+        artifactList.IdN = sequences.Count;
         foreach (Sequence s in sequences)
         {
             BodyScript body = Instantiate(_bodyPrefab);
@@ -160,31 +161,37 @@ public class ControlScript : MonoBehaviour
         bodies = new();
         sequences = new();
         baselineList = new();
-        evaluateList = new();
+        artifactList = new();
+
     }
 
+
     void LateUpdate()
-    {
-        if (collisionTree == null) { return; }
-        edges = collisionTree.GetTreeEdges();
-        foreach (BodyScript body in bodies)
-        {
-            Vector3[][] _body_edges = {};//body.BBox.GetAABBEdges();
-            Vector3[][] _new_edges = new Vector3[edges.Length + _body_edges.Length][];
-            edges.CopyTo(_new_edges, 0);
-            _body_edges.CopyTo(_new_edges, edges.Length);
-            edges = _new_edges;
-        }
+    {   
         if (Active) {
-            step++;
-            if (step > lastStep)
+            foreach (BodyScript body in bodies) 
+            {
+                body.CheckForCollision();
+            }
+            if (step >= lastStep)
             {
                 Active = false;
+                if (CollisionList != null)
+                {
+                    CollisionList.Finish(step);
+                    float[] accuracy_data = CollisionRecord.CalculateAccuracy(baselineList, artifactList);
+                    AccuracyText.text = $"Baseline: {baselineList.method}\nArtifact: {artifactList.method}\nPrecision: {accuracy_data[0]}\nRecall: {accuracy_data[1]}\nF1: {accuracy_data[2]}";
+                }
                 step = 0;
                 foreach (BodyScript body in bodies)
                 {
                     body.Reset();
                 }
+                
+            }
+            else
+            {
+                step++;
             }
         }
     }
