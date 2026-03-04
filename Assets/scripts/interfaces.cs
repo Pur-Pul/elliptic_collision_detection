@@ -1,10 +1,20 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+public enum BoundingType
+{
+    OBB,
+    BC,
+    AABB
+}
+
+
 public interface IBoundingVolume
 {
     public Vector3 Position { get; set; }
     public float Width { get; set; }
+    public SpeedRecord Record { get; set; }
+    public BoundingType Btype { get; }
     public bool CheckCollision(IBoundingVolume other);
     public bool CheckContains(IBoundingVolume other);
     public bool CheckFastOverlaps(IBoundingVolume other);

@@ -1,5 +1,7 @@
 using UnityEngine;
 using System;
+using UnityEditor.Rendering;
+using System.Diagnostics;
 
 
 
@@ -34,6 +36,8 @@ public class Face
 
 public class BBox : IBoundingVolume
 {
+    public BoundingType Btype { get => BoundingType.AABB; }
+    public SpeedRecord Record { get; set; }
     private float width;
     public virtual float Width 
     { 
@@ -204,13 +208,27 @@ public class BBox : IBoundingVolume
     }
     
     public virtual bool CheckOBB (OBBox obb) => obb.SAT(this);
-        
+
+    private bool Timed<T>(
+        T volume,
+        Func<T, bool> check
+    ) where T : IBoundingVolume
+    {
+        long start = Stopwatch.GetTimestamp();
+        bool result = check(volume);
+        long end = Stopwatch.GetTimestamp();
+
+        Record.Collision(start, end, (Btype, volume.Btype));
+
+        return result;
+    }
+
     public bool CheckCollision(IBoundingVolume other)
     {
         return other switch
         {
-            BBoxSphere sphere => CheckSphere(sphere),
-            OBBox obb => CheckOBB(obb),
+            BBoxSphere sphere => Timed(sphere, CheckSphere),
+            OBBox obb => Timed(obb, CheckOBB),
             BBox aabb => CheckFastOverlaps(aabb),
             _ => false
         };
