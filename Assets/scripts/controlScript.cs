@@ -165,13 +165,18 @@ public class ControlScript : MonoBehaviour
 
     }
 
-
     void LateUpdate()
     {   
         if (Active) {
             foreach (BodyScript body in bodies) 
             {
-                body.CheckForCollision();
+                collisionTree.Remove(body);
+                body.Move(step);
+                collisionTree.Add(body);
+            }
+            foreach (BodyScript body in bodies) 
+            {
+                body.CheckForCollision(step);
             }
             if (step >= lastStep)
             {
@@ -187,7 +192,6 @@ public class ControlScript : MonoBehaviour
                 {
                     body.Reset();
                 }
-                
             }
             else
             {

@@ -118,13 +118,15 @@ public class CollisionRecord
                 } else
                 {
                     j++;
-                }  
+                }
             }
         }
         float precision = (float)intersect/artifactPositives;
         float recall = (float)intersect/basePositives;
         float f1 = 2f*(float)precision*recall/(precision + recall);
  
+        Debug.Log($"{artifactPositives} : {basePositives}");
+
         float[] return_array =
         {
             precision,

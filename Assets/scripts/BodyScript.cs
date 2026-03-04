@@ -12,7 +12,6 @@ public class BodyScript : MonoBehaviour, IItem
     public Color color;
     public Color drawColor;
     public int Id { get => sequence.Id; }
-    private int prevStep;
     private MeshRenderer meshRenderer;
     private MeshFilter meshFilter;
     void Awake()
@@ -21,7 +20,6 @@ public class BodyScript : MonoBehaviour, IItem
         meshRenderer = GetComponent<MeshRenderer>();
         meshFilter = GetComponent<MeshFilter>();
         bodyMat = r.material;
-        prevStep = -1;
     }
     
     void Start()
@@ -70,37 +68,22 @@ public class BodyScript : MonoBehaviour, IItem
         }
     }
 
-    void Move()
+    public void Move(int step)
     {
-        transform.position = sequence.SlerpPosition(control.step);
-        transform.rotation = sequence.SlerpOrientation(control.step);
+        transform.position = sequence.SlerpPosition(step);
+        transform.rotation = sequence.SlerpOrientation(step);
         UpdateBBox();
     }
 
     public void Reset()
     {
         control.collisionTree.Remove(this);
-        prevStep = -1;
         sequence.Reset();
-        Move();
+        Move(0);
         control.collisionTree.Add(this);
     }
 
-    void Update()
-    {
-        
-        if (prevStep != control.step)
-        {
-            control.collisionTree.Remove(this);
-
-            Move();
-            control.collisionTree.Add(this);
-            
-            prevStep = control.step;
-        }
-        
-    }
-    public void CheckForCollision()
+    public void CheckForCollision(int step)
     {
         List<IItem> collisions = control.collisionTree.CheckCollisions(this);
         if (collisions.Count > 0)
@@ -114,7 +97,7 @@ public class BodyScript : MonoBehaviour, IItem
         }
         if (control.CollisionList != null)
         {
-            control.CollisionList.Collision(Id, collisions.Select(item => item.Id).ToList(), control.step);
+            control.CollisionList.Collision(Id, collisions.Select(item => item.Id).ToList(), step);
         } 
     }
 
