@@ -20,10 +20,15 @@ public class ControlScript : MonoBehaviour
         set
         {
             active = value;
-            if (active && step == 0 && CollisionList != null)
+            if (active && step == 0)
             {
-                CollisionList.Reset();
-                CollisionList.method = MethodDropdown.options[MethodDropdown.value].text;
+                if (CollisionList != null)
+                {
+                    CollisionList.Reset();
+                    CollisionList.method = MethodDropdown.options[MethodDropdown.value].text;    
+                }
+                runtimeRecord.Reset();
+                collisionTree.Clear();
             }
         }
     }
@@ -32,6 +37,7 @@ public class ControlScript : MonoBehaviour
     public TMP_Dropdown MethodDropdown;
     public TMP_Dropdown RecordDropdown;
     public TMP_Text AccuracyText;
+    public TMP_Text RuntimeText;
     public int body_n;
     private int lastStep;
     private List<Sequence> sequences;
@@ -54,6 +60,7 @@ public class ControlScript : MonoBehaviour
             }
         }
     }
+    public RuntimeRecord runtimeRecord;
     
     void SpawnBodies()
     {
@@ -120,6 +127,7 @@ public class ControlScript : MonoBehaviour
                 collisionTree = new IcoTree<BodyScript>();
                 break;
         }
+        collisionTree.Record = runtimeRecord;
         for (int i = 0; i < body_n; i++)
         {
             bodies[i].SetMethod(MethodDropdown.value);
@@ -162,7 +170,7 @@ public class ControlScript : MonoBehaviour
         sequences = new();
         baselineList = new();
         artifactList = new();
-
+        runtimeRecord = new();
     }
 
     void LateUpdate()
@@ -187,6 +195,7 @@ public class ControlScript : MonoBehaviour
                     float[] accuracy_data = CollisionRecord.CalculateAccuracy(baselineList, artifactList);
                     AccuracyText.text = $"Baseline: {baselineList.method}\nArtifact: {artifactList.method}\nPrecision: {accuracy_data[0]}\nRecall: {accuracy_data[1]}\nF1: {accuracy_data[2]}";
                 }
+                RuntimeText.text = runtimeRecord.Stats();
                 step = 0;
                 foreach (BodyScript body in bodies)
                 {

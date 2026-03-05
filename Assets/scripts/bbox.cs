@@ -36,8 +36,8 @@ public class Face
 
 public class BBox : IBoundingVolume
 {
-    public BoundingType Btype { get => BoundingType.AABB; }
-    public SpeedRecord Record { get; set; }
+    public virtual BoundingType Btype { get => BoundingType.AABB; }
+    public RuntimeRecord Record { get; set; }
     private float width;
     public virtual float Width 
     { 
@@ -147,7 +147,7 @@ public class BBox : IBoundingVolume
     {
         return other switch
         {
-            BBox bbox => CheckContains(bbox),
+            BBox bbox => Timed(bbox, CheckContains),
             _ => false
         };
     }
@@ -168,7 +168,7 @@ public class BBox : IBoundingVolume
     {
         return other switch
         {
-            BBox bbox => CheckFastOverlaps(bbox),
+            BBox bbox => Timed(bbox, CheckFastOverlaps),
             _ => false
         };
     }
@@ -209,7 +209,7 @@ public class BBox : IBoundingVolume
     
     public virtual bool CheckOBB (OBBox obb) => obb.SAT(this);
 
-    private bool Timed<T>(
+    bool Timed<T>(
         T volume,
         Func<T, bool> check
     ) where T : IBoundingVolume
@@ -229,14 +229,15 @@ public class BBox : IBoundingVolume
         {
             BBoxSphere sphere => Timed(sphere, CheckSphere),
             OBBox obb => Timed(obb, CheckOBB),
-            BBox aabb => CheckFastOverlaps(aabb),
+            BBox aabb => Timed(aabb, CheckFastOverlaps),
             _ => false
         };
     }
 }
 
 public class BBoxSphere : BBox
-{   
+{
+    public override BoundingType Btype { get => BoundingType.BC; }
     private float radius;
     private float radius2;
     public float Radius { get => radius; set { radius = value; } }
@@ -275,6 +276,7 @@ public class BBoxSphere : BBox
 
 public class OBBox : BBox
 {
+    public override BoundingType Btype { get => BoundingType.OBB; }
     public new Vector3 Right { get; set; }
     public new Vector3 Up { get; set; }
     public new Vector3 Forward { get; set; }

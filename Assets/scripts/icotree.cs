@@ -79,6 +79,10 @@ public class IcoTree<T>: EllipticBBox, ICollisionTree where T : class, IItem
             }
             
 		}
+        foreach (IcoTree<T> child in children)
+        {
+            child.Record = Record;
+        }
 	}
 
     public bool Add(IItem item)

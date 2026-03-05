@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Octree<T>: BBox, ICollisionTree where T : class, IItem
+public class Octree<T>: BBox,
+    ICollisionTree where T : class, 
+    IItem
 {
     private int depth;
     int max_depth = 5;
@@ -34,7 +36,10 @@ public class Octree<T>: BBox, ICollisionTree where T : class, IItem
             int y = ((i & 2) == 0) ? -1 : 1;
             int z = ((i & 4) == 0) ? -1 : 1;
             Vector3 new_center = Position + new Vector3(x*Width/4f, y*Width/4f, z*Width/4f);
-            octants[i] = new Octree<T>(new_center, Width/2f, depth + 1);
+            octants[i] = new Octree<T>(new_center, Width / 2f, depth + 1)
+            {
+                Record = Record
+            };
         }
     }
 
@@ -72,7 +77,7 @@ public class Octree<T>: BBox, ICollisionTree where T : class, IItem
         if (!CheckFastOverlaps(collider)) { return; }
         foreach (T item in items)
         {
-            if (collider.CheckFastOverlaps(item.BBox)) 
+            if (collider.CheckFastOverlaps(item.BBox))
             {
                 found_items.Add(item); 
             }

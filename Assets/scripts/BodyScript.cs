@@ -24,7 +24,6 @@ public class BodyScript : MonoBehaviour, IItem
     
     void Start()
     {
-        control.collisionTree.Add(this);
         bodyMat.SetColor("_BaseColor", color);
         drawColor = color;
     }
@@ -52,6 +51,7 @@ public class BodyScript : MonoBehaviour, IItem
                 BBox = new EllipticBBox();
                 break;
         }
+        BBox.Record = control.runtimeRecord;
         UpdateBBox();
     }
 

@@ -1,9 +1,10 @@
 using System;
+using System.Diagnostics;
 using UnityEngine;
 
 public class EllipticBBox : IBoundingVolume
 {
-    public SpeedRecord Record { get; set; }
+    public RuntimeRecord Record { get; set; }
     public BoundingType Btype { get => BoundingType.BC; }
     private float width;
     public float eRad;
@@ -21,7 +22,7 @@ public class EllipticBBox : IBoundingVolume
     {
         return other switch
         {
-            EllipticBBox bbox => CheckFastOverlaps(bbox),
+            EllipticBBox bbox => Timed(bbox, CheckFastOverlaps),
             _ => false
         };
     }
@@ -33,11 +34,25 @@ public class EllipticBBox : IBoundingVolume
         return centerDist < bbox.eRad + eRad;
     }
 
+    bool Timed<T>(
+        T volume,
+        Func<T, bool> check
+    ) where T : IBoundingVolume
+    {
+        long start = Stopwatch.GetTimestamp();
+        bool result = check(volume);
+        long end = Stopwatch.GetTimestamp();
+
+        Record.Collision(start, end, (Btype, volume.Btype));
+
+        return result;
+    }
+
     public bool CheckContains(IBoundingVolume other)
     {
         return other switch
         {
-            EllipticBBox bbox => CheckContains(bbox),
+            EllipticBBox bbox => Timed(bbox, CheckContains),
             _ => false
         };
     }
@@ -74,7 +89,7 @@ public class EllipticBBox : IBoundingVolume
     {
         return other switch
         {
-            EllipticBBox bbox => CheckCollision(bbox),
+            EllipticBBox bbox => Timed(bbox, CheckCollision),
             _ => false
         };
     }
