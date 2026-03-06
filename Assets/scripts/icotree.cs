@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using UnityEngine;
 
 public class IcoTree<T>: EllipticBBox, ICollisionTree where T : class, IItem
@@ -8,8 +9,8 @@ public class IcoTree<T>: EllipticBBox, ICollisionTree where T : class, IItem
     List<IItem> items;
     private int d;
     EllipticTriangle t;
-    public int max_depth = 5;
-    public int max_items = 2;
+    public int MaxDepth { get; set; }
+    public int MaxItems { get; set; }
     int number_contained_items = 0;
     public IcoTree(EllipticTriangle triangle=null, int depth=0)
     {
@@ -82,6 +83,8 @@ public class IcoTree<T>: EllipticBBox, ICollisionTree where T : class, IItem
         foreach (IcoTree<T> child in children)
         {
             child.Record = Record;
+            child.MaxDepth = MaxDepth;
+            child.MaxItems = MaxItems;
         }
 	}
 
@@ -100,7 +103,7 @@ public class IcoTree<T>: EllipticBBox, ICollisionTree where T : class, IItem
         if (!CheckContains(item.BBox)) { return false; }
         
         number_contained_items++;
-        if (items.Count < max_items || d == max_depth)
+        if (items.Count < MaxItems || d == MaxDepth)
         {
             items.Add(item);
             return true;
@@ -144,6 +147,7 @@ public class IcoTree<T>: EllipticBBox, ICollisionTree where T : class, IItem
 
     public List<IItem> CheckCollisions(T item)
     {
+        long start = Stopwatch.GetTimestamp();
         List<T> found_items = new ();
         Query(item.BBox, found_items);
         List<IItem> collisions = new();
@@ -156,6 +160,8 @@ public class IcoTree<T>: EllipticBBox, ICollisionTree where T : class, IItem
                 collisions.Add(other);
             }
         }
+        long end = Stopwatch.GetTimestamp();
+        Record.total_time += end - start;
         return collisions;
     }
 

@@ -10,7 +10,7 @@ public class worldScript : MonoBehaviour
 
     void Start()
     {
-        BodyBuffer = new ComputeBuffer(256, sizeof(float) * 16);
+        BodyBuffer = new ComputeBuffer(1024, sizeof(float) * 16);
     }
 
     void Update()

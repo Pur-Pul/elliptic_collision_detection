@@ -32,6 +32,22 @@ public class ControlScript : MonoBehaviour
             }
         }
     }
+    (int,int,long) best;
+    private int optimize;
+    public int Optimize { 
+        get => optimize;
+        set
+        {
+            if (value > 0)
+            {
+                best = (0,0,long.MaxValue);
+                collisionTree.MaxDepth = 0;
+                collisionTree.MaxItems = 0;
+            }
+            
+            optimize = value;
+        }
+    }
     public TMP_InputField bodyNumperInput;
     public TMP_InputField lastStepInput;
     public TMP_Dropdown MethodDropdown;
@@ -86,6 +102,7 @@ public class ControlScript : MonoBehaviour
     {
         step = 0;
         Active = false;
+        Optimize = 0;
     }
 
     void DestroyBodies()
@@ -173,38 +190,68 @@ public class ControlScript : MonoBehaviour
         runtimeRecord = new();
     }
 
+    void Step()
+    {
+        foreach (BodyScript body in bodies) 
+        {
+            collisionTree.Remove(body);
+            body.Move(step);
+            collisionTree.Add(body);
+        }
+        foreach (BodyScript body in bodies) 
+        {
+            body.CheckForCollision(step);
+        }
+        step++;
+    }
+
+    void Stop()
+    {
+        Active = false;
+        if (CollisionList != null)
+        {
+            CollisionList.Finish(step);
+            float[] accuracy_data = CollisionRecord.CalculateAccuracy(baselineList, artifactList);
+            AccuracyText.text = $"Baseline: {baselineList.method}\nArtifact: {artifactList.method}\nPrecision: {accuracy_data[0]}\nRecall: {accuracy_data[1]}\nF1: {accuracy_data[2]}";
+        }
+        RuntimeText.text = runtimeRecord.ToString();
+        step = 0;
+        foreach (BodyScript body in bodies)
+        {
+            body.Stop();
+        }
+    }
+
     void LateUpdate()
     {   
         if (Active) {
-            foreach (BodyScript body in bodies) 
-            {
-                collisionTree.Remove(body);
-                body.Move(step);
-                collisionTree.Add(body);
-            }
-            foreach (BodyScript body in bodies) 
-            {
-                body.CheckForCollision(step);
-            }
+            Step();
             if (step >= lastStep)
             {
-                Active = false;
-                if (CollisionList != null)
+                Stop();
+                if (Optimize > 0)
                 {
-                    CollisionList.Finish(step);
-                    float[] accuracy_data = CollisionRecord.CalculateAccuracy(baselineList, artifactList);
-                    AccuracyText.text = $"Baseline: {baselineList.method}\nArtifact: {artifactList.method}\nPrecision: {accuracy_data[0]}\nRecall: {accuracy_data[1]}\nF1: {accuracy_data[2]}";
+                    best = best.Item3 > runtimeRecord.total_time
+                        ? (collisionTree.MaxItems, collisionTree.MaxDepth, runtimeRecord.total_time)
+                        : best;
+                    if (collisionTree.MaxDepth < Optimize && collisionTree.MaxItems == Optimize)
+                    {
+                        collisionTree.MaxItems = 0;
+                        collisionTree.MaxDepth++;
+                        Active = true;
+                    } else if (collisionTree.MaxItems < Optimize)
+                    {
+                        collisionTree.MaxItems++;
+                        Active = true;
+                    } else
+                    {
+                        collisionTree.MaxItems = best.Item1;
+                        collisionTree.MaxDepth = best.Item2;
+                        Optimize = 0;
+                        Debug.Log($"Best item limit: {collisionTree.MaxItems}");
+                        Debug.Log($"Best depth: {collisionTree.MaxDepth}");
+                    }
                 }
-                RuntimeText.text = runtimeRecord.Stats();
-                step = 0;
-                foreach (BodyScript body in bodies)
-                {
-                    body.Reset();
-                }
-            }
-            else
-            {
-                step++;
             }
         }
     }

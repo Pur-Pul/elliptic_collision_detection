@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using UnityEngine;
 
 public class Octree<T>: BBox,
@@ -7,8 +8,8 @@ public class Octree<T>: BBox,
     IItem
 {
     private int depth;
-    public int max_depth = 5;
-    public int max_items = 5;
+    public int MaxDepth { get; set; }
+    public int MaxItems { get; set; }
     int number_contained_items = 0;
     Octree<T>[] octants;
     List<T> items;
@@ -28,7 +29,7 @@ public class Octree<T>: BBox,
 
     void Split()
     {
-        if (depth >= max_depth || !IsLeaf()) { return; }
+        if (depth >= MaxDepth || !IsLeaf()) { return; }
 
         for (int i = 0; i < octants.Length; i++)
         {
@@ -38,7 +39,9 @@ public class Octree<T>: BBox,
             Vector3 new_center = Position + new Vector3(x*Width/4f, y*Width/4f, z*Width/4f);
             octants[i] = new Octree<T>(new_center, Width / 2f, depth + 1)
             {
-                Record = Record
+                Record = Record,
+                MaxDepth = MaxDepth,
+                MaxItems = MaxItems
             };
         }
     }
@@ -56,14 +59,13 @@ public class Octree<T>: BBox,
     {
         if (!CheckContains(item.BBox)) { return false; }
         number_contained_items++;
-        if (items.Count < max_items || depth == max_depth)
+        if (items.Count < MaxItems || depth == MaxDepth)
         {
             items.Add(item);
             return true;
         }
 
 		if (IsLeaf()) { Split(); }
-
         foreach (Octree<T> octant in octants)
         {
             if (octant.Add(item)) { return true; }
@@ -101,6 +103,7 @@ public class Octree<T>: BBox,
     }
     public List<IItem> CheckCollisions(T item)
     {
+        long start = Stopwatch.GetTimestamp();
         List<T> found_items = new ();
         Query(item.BBox, found_items);
         List<IItem> collisions = new();
@@ -112,6 +115,8 @@ public class Octree<T>: BBox,
                 collisions.Add(other);
             }
         }
+        long end = Stopwatch.GetTimestamp();
+        Record.total_time += end - start;
         return collisions;
     }
     public bool Remove(IItem item)

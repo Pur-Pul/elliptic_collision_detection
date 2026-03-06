@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -30,6 +31,8 @@ public interface ICollisionTree : IBoundingVolume
     public void Clear();
     public bool Add(IItem item);
     public bool Remove(IItem item);
+    public int MaxItems { get; set; }
+    public int MaxDepth { get; set; }
     public List<IItem> CheckCollisions(IItem item);
     public Vector3[][] GetTreeEdges();
 }

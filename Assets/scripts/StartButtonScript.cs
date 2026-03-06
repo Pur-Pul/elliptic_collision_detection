@@ -6,9 +6,15 @@ public class StartButtonScript : MonoBehaviour
 {
     public ControlScript control;
     public TMP_Text text;
+    public TMP_InputField OptimizeInput;
     public Button button;
     public void ToggleActive()
     {
+        if (!int.TryParse(OptimizeInput.text, out int number))
+        {
+            number = 0;
+        }
+        control.Optimize = number;
         control.Active = !control.Active;
     }
     void Update()

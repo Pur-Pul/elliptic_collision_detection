@@ -75,7 +75,7 @@ public class BodyScript : MonoBehaviour, IItem
         UpdateBBox();
     }
 
-    public void Reset()
+    public void Stop()
     {
         control.collisionTree.Remove(this);
         sequence.Reset();
