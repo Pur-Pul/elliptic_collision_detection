@@ -1,9 +1,10 @@
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 
 public class RuntimeRecord
 {
-    Dictionary<(BoundingType, BoundingType), (long, int)> collisions;
+    Dictionary<(Type, System.Reflection.MethodInfo), (long, int)> collisions;
     public RuntimeRecord() {
         collisions = new();
     }
@@ -13,7 +14,7 @@ public class RuntimeRecord
         collisions.Clear();
     }
 
-    public void Collision (long start, long end, (BoundingType, BoundingType) key)
+    public void Collision (long start, long end, (Type, System.Reflection.MethodInfo) key)
     {
         collisions.TryGetValue(key, out var record);
         collisions[key] = (record.Item1 + end - start, record.Item2 + 1);
@@ -21,19 +22,19 @@ public class RuntimeRecord
 
     public string Stats()
     {
-        string stats = $"{"Method", -10} | {"Runtime", 10} | {"Calls", 5}\n";
+        string stats = $"{"Class", -15} | {"Method", -20} | {"Runtime", 10} | {"Calls", 5}\n";
         long total_time = 0;
         int total_n = 0;
-        foreach ((BoundingType, BoundingType) key in collisions.Keys)
+        foreach ((Type, System.Reflection.MethodInfo) key in collisions.Keys)
         {
-            BoundingType A = key.Item1;
-            BoundingType B = key.Item2;
+            string className = key.Item1.Name;
+            string functionName = key.Item2.Name;
             (long time, int n) = collisions[key];
-            stats += $"{$"{A}-{B}",-10} | {time,10} | {n,5}\n";
+            stats += $"{className,-15} | {functionName,-20} | {time,10} | {n,5}\n";
             total_time += time;
             total_n += n;
         }
-        stats += $"{"Total",-10} | {total_time,10} | {total_n,5}\n";
+        stats += $"{"Total",-15} | {"",-20} | {total_time,10} | {total_n,5}\n";
         UnityEngine.Debug.Log(stats);
         return stats;
     }

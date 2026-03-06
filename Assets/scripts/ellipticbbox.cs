@@ -43,7 +43,7 @@ public class EllipticBBox : IBoundingVolume
         bool result = check(volume);
         long end = Stopwatch.GetTimestamp();
 
-        Record.Collision(start, end, (Btype, volume.Btype));
+        Record.Collision(start, end, (this.GetType(), check.Method));
 
         return result;
     }

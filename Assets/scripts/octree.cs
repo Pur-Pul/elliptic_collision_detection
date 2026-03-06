@@ -7,8 +7,8 @@ public class Octree<T>: BBox,
     IItem
 {
     private int depth;
-    int max_depth = 5;
-    int max_items = 5;
+    public int max_depth = 5;
+    public int max_items = 5;
     int number_contained_items = 0;
     Octree<T>[] octants;
     List<T> items;

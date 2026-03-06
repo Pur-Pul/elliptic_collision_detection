@@ -8,8 +8,8 @@ public class IcoTree<T>: EllipticBBox, ICollisionTree where T : class, IItem
     List<IItem> items;
     private int d;
     EllipticTriangle t;
-    int max_depth = 5;
-    int max_items = 2;
+    public int max_depth = 5;
+    public int max_items = 2;
     int number_contained_items = 0;
     public IcoTree(EllipticTriangle triangle=null, int depth=0)
     {
