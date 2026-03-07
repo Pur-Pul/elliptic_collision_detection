@@ -1,9 +1,8 @@
 using UnityEngine;
 using System;
-using UnityEditor.Rendering;
 using System.Diagnostics;
 
-public class BBox : IBoundingVolume
+public class BBox1 : IBoundingVolume
 {
     public RuntimeRecord Record { get; set; }
     private float width;
@@ -115,12 +114,12 @@ public class BBox : IBoundingVolume
     {
         return other switch
         {
-            BBox bbox => Timed(bbox, CheckContains),
+            BBox1 bbox => Timed(bbox, AABBContains),
             _ => false
         };
     }
 
-    public bool CheckContains(BBox other)
+    public bool AABBContains(BBox1 other)
     {
         return (
             MaxX >= other.MaxX &&
@@ -136,12 +135,12 @@ public class BBox : IBoundingVolume
     {
         return other switch
         {
-            BBox bbox => Timed(bbox, CheckFastOverlaps),
+            BBox1 bbox => Timed(bbox, AABBIntersects),
             _ => false
         };
     }
 
-    public virtual bool CheckFastOverlaps(BBox other)
+    public virtual bool AABBIntersects(BBox1 other)
     {
         return !(
             MaxX <= other.MinX || MinX >= other.MaxX ||
@@ -170,12 +169,12 @@ public class BBox : IBoundingVolume
         }
     }
 	
-	public virtual bool CheckSphere (BBoxSphere sphere)
+	public virtual bool CheckCircle (BBoxCircle circle)
     {
         return false;
     }
     
-    public virtual bool CheckOBB (OBBox obb) => obb.SAT(this);
+    public virtual bool CheckOBR (OBRectangle obr) => obr.SAT(this);
 
     bool Timed<T>(
         T volume,
@@ -195,15 +194,15 @@ public class BBox : IBoundingVolume
     {
         return other switch
         {
-            BBoxSphere sphere => Timed(sphere, CheckSphere),
-            OBBox obb => Timed(obb, CheckOBB),
-            BBox aabb => Timed(aabb, CheckFastOverlaps),
+            BBoxCircle circle => Timed(circle, CheckCircle),
+            OBRectangle obr => Timed(obr, CheckOBR),
+            BBox1 aabb => Timed(aabb, AABBIntersects),
             _ => false
         };
     }
 }
 
-public class BBoxSphere : BBox
+public class BBoxCircle : BBox1
 {
     private float radius;
     private float radius2;
@@ -218,45 +217,22 @@ public class BBoxSphere : BBox
             radius2 = Radius*Radius;
         }
     }
-    public override bool CheckFastOverlaps(BBox aabb)
-    // solid Sphere - solid AABB collision check method by Jim Arvo, in "Graphics Gems", Academic Press, 1990.
-    // https://web.archive.org/web/20100323053111/http://www.ics.uci.edu/~arvo/code/BoxSphereIntersect.c
+    public override bool CheckCircle(BBoxCircle circle)
     {
-        float dmin = 0;
-        if (Position.x < aabb.MinX)        { dmin += (float)Math.Pow(Position.x - aabb.MinX, 2); }
-        else if (Position.x > aabb.MaxX)   { dmin += (float)Math.Pow(Position.x - aabb.MaxX, 2); }
-
-        if (Position.y < aabb.MinY)        { dmin += (float)Math.Pow(Position.y - aabb.MinY, 2); }
-        else if (Position.y > aabb.MaxY)   { dmin += (float)Math.Pow(Position.y - aabb.MaxY, 2); }
-
-        if (Position.z < aabb.MinZ)        { dmin += (float)Math.Pow(Position.z - aabb.MinZ, 2); }
-        else if (Position.z > aabb.MaxZ)   { dmin += (float)Math.Pow(Position.z - aabb.MaxZ, 2); }
-        return dmin <= radius2;
+        float eDist = EllipticBBox.EllipticDistance(Position, circle.Position);
+        float combinedRadii = Radius + circle.Radius;
+        return combinedRadii < eDist;
     }
-    public override bool CheckSphere(BBoxSphere sphere)
-    {
-        float centerDist = Radius + sphere.Radius;
-        return (Position - sphere.Position).sqrMagnitude < centerDist * centerDist;
-    }
-    public override bool CheckOBB(OBBox obb) => obb.CheckSphere(this);
+    public override bool CheckOBR(OBRectangle obr) => obr.CheckCircle(this);
 }
 
-public class OBBox : BBox
+public class OBRectangle : BBox1
 {
-    public new Vector3 Right { get; set; }
-    public new Vector3 Up { get; set; }
-    public new Vector3 Forward { get; set; }
-    //public new float RightWidth { get; set; }
-    //public new float UpWidth { get; set; }
-    //public new float ForwardWidth { get; set; }
-
-    //https://dev.to/pratyush_mohanty_6b8f2749/the-math-behind-bounding-box-collision-detection-aabb-vs-obbseparate-axis-theorem-1gdn
-    bool SATAxis(BBox bbox, Vector3 axis, float scalar)
+    //https://dev.to/pratyush_mohanty_6b8f2749/the-math-behind-bounding-box-collision-detection-aabb-vs-obrseparate-axis-theorem-1gdn
+    bool SATAxis(BBox1 bbox, Vector3 axis, float scalar)
     {
         float left = MathF.Abs(Vector3.Dot(bbox.Position - Position, axis));
-        
-        float right = 
-            scalar + 
+        float right = scalar + 
             MathF.Abs(Vector3.Dot(bbox.RightWidth/2 * bbox.Right, axis)) +
             MathF.Abs(Vector3.Dot(bbox.UpWidth/2 * bbox.Up, axis)) + 
             MathF.Abs(Vector3.Dot(bbox.ForwardWidth/2 * bbox.Forward, axis));
@@ -264,7 +240,7 @@ public class OBBox : BBox
         return left <= right;
     }
     
-    public bool SAT(BBox bbox)
+    public bool SAT(BBox1 bbox)
     {
         return 
             SATAxis(bbox, Right, RightWidth/2) || 
@@ -272,19 +248,19 @@ public class OBBox : BBox
             SATAxis(bbox, Forward, ForwardWidth/2);
     }
 
-    public override bool CheckOBB (OBBox obb)
+    public override bool CheckOBR (OBRectangle obr)
     {
-        return SAT(obb);
+        return SAT(obr);
     }
 
-    public override bool CheckSphere(BBoxSphere sphere) //https://gamedev.stackexchange.com/questions/163873/separating-axis-theorem-obb-vs-sphere
+    public override bool CheckCircle(BBoxCircle circle) //https://gamedev.stackexchange.com/questions/163873/separating-axis-theorem-obr-vs-circle
     {
-        Vector3 obbToSphere = sphere.Position - Position;
+        Vector3 obrToCircle = circle.Position - Position;
 
         Vector3 local_pos = new (
-            Vector3.Dot(obbToSphere, Right),
-            Vector3.Dot(obbToSphere, Up),
-            Vector3.Dot(obbToSphere, Forward)
+            Vector3.Dot(obrToCircle, Right),
+            Vector3.Dot(obrToCircle, Up),
+            Vector3.Dot(obrToCircle, Forward)
         );
 
         Vector3 closestPointLocal = new(
@@ -293,6 +269,8 @@ public class OBBox : BBox
             Mathf.Clamp(local_pos.z, -ForwardWidth/2, ForwardWidth/2)
         );
 
-        return (closestPointLocal - local_pos).sqrMagnitude < sphere.Radius * sphere.Radius;
+        float eDist = EllipticBBox.EllipticDistance(closestPointLocal, local_pos);
+
+        return eDist < circle.Radius;
     }
 }

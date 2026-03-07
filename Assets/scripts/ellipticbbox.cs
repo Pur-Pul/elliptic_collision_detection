@@ -5,7 +5,6 @@ using UnityEngine;
 public class EllipticBBox : IBoundingVolume
 {
     public RuntimeRecord Record { get; set; }
-    public BoundingType Btype { get => BoundingType.BC; }
     private float width;
     public float eRad;
     public float Width { 
