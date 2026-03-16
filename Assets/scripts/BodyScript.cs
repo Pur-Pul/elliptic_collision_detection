@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -11,6 +12,19 @@ public class BodyScript : MonoBehaviour, IItem
     public Sequence sequence;
     public Color color;
     public Color drawColor;
+    Vector3 meshOffset = Vector3.zero;
+    private Vector3 position;
+    public Vector3 Position {
+        get => position;
+        set
+        {
+            position = value;
+            transform.position = position 
+                + transform.right * meshOffset.x
+                + transform.up * meshOffset.y
+                + transform.forward * meshOffset.z;
+        }
+    }
     public int Id { get => sequence.Id; }
     private MeshRenderer meshRenderer;
     private MeshFilter meshFilter;
@@ -42,6 +56,15 @@ public class BodyScript : MonoBehaviour, IItem
                         break;
                     case "obb":
                         meshFilter.mesh = GameObject.CreatePrimitive(PrimitiveType.Cube).GetComponent<MeshFilter>().sharedMesh;
+                        float cord = Mathf.Sqrt(transform.localScale.x * transform.localScale.x + transform.localScale.y * transform.localScale.y);
+                        float sagitta = 1 - Mathf.Sqrt(1 - (cord/2) * (cord/2));
+                        meshOffset = new Vector3(0, 0, sagitta/2);
+                        transform.localScale = new Vector3(
+                            transform.localScale.x,
+                            transform.localScale.y,
+                            sagitta
+                        );
+                        
                         BBox = new OBBox();
                         break;
                 }
@@ -67,12 +90,11 @@ public class BodyScript : MonoBehaviour, IItem
 
     void UpdateBBox ()
     {
-        BBox.Position = transform.position;
+        BBox.Position = Position;
         BBox.Size = transform.localScale;
 
         if (BBox is OBBox obbox)
         {
-            
             obbox.Right = transform.right;
             obbox.Up = transform.up;
             obbox.Forward = transform.forward;
@@ -87,8 +109,8 @@ public class BodyScript : MonoBehaviour, IItem
 
     public void Move(int step)
     {
-        transform.position = sequence.SlerpPosition(step);
         transform.rotation = sequence.SlerpOrientation(step);
+        Position = sequence.SlerpPosition(step);
         UpdateBBox();
     }
 

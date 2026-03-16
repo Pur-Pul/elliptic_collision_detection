@@ -154,7 +154,7 @@ public class OBBox : BBox
 
     //https://dev.to/pratyush_mohanty_6b8f2749/the-math-behind-bounding-box-collision-detection-aabb-vs-obbseparate-axis-theorem-1gdn
     public bool SAT(OBBox bbox)
-    { 
+    {
         Vector3 toVector = bbox.Position - Position;
         Vector3[] axesA = { Right, Up, Forward };
         Vector3[] axesB = { bbox.Right, bbox.Up, bbox.Forward };
@@ -162,7 +162,7 @@ public class OBBox : BBox
         for (int i = 0; i < 3; i++)
         {
             Vector3 axis = axesA[i];
-            float rA = halfSize[i]; 
+            float rA = halfSize[i];
             float rB = bbox.Project(axis);
             float distance = MathF.Abs(Vector3.Dot(toVector, axis));
             if (distance > rA + rB) return false;
@@ -171,7 +171,7 @@ public class OBBox : BBox
         for (int i = 0; i < 3; i++)
         {
             Vector3 axis = axesB[i];
-            float rA = bbox.halfSize[i]; 
+            float rA = bbox.halfSize[i];
             float rB = Project(axis);
             float distance = MathF.Abs(Vector3.Dot(toVector, axis));
             if (distance > rA + rB) return false;
@@ -190,12 +190,12 @@ public class OBBox : BBox
                 if (distance > rA + rB) return false;
             }
         }
-        return false;
+        return true;
     }
 
     public override bool CheckOBB (OBBox obb)
     {
-        return !SAT(obb);
+        return SAT(obb);
     }
 
     public override bool CheckSphere(BBoxSphere sphere) //https://gamedev.stackexchange.com/questions/163873/separating-axis-theorem-obb-vs-sphere

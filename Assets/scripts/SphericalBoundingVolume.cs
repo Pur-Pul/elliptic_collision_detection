@@ -185,7 +185,7 @@ public class SOBR : SBV //Spherical Oriented Bounding Volume
             foreach (var b in axesB)
             {
                 Vector3 cross = Vector3.Cross(a, b);
-                if (cross.sqrMagnitude < 1e-6f) continue; // skip near-zero axes
+                if (cross.sqrMagnitude < 1e-6f) continue;
                 Vector3 axis = cross.normalized;
                 float rA = obr.Project(axis);
                 float rB = Project(axis);
@@ -193,12 +193,12 @@ public class SOBR : SBV //Spherical Oriented Bounding Volume
                 if (distance > rA + rB) return false;
             }
         }
-        return false;
+        return true;
     }
 
     public override bool CheckOBR (SOBR obr)
     {
-        return !SAT(obr);
+        return SAT(obr);
     }
 
     public override bool CheckSBC(SBC circle) //https://gamedev.stackexchange.com/questions/163873/separating-axis-theorem-obr-vs-circle

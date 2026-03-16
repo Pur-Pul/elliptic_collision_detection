@@ -123,8 +123,8 @@ public class ControlScript : MonoBehaviour
         foreach (Sequence s in sequences)
         {
             BodyScript body = Instantiate(_bodyPrefab);
-            body.transform.position = s.SlerpPosition(0);
             body.transform.rotation = s.SlerpOrientation(0);
+            body.Position = s.SlerpPosition(0);   
             body.sequence = s;
             body.color = UnityEngine.Random.ColorHSV();
             body.control = this;
