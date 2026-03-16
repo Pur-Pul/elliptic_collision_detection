@@ -65,7 +65,7 @@ Shader "Custom/sphere"
             half4 frag(Varyings IN) : SV_Target
             {
                 half4 fragColor = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, IN.uv) * _BaseColor;
-                float3 normal = normalize(IN.normalWS);
+                float3 normal = normalize(IN.positionWS);
                 int sphere_n = _Bodies[0][0].y;
                 int obb_n = _Bodies[0][0].z;
                 

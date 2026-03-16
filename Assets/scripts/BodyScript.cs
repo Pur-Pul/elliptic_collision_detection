@@ -42,15 +42,25 @@ public class BodyScript : MonoBehaviour, IItem
                         break;
                     case "obb":
                         meshFilter.mesh = GameObject.CreatePrimitive(PrimitiveType.Cube).GetComponent<MeshFilter>().sharedMesh;
-                        BBox = new OBBox();    
+                        BBox = new OBBox();
                         break;
                 }
                 break;
             case 1:
                 meshRenderer.enabled = false;
-                BBox = new EllipticBBox();
+                switch (sequence.BodyType)
+                {
+                    case "sphere":
+                        BBox = new SBC();
+                        break;
+                    case "obb":
+                        BBox = new SOBR();
+                        break;
+                }
                 break;
         }
+        BBox.Simple = new AABB();
+        BBox.Size = transform.localScale;
         BBox.Record = control.runtimeRecord;
         UpdateBBox();
     }
@@ -58,13 +68,20 @@ public class BodyScript : MonoBehaviour, IItem
     void UpdateBBox ()
     {
         BBox.Position = transform.position;
-        BBox.Width = transform.localScale.x;
+        BBox.Size = transform.localScale;
 
         if (BBox is OBBox obbox)
         {
+            
             obbox.Right = transform.right;
             obbox.Up = transform.up;
             obbox.Forward = transform.forward;
+        }
+        if (BBox is SOBR sobr)
+        {
+            sobr.Right = transform.right;
+            sobr.Up = transform.up;
+            sobr.Forward = transform.forward;
         }
     }
 

@@ -1,3 +1,4 @@
+/*
 using System;
 using System.Diagnostics;
 using UnityEngine;
@@ -232,3 +233,4 @@ public class EllipticTriangle
         return EllipticBBox.EuclideanToEllipticDistance(inRadius);
     }
 }
+*/

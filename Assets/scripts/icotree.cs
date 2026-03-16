@@ -1,3 +1,4 @@
+/*
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -227,3 +228,4 @@ public class IcoTree<T>: EllipticBBox, ICollisionTree where T : class, IItem
         return _edges;
     }
 }
+*/

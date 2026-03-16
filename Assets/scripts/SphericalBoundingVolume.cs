@@ -1,24 +1,15 @@
 using UnityEngine;
 using System;
 using System.Diagnostics;
-using Unity.Mathematics;
 
-public class BBox : IBoundingVolume
+public class SBV : IBoundingVolume //Spherical Bounding Volume
 {
     private Vector3 position;
     private Vector3 size;
 
     public RuntimeRecord Record { get; set; }
     public ISimpleBoundingVolume Simple { get; set; }
-    public virtual Vector3 Size {
-        get => size;
-        set
-        {
-            Simple.Size = value;
-            size = value;
-        }
-    }
-    public Vector3 Position 
+    public virtual Vector3 Position 
     {
         get => position;
         set
@@ -27,10 +18,18 @@ public class BBox : IBoundingVolume
             position = value;
         }
     }
+    public virtual Vector3 Size {
+        get => size;
+        set
+        {
+            Simple.Size = value;
+            size = value;
+        }
+    }
 
     public bool CheckFastOverlaps(IBoundingVolume other) => Simple.SimpleIntersects(other.Simple);
-	public virtual bool CheckSphere (BBoxSphere sphere) => false;
-    public virtual bool CheckOBB (OBBox obb) => false;
+    public virtual bool CheckSBC (SBC circle) => false;
+    public virtual bool CheckOBR (SOBR obr) => false;
 
     bool Timed<T>(
         T volume,
@@ -41,7 +40,7 @@ public class BBox : IBoundingVolume
         bool result = check(volume);
         long end = Stopwatch.GetTimestamp();
 
-        Record.Write(start, end, (this.GetType(), check.Method));
+        Record.Write(start, end, (GetType(), check.Method));
 
         return result;
     }
@@ -50,26 +49,27 @@ public class BBox : IBoundingVolume
     {
         return other switch
         {
-            BBoxSphere sphere => Timed(sphere, CheckSphere),
-            OBBox obb => Timed(obb, CheckOBB),
+            SBC circle => Timed(circle, CheckSBC),
+            SOBR obr => Timed(obr, CheckOBR),
             _ => false
         };
     }
 }
 
-public class BBoxSphere : BBox
+public class SBC : SBV //Spherical Bounding Circle
 {
+    private float eRadius;
     private float radius;
-    public float Radius2 { get; set; }
     public float Radius {
         get => radius;
-        set {
+        set
+        {
             radius = value;
-            Radius2 = Radius*Radius;
-        } 
+            eRadius = SphericalUtils.EuclideanToSphericalDistance(value);
+        }
     }
-    public override Vector3 Size
-    {
+    public float ERadius { get => eRadius; }
+    public override Vector3 Size { 
         get => base.Size;
         set
         {
@@ -77,15 +77,18 @@ public class BBoxSphere : BBox
             Radius = value.x/2f;
         }
     }
-    public override bool CheckSphere(BBoxSphere sphere)
+
+    public override bool CheckSBC(SBC other)
     {
-        float centerDist2 = Radius2 + sphere.Radius2;
-        return (Position - sphere.Position).sqrMagnitude < centerDist2;
+        float eDist = SphericalUtils.SphericalDistance(Position, other.Position);
+        float eRadii = ERadius + other.ERadius;
+        return eRadii > eDist;
     }
-    public override bool CheckOBB(OBBox obb) => obb.CheckSphere(this);
+    public override bool CheckOBR(SOBR obr) => obr.CheckSBC(this);
 }
 
-public class OBBox : BBox
+
+public class SOBR : SBV //Spherical Oriented Bounding Volume
 {
     private Vector3 right;
     private Vector3 up;
@@ -147,23 +150,23 @@ public class OBBox : BBox
 
     public float Project(Vector3 axis)
     {
-        return MathF.Abs(Vector3.Dot(halfSize.x * Right, axis))
-            + MathF.Abs(Vector3.Dot(halfSize.y * Up, axis))
-            + MathF.Abs(Vector3.Dot(halfSize.z * Forward, axis));
+        return MathF.Abs(Vector3.Dot(Size.x/2 * Right, axis))
+            + MathF.Abs(Vector3.Dot(Size.y/2 * Up, axis))
+            + MathF.Abs(Vector3.Dot(Size.z/2 * Forward, axis));
     }
 
     //https://dev.to/pratyush_mohanty_6b8f2749/the-math-behind-bounding-box-collision-detection-aabb-vs-obbseparate-axis-theorem-1gdn
-    public bool SAT(OBBox bbox)
+    public bool SAT(SOBR obr)
     { 
-        Vector3 toVector = bbox.Position - Position;
+        Vector3 toVector = obr.Position - Position;
         Vector3[] axesA = { Right, Up, Forward };
-        Vector3[] axesB = { bbox.Right, bbox.Up, bbox.Forward };
+        Vector3[] axesB = { obr.Right, obr.Up, obr.Forward };
 
         for (int i = 0; i < 3; i++)
         {
             Vector3 axis = axesA[i];
             float rA = halfSize[i]; 
-            float rB = bbox.Project(axis);
+            float rB = obr.Project(axis);
             float distance = MathF.Abs(Vector3.Dot(toVector, axis));
             if (distance > rA + rB) return false;
         }
@@ -171,7 +174,7 @@ public class OBBox : BBox
         for (int i = 0; i < 3; i++)
         {
             Vector3 axis = axesB[i];
-            float rA = bbox.halfSize[i]; 
+            float rA = obr.halfSize[i]; 
             float rB = Project(axis);
             float distance = MathF.Abs(Vector3.Dot(toVector, axis));
             if (distance > rA + rB) return false;
@@ -182,10 +185,10 @@ public class OBBox : BBox
             foreach (var b in axesB)
             {
                 Vector3 cross = Vector3.Cross(a, b);
-                if (cross.sqrMagnitude < 1e-6f) continue;
+                if (cross.sqrMagnitude < 1e-6f) continue; // skip near-zero axes
                 Vector3 axis = cross.normalized;
-                float rA = Project(axis);
-                float rB = bbox.Project(axis);
+                float rA = obr.Project(axis);
+                float rB = Project(axis);
                 float distance = MathF.Abs(Vector3.Dot(toVector, axis));
                 if (distance > rA + rB) return false;
             }
@@ -193,19 +196,19 @@ public class OBBox : BBox
         return false;
     }
 
-    public override bool CheckOBB (OBBox obb)
+    public override bool CheckOBR (SOBR obr)
     {
-        return !SAT(obb);
+        return !SAT(obr);
     }
 
-    public override bool CheckSphere(BBoxSphere sphere) //https://gamedev.stackexchange.com/questions/163873/separating-axis-theorem-obb-vs-sphere
+    public override bool CheckSBC(SBC circle) //https://gamedev.stackexchange.com/questions/163873/separating-axis-theorem-obr-vs-circle
     {
-        Vector3 obbToSphere = sphere.Position - Position;
+        Vector3 obrToCircle = circle.Position - Position;
 
         Vector3 local_pos = new (
-            Vector3.Dot(obbToSphere, Right),
-            Vector3.Dot(obbToSphere, Up),
-            Vector3.Dot(obbToSphere, Forward)
+            Vector3.Dot(obrToCircle, Right),
+            Vector3.Dot(obrToCircle, Up),
+            Vector3.Dot(obrToCircle, Forward)
         );
 
         Vector3 closestPointLocal = new(
@@ -213,7 +216,9 @@ public class OBBox : BBox
             Mathf.Clamp(local_pos.y, -Size.y/2, Size.y/2),
             Mathf.Clamp(local_pos.z, -Size.z/2, Size.z/2)
         );
+        
+        float sDist = SphericalUtils.SphericalDistance(closestPointLocal, local_pos);
 
-        return (closestPointLocal - local_pos).sqrMagnitude < sphere.Radius * sphere.Radius;
+        return sDist < circle.Radius;
     }
 }

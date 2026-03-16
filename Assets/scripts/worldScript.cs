@@ -17,37 +17,68 @@ public class worldScript : MonoBehaviour
     {
         List<Matrix4x4> BSList = new();
         List<Matrix4x4> OBBList = new();
+
+        void HandleSphere (Vector3 pos, float eRadius, Color color, Matrix4x4 m)
+        {
+            m.SetRow(0, new Vector4(pos.x, pos.y, pos.z, 0));
+            m.SetRow(1, new Vector4(eRadius, 0, 0, 0));
+            m.SetRow(2, color);
+            m.SetRow(3, Vector4.zero);
+            BSList.Add(m);
+        }
+
+        void HandleRectangle (Vector3 pos, Vector3 right, Vector3 up, float width, float height, Color color, Matrix4x4 m)
+        {
+            m.SetRow(0, new Vector4(pos.x, pos.y, pos.z, 0));
+            m.SetRow(1, new Vector4(right.x, right.y, right.z, width));
+            m.SetRow(2, new Vector4(up.x, up.y, up.z, height));
+            m.SetRow(3, color);
+            OBBList.Add(m);
+        }
+
         for (int i = 0; i < control.body_n; i++)
         {
-            Vector3 pos;
-            Vector3 right;
-            Vector3 up;
-            float width;
-            float height;
-            float radius;
             Matrix4x4 m = new Matrix4x4();
-            switch(control.bodies[i].sequence.BodyType)
+
+            switch (control.bodies[i].BBox)
             {
-                case "sphere":
-                    pos = control.bodies[i].transform.position;
-                    radius = EllipticBBox.EuclideanToEllipticDistance(control.bodies[i].BBox.Width/2);
-                    m.SetRow(0, new Vector4(pos.x, pos.y, pos.z, 0));
-                    m.SetRow(1, new Vector4(radius, 0, 0, 0));
-                    m.SetRow(2, control.bodies[i].drawColor);
-                    m.SetRow(3, Vector4.zero);
-                    BSList.Add(m);
+                case SBC circle:
+                    HandleSphere(
+                        circle.Position,
+                        circle.ERadius,
+                        control.bodies[i].drawColor, 
+                        m
+                    );
                     break;
-                case "obb":
-                    pos = control.bodies[i].transform.position;
-                    right = control.bodies[i].transform.right;
-                    up = control.bodies[i].transform.up;
-                    width = control.bodies[i].transform.localScale.x;
-                    height = control.bodies[i].transform.localScale.x;
-                    m.SetRow(0, new Vector4(pos.x, pos.y, pos.z, 0));
-                    m.SetRow(1, new Vector4(right.x, right.y, right.z, width));
-                    m.SetRow(2, new Vector4(up.x, up.y, up.z, height));
-                    m.SetRow(3, control.bodies[i].drawColor);
-                    OBBList.Add(m);
+                case BBoxSphere sphere:
+                    HandleSphere(
+                        sphere.Position,
+                        SphericalUtils.EuclideanToSphericalDistance(sphere.Radius), 
+                        control.bodies[i].drawColor,
+                        m
+                    );
+                    break;
+                case SOBR sobr:
+                    HandleRectangle(
+                        sobr.Position,
+                        sobr.Right,
+                        sobr.Up,
+                        sobr.Size.x,
+                        sobr.Size.y,
+                        control.bodies[i].drawColor,
+                        m
+                    );
+                    break;
+                case OBBox obb:
+                    HandleRectangle(
+                        obb.Position,
+                        obb.Right,
+                        obb.Up,
+                        obb.Size.x,
+                        obb.Size.y,
+                        control.bodies[i].drawColor,
+                        m
+                    );
                     break;
                 default:
                     break;

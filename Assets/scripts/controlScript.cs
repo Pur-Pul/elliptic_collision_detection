@@ -29,6 +29,8 @@ public class ControlScript : MonoBehaviour
                 }
                 runtimeRecord.Reset();
                 collisionTree.Clear();
+                collisionTree.MaxDepth = MaxDepth;
+                collisionTree.MaxItems = MaxItems;
             }
         }
     }
@@ -41,15 +43,51 @@ public class ControlScript : MonoBehaviour
             if (value > 0)
             {
                 best = (0,0,long.MaxValue);
-                collisionTree.MaxDepth = 0;
-                collisionTree.MaxItems = 0;
+                MaxDepth = 0;
+                MaxItems = 0;
             }
             
             optimize = value;
         }
     }
+    public int MaxDepth {
+        get
+        {
+            if (!int.TryParse(maxDepthInput.text, out int number))
+            {
+                number = 0;
+                maxDepthInput.text = "0";
+                collisionTree.MaxDepth = 0;
+            }
+            return number;
+        }
+        set
+        {
+            maxDepthInput.text = value.ToString();
+            collisionTree.MaxDepth = value;
+        } 
+    }
+    public int MaxItems {
+        get
+        {
+            if (!int.TryParse(maxItemsInput.text, out int number))
+            {
+                number = 0;
+                maxItemsInput.text = "0";
+                collisionTree.MaxItems = 0;
+            }
+            return number;
+        }
+        set
+        {
+            maxItemsInput.text = value.ToString();
+            collisionTree.MaxItems = value;
+        } 
+    }
     public TMP_InputField bodyNumperInput;
     public TMP_InputField lastStepInput;
+    public TMP_InputField maxDepthInput;
+    public TMP_InputField maxItemsInput;
     public TMP_Dropdown MethodDropdown;
     public TMP_Dropdown RecordDropdown;
     public TMP_Text AccuracyText;
@@ -134,14 +172,16 @@ public class ControlScript : MonoBehaviour
 
     public void SetMethod()
     {
+        float _tree_width = 2*ellipseRadius + 0.2f;
         switch (MethodDropdown.value)
         {
             case 0:
                 collisionTree = new Octree<BodyScript>();
-                collisionTree.Width = 2*ellipseRadius + 0.2f;
+                collisionTree.Size = new Vector3(_tree_width,_tree_width,_tree_width);
                 break;
             case 1:
-                collisionTree = new IcoTree<BodyScript>();
+                collisionTree = new Octree<BodyScript>();
+                collisionTree.Size = new Vector3(_tree_width,_tree_width,_tree_width);
                 break;
         }
         collisionTree.Record = runtimeRecord;
@@ -232,24 +272,24 @@ public class ControlScript : MonoBehaviour
                 if (Optimize > 0)
                 {
                     best = best.Item3 > runtimeRecord.total_time
-                        ? (collisionTree.MaxItems, collisionTree.MaxDepth, runtimeRecord.total_time)
+                        ? (MaxItems, MaxDepth, runtimeRecord.total_time)
                         : best;
-                    if (collisionTree.MaxDepth < Optimize && collisionTree.MaxItems == Optimize)
+                    if (MaxDepth < Optimize && MaxItems == Optimize)
                     {
-                        collisionTree.MaxItems = 0;
-                        collisionTree.MaxDepth++;
+                        MaxItems = 0;
+                        MaxDepth++;
                         Active = true;
                     } else if (collisionTree.MaxItems < Optimize)
                     {
-                        collisionTree.MaxItems++;
+                        MaxItems++;
                         Active = true;
                     } else
                     {
-                        collisionTree.MaxItems = best.Item1;
-                        collisionTree.MaxDepth = best.Item2;
+                        MaxItems = best.Item1;
+                        MaxDepth = best.Item2;
                         Optimize = 0;
-                        Debug.Log($"Best item limit: {collisionTree.MaxItems}");
-                        Debug.Log($"Best depth: {collisionTree.MaxDepth}");
+                        Debug.Log($"Best item limit: {MaxItems}");
+                        Debug.Log($"Best depth: {MaxDepth}");
                     }
                 }
             }
@@ -259,7 +299,16 @@ public class ControlScript : MonoBehaviour
     void OnDrawGizmos()
     {
         if (collisionTree == null) { return; }
-        foreach (Vector3[] edge in collisionTree.GetTreeEdges())
+        Vector3[][] _edges = collisionTree.GetTreeEdges();
+        foreach (BodyScript body in bodies)
+        {
+            Vector3[][] _body_edges = body.BBox.Simple.GetEdges();
+            Vector3[][] _new_edges = new Vector3[_edges.Length + _body_edges.Length][];
+            _edges.CopyTo(_new_edges, 0);
+            _body_edges.CopyTo(_new_edges, _edges.Length);
+            _edges = _new_edges;
+        }
+        foreach (Vector3[] edge in _edges)
         {
             Vector3 cam_pos = cam.transform.position;
             float dist = Mathf.Min((cam_pos - edge[0]).magnitude, (cam_pos - edge[1]).magnitude);
