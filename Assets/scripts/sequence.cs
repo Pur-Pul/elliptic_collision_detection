@@ -10,12 +10,14 @@ public class Keyframe
     public int Frame { get; set; }
     public Vector3 Position { get; set; }
     public Quaternion Orientation { get; set; }
+    public float Angle { get; set; }
 }
 
 public class KeyframeList
 {
     public List<Keyframe> Keyframes { get; set; } = new ();
     public string BodyType { get; set; } = "sphere";
+    public Vector2 Size { get; set; }
     public int id = -1;
 
     public int Count => Keyframes.Count;
@@ -39,6 +41,14 @@ public class Sequence
         set
         {
             keyframes.BodyType = value;
+        }
+    }
+    public Vector2 Size
+    {
+        get => keyframes.Size;
+        set
+        {
+            keyframes.Size = value;
         }
     }
     public int Id { 
@@ -75,7 +85,12 @@ public class Sequence
     {
         if (keyframes[cursor].Frame < step && cursor < keyframes.Count-1) { cursor++; }
         float t = (step - keyframes[cursor-1].Frame) / (float)(keyframes[cursor].Frame - keyframes[cursor-1].Frame);
-        return Quaternion.Slerp(keyframes[cursor-1].Orientation, keyframes[cursor].Orientation, t);
+        
+        Quaternion interpolatedOrientation = Quaternion.Slerp(keyframes[cursor-1].Orientation, keyframes[cursor].Orientation, t);
+        float interpolatedAngle = Mathf.Lerp(keyframes[cursor-1].Angle, keyframes[cursor].Angle, t);
+        Vector3 interpolatedAxis = Vector3.Slerp(keyframes[cursor-1].Position, keyframes[cursor].Position, t).normalized;
+        
+        return Quaternion.AngleAxis(interpolatedAngle, interpolatedAxis) * interpolatedOrientation;
     }
 
     public void Randomize(int lastStep, float radius)
@@ -84,25 +99,31 @@ public class Sequence
         int keyframe_n = UnityEngine.Random.Range(2, 10);
         for (int i = 0; i < keyframe_n; i++)
         {
+            Vector3 prevPos = i == 0
+                ? origin
+                : keyframes[i - 1].Position;
+            Quaternion prevOrientation = i == 0
+                ? Quaternion.identity
+                : keyframes[i - 1].Orientation;
+
             Keyframe k = new()
             {
                 Frame = Mathf.RoundToInt(i / (float)(keyframe_n - 1) * lastStep),
-                Position = VectorUtils.RandomVector3(radius)
+                Position = prevPos,
+                Angle = i == 0 ? 0 : keyframes[i - 1].Angle,
+                Orientation = prevOrientation
             };
 
-            Vector3 prevPos = i == 0 ? origin : keyframes[i - 1].Position;
-            Quaternion prevOrientation = i == 0 ? Quaternion.identity : keyframes[i - 1].Orientation;
+            if (i == 0 || UnityEngine.Random.Range(0.0f, 1.0f) > 0.3)
+            {
+                k.Position = VectorUtils.RandomVector3(radius);
+                k.Angle = UnityEngine.Random.Range(0, 360);
 
-            Vector3 axis = Vector3.Cross(prevPos, k.Position);
-            axis.Normalize();
-
-            float angle = Vector3.Angle(prevPos, k.Position);
-            k.Orientation = Quaternion.AngleAxis(angle, axis) * prevOrientation;
-
-            //Vector3 forward = k.Position;
-            //forward.Normalize();
-            //k.Orientation = Quaternion.AngleAxis(Random.Range(-179, 179), forward) * k.Orientation;
-
+                Vector3 axis = Vector3.Cross(prevPos, k.Position);
+                axis.Normalize();
+                float angle = Vector3.Angle(prevPos, k.Position);
+                k.Orientation = Quaternion.AngleAxis(angle, axis) * prevOrientation;
+            }
             keyframes.Add(k);
         }
     }
@@ -112,8 +133,15 @@ public class Sequence
     }
     public static Sequence RandomSequence(int lastStep, float radius)
     {
-        Sequence seq = new();
-        seq.BodyType = BODY_TYPES[UnityEngine.Random.Range(0, BODY_TYPES.Length)];
+        Sequence seq = new()
+        {
+            BodyType = BODY_TYPES[UnityEngine.Random.Range(0, BODY_TYPES.Length)],
+            Size = new Vector2(
+                UnityEngine.Random.Range(0.01f, 0.5f),
+                UnityEngine.Random.Range(0.01f, 0.5f)
+            )
+            
+        };
         seq.Randomize(lastStep, radius);
         return seq;
     }

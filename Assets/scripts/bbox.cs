@@ -79,8 +79,8 @@ public class BBoxSphere : BBox
     }
     public override bool CheckSphere(BBoxSphere sphere)
     {
-        float centerDist2 = Radius2 + sphere.Radius2;
-        return (Position - sphere.Position).sqrMagnitude < centerDist2;
+        float centerDist = Radius + sphere.Radius;
+        return (Position - sphere.Position).sqrMagnitude < centerDist * centerDist;
     }
     public override bool CheckOBB(OBBox obb) => obb.CheckSphere(this);
 }

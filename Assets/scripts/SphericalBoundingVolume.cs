@@ -58,17 +58,17 @@ public class SBV : IBoundingVolume //Spherical Bounding Volume
 
 public class SBC : SBV //Spherical Bounding Circle
 {
-    private float eRadius;
+    private float sRadius;
     private float radius;
     public float Radius {
         get => radius;
         set
         {
             radius = value;
-            eRadius = SphericalUtils.EuclideanToSphericalDistance(value);
+            sRadius = SphericalUtils.EuclideanToSphericalDistance(value);
         }
     }
-    public float ERadius { get => eRadius; }
+    public float SRadius { get => sRadius; }
     public override Vector3 Size { 
         get => base.Size;
         set
@@ -80,9 +80,9 @@ public class SBC : SBV //Spherical Bounding Circle
 
     public override bool CheckSBC(SBC other)
     {
-        float eDist = SphericalUtils.SphericalDistance(Position, other.Position);
-        float eRadii = ERadius + other.ERadius;
-        return eRadii > eDist;
+        float sDist = SphericalUtils.SphericalDistance(Position, other.Position);
+        float sRadii = SphericalUtils.EuclideanToSphericalDistance(Radius + other.Radius);
+        return sRadii > sDist;
     }
     public override bool CheckOBR(SOBR obr) => obr.CheckSBC(this);
 }
@@ -205,20 +205,18 @@ public class SOBR : SBV //Spherical Oriented Bounding Volume
     {
         Vector3 obrToCircle = circle.Position - Position;
 
-        Vector3 local_pos = new (
+        Vector3 localCirclePos = new (
             Vector3.Dot(obrToCircle, Right),
             Vector3.Dot(obrToCircle, Up),
             Vector3.Dot(obrToCircle, Forward)
         );
 
-        Vector3 closestPointLocal = new(
-            Mathf.Clamp(local_pos.x, -Size.x/2, Size.x/2),
-            Mathf.Clamp(local_pos.y, -Size.y/2, Size.y/2),
-            Mathf.Clamp(local_pos.z, -Size.z/2, Size.z/2)
+        Vector3 closestPointToLocalCircle = new(
+            Mathf.Clamp(localCirclePos.x, -HalfSize.x, HalfSize.x),
+            Mathf.Clamp(localCirclePos.y, -HalfSize.y, HalfSize.y),
+            Mathf.Clamp(localCirclePos.z, -HalfSize.z, HalfSize.z)
         );
-        
-        float sDist = SphericalUtils.SphericalDistance(closestPointLocal, local_pos);
 
-        return sDist < circle.Radius;
+        return (closestPointToLocalCircle - localCirclePos).sqrMagnitude < circle.Radius * circle.Radius;
     }
 }

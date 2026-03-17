@@ -124,7 +124,7 @@ public class ControlScript : MonoBehaviour
         {
             BodyScript body = Instantiate(_bodyPrefab);
             body.transform.rotation = s.SlerpOrientation(0);
-            body.Position = s.SlerpPosition(0);   
+            body.Position = s.SlerpPosition(0);
             body.sequence = s;
             body.color = UnityEngine.Random.ColorHSV();
             body.control = this;
@@ -172,7 +172,7 @@ public class ControlScript : MonoBehaviour
 
     public void SetMethod()
     {
-        float _tree_width = 2*ellipseRadius + 0.2f;
+        float _tree_width = 2*ellipseRadius + 0.5f;
         switch (MethodDropdown.value)
         {
             case 0:
@@ -234,9 +234,12 @@ public class ControlScript : MonoBehaviour
     {
         foreach (BodyScript body in bodies) 
         {
-            collisionTree.Remove(body);
-            body.Move(step);
-            collisionTree.Add(body);
+            if (body.Move(step))
+            {
+                collisionTree.Remove(body);
+                body.UpdateBBox();
+                collisionTree.Add(body);
+            }
         }
         foreach (BodyScript body in bodies) 
         {
@@ -265,6 +268,13 @@ public class ControlScript : MonoBehaviour
     void LateUpdate()
     {   
         if (Active) {
+            if (step == 0)
+            {
+                foreach (BodyScript body in bodies)
+                {
+                    collisionTree.Add(body);
+                }
+            }
             Step();
             if (step >= lastStep)
             {

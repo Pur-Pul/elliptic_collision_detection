@@ -18,10 +18,10 @@ public class worldScript : MonoBehaviour
         List<Matrix4x4> BSList = new();
         List<Matrix4x4> OBBList = new();
 
-        void HandleSphere (Vector3 pos, float eRadius, Color color, Matrix4x4 m)
+        void HandleSphere (Vector3 pos, float sRadius, Color color, Matrix4x4 m)
         {
             m.SetRow(0, new Vector4(pos.x, pos.y, pos.z, 0));
-            m.SetRow(1, new Vector4(eRadius, 0, 0, 0));
+            m.SetRow(1, new Vector4(sRadius, 0, 0, 0));
             m.SetRow(2, color);
             m.SetRow(3, Vector4.zero);
             BSList.Add(m);
@@ -45,7 +45,7 @@ public class worldScript : MonoBehaviour
                 case SBC circle:
                     HandleSphere(
                         circle.Position,
-                        circle.ERadius,
+                        circle.SRadius,
                         control.bodies[i].drawColor, 
                         m
                     );
