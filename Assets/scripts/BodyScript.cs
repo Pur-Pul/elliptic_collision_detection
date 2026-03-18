@@ -147,7 +147,7 @@ public class BodyScript : MonoBehaviour, IItem
         return true;
     }
 
-    public void Stop()
+    public void Restart()
     {
         control.collisionTree.Remove(this);
         sequence.Reset();

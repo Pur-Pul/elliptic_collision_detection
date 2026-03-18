@@ -34,20 +34,23 @@ public class ControlScript : MonoBehaviour
             }
         }
     }
-    (int,int,long) best;
-    private int optimize;
-    public int Optimize { 
-        get => optimize;
+    (int,int,long) best = (0,0,long.MaxValue);
+    int iteration = 1;
+    public int Iterations { 
+        get {
+            if (!int.TryParse(IterationInput.text, out int number) || number < 1)
+            {
+                IterationInput.text = "1";
+                return 1;
+            }
+            return number;
+        }
         set
         {
-            if (value > 0)
+            if (value >= 1)
             {
-                best = (0,0,long.MaxValue);
-                MaxDepth = 0;
-                MaxItems = 0;
+                IterationInput.text = $"{value}";
             }
-            
-            optimize = value;
         }
     }
     public int MaxDepth {
@@ -84,10 +87,31 @@ public class ControlScript : MonoBehaviour
             collisionTree.MaxItems = value;
         } 
     }
+    private (int, int) optimizeEnd = (0, 0);
+    private bool optimize = false;
+    public bool Optimize
+    {
+        get => optimize;
+        set
+        {
+            if (!optimize && value)
+            {
+                optimizeEnd = (MaxDepth, MaxItems);
+                MaxDepth = 0;
+                MaxItems = 0;
+                optimize = true;
+            } else if (optimize && !value)
+            {
+                optimizeEnd = (0, 0);
+                optimize = false;
+            }
+        }
+    }
     public TMP_InputField bodyNumperInput;
     public TMP_InputField lastStepInput;
     public TMP_InputField maxDepthInput;
     public TMP_InputField maxItemsInput;
+    public TMP_InputField IterationInput;
     public TMP_Dropdown MethodDropdown;
     public TMP_Dropdown RecordDropdown;
     public TMP_Text AccuracyText;
@@ -140,7 +164,7 @@ public class ControlScript : MonoBehaviour
     {
         step = 0;
         Active = false;
-        Optimize = 0;
+        Iterations = 0;
     }
 
     void DestroyBodies()
@@ -248,9 +272,8 @@ public class ControlScript : MonoBehaviour
         step++;
     }
 
-    void Stop()
+    void Restart()
     {
-        Active = false;
         if (CollisionList != null)
         {
             CollisionList.Finish(step);
@@ -261,8 +284,15 @@ public class ControlScript : MonoBehaviour
         step = 0;
         foreach (BodyScript body in bodies)
         {
-            body.Stop();
+            body.Restart();
         }
+    }
+
+    void Stop()
+    {
+        Active = false;
+        iteration = 1;
+        Restart();
     }
 
     void LateUpdate()
@@ -278,28 +308,39 @@ public class ControlScript : MonoBehaviour
             Step();
             if (step >= lastStep)
             {
-                Stop();
-                if (Optimize > 0)
+                if (iteration < Iterations)
                 {
-                    best = best.Item3 > runtimeRecord.total_time
-                        ? (MaxItems, MaxDepth, runtimeRecord.total_time)
-                        : best;
-                    if (MaxDepth < Optimize && MaxItems == Optimize)
+                    iteration++;
+                    Restart();
+                } else
+                {
+                    Stop();    
+                    if (Optimize)
                     {
-                        MaxItems = 0;
-                        MaxDepth++;
-                        Active = true;
-                    } else if (collisionTree.MaxItems < Optimize)
-                    {
-                        MaxItems++;
-                        Active = true;
-                    } else
-                    {
-                        MaxItems = best.Item1;
-                        MaxDepth = best.Item2;
-                        Optimize = 0;
-                        Debug.Log($"Best item limit: {MaxItems}");
-                        Debug.Log($"Best depth: {MaxDepth}");
+                        long averageRuntime = (long)Math.Round(runtimeRecord.total_time / (double)Iterations);
+                        Debug.Log(averageRuntime);
+                        Debug.Log(best);
+                        best = best.Item3 > averageRuntime
+                            ? (MaxDepth, MaxItems, averageRuntime)
+                            : best;
+                        if (MaxDepth < optimizeEnd.Item1 && MaxItems == optimizeEnd.Item2 || (MaxDepth == 0 && MaxItems == 0))
+                        {
+                            MaxItems = 1;
+                            MaxDepth++;
+                            Active = true;
+                        } else if (collisionTree.MaxItems < optimizeEnd.Item2)
+                        {
+                            MaxItems++;
+                            Active = true;
+                        } else
+                        {
+                            MaxDepth = best.Item1;
+                            MaxItems = best.Item2;
+                            Optimize = false;
+                            Debug.Log($"Best item limit: {MaxItems}");
+                            Debug.Log($"Best depth: {MaxDepth}");
+                            best = (0,0,long.MaxValue);
+                        }
                     }
                 }
             }
