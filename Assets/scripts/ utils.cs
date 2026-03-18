@@ -23,7 +23,7 @@ class VectorUtils
         _vec = Vector3.Cross(_vec, vec);
         _vec.Normalize();
         return _vec;
-    }   
+    }
 }
 
 class SphericalUtils {

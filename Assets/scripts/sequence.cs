@@ -85,12 +85,12 @@ public class Sequence
     {
         if (keyframes[cursor].Frame < step && cursor < keyframes.Count-1) { cursor++; }
         float t = (step - keyframes[cursor-1].Frame) / (float)(keyframes[cursor].Frame - keyframes[cursor-1].Frame);
-        
         Quaternion interpolatedOrientation = Quaternion.Slerp(keyframes[cursor-1].Orientation, keyframes[cursor].Orientation, t);
         float interpolatedAngle = Mathf.Lerp(keyframes[cursor-1].Angle, keyframes[cursor].Angle, t);
         Vector3 interpolatedAxis = Vector3.Slerp(keyframes[cursor-1].Position, keyframes[cursor].Position, t).normalized;
         
         return Quaternion.AngleAxis(interpolatedAngle, interpolatedAxis) * interpolatedOrientation;
+        
     }
 
     public void Randomize(int lastStep, float radius)

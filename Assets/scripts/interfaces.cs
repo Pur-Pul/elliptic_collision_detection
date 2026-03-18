@@ -17,7 +17,11 @@ public interface IBoundingVolume
     public Vector3 Position { get; set; }
     public RuntimeRecord Record { get; set; }
     public Vector3 Size { get; set; }
+    public Vector3 Right { get; set; }
+    public Vector3 Up { get; set; }
+    public Vector3 Forward { get; set; }
     public ISimpleBoundingVolume Simple { get; set; }
+    public void UpdateSimpleSize();
     public bool CheckCollision(IBoundingVolume other);
     public bool CheckFastOverlaps(IBoundingVolume other);
 }

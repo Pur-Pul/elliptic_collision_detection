@@ -4,6 +4,49 @@ using System.Diagnostics;
 
 public class SBV : IBoundingVolume //Spherical Bounding Volume
 {
+    private Vector3 right;
+    private Vector3 up;
+    private Vector3 forward;
+
+    public bool shapeUpdated = false;
+
+    public virtual Vector3 Right
+    { 
+        get => right;
+        set
+        {
+            if (right != value)
+            {
+                shapeUpdated = true;
+            }
+            right = value;
+        }
+    }
+    public virtual Vector3 Up
+    { 
+        get => up;
+        set
+        {
+            if (up != value)
+            {
+                shapeUpdated = true;
+            }
+            up = value;
+        }
+    }
+    public virtual Vector3 Forward
+    { 
+        get => forward;
+        set
+        {
+            if (forward != value)
+            {
+                shapeUpdated = true;
+            }
+            forward = value;
+        }
+    }
+
     private Vector3 position;
     private Vector3 size;
 
@@ -22,8 +65,27 @@ public class SBV : IBoundingVolume //Spherical Bounding Volume
         get => size;
         set
         {
-            Simple.Size = value;
-            size = value;
+            if (size != value)
+            {
+                shapeUpdated = true;
+                Simple.Size = value;
+                size = value;    
+            }
+        }
+    }
+
+    public virtual void UpdateSimpleSize ()
+    {
+        if (shapeUpdated) {
+            Vector3 r = Right * Size.x;
+            Vector3 u = Up * Size.y;
+            Vector3 f = Forward * Size.z;
+            Simple.Size = new Vector3(
+                Mathf.Abs(r.x) + Mathf.Abs(u.x) + Mathf.Abs(f.x),
+                Mathf.Abs(r.y) + Mathf.Abs(u.y) + Mathf.Abs(f.y),
+                Mathf.Abs(r.z) + Mathf.Abs(u.z) + Mathf.Abs(f.z)
+            );
+            shapeUpdated = false;
         }
     }
 
@@ -60,6 +122,19 @@ public class SBC : SBV //Spherical Bounding Circle
 {
     private float sRadius;
     private float radius;
+    private float sagitta;
+    private float Sagitta
+    {
+        get
+        {
+            if (sagitta <= 0)
+            {
+                float l = Radius*2;
+                sagitta = 1 - Mathf.Sqrt(1 - 0.25f * l*l);
+            }
+            return sagitta;
+        }
+    }
     public float Radius {
         get => radius;
         set
@@ -69,12 +144,22 @@ public class SBC : SBV //Spherical Bounding Circle
         }
     }
     public float SRadius { get => sRadius; }
+    public override Vector3 Position {
+        get => base.Position;
+        set
+        {
+            base.Position = value;
+            Simple.Position = value * (1 - Sagitta/2);
+        }
+    }
     public override Vector3 Size { 
         get => base.Size;
         set
         {
-            base.Size = value;
+            if (base.Size == value) { return; }
+            sagitta = -1;
             Radius = value.x/2f;
+            base.Size = new Vector3(value.x, value.y, Sagitta);
         }
     }
 
@@ -90,62 +175,18 @@ public class SBC : SBV //Spherical Bounding Circle
 
 public class SOBR : SBV //Spherical Oriented Bounding Volume
 {
-    private Vector3 right;
-    private Vector3 up;
-    private Vector3 forward;
-
-    public Vector3 Right {
-        get => right;
-        set
-        {
-            right = value;
-            UpdateSimpleSize();
-        } 
-    }
-    public Vector3 Up
-    {
-        get => up;
-        set
-        {
-            up = value;
-            UpdateSimpleSize();
-        } 
-    }
-    public Vector3 Forward
-    {
-        get => forward;
-        set
-        {
-            forward = value;
-            UpdateSimpleSize();
-        } 
-    }
-
     public override Vector3 Size {
         get => base.Size;
         set
         {
             base.Size = value;
             halfSize = value/2f;
-            UpdateSimpleSize();
         }
     }
     private Vector3 halfSize;
     public Vector3 HalfSize
     {
         get => halfSize;
-    }
-
-    void UpdateSimpleSize ()
-    {
-        Vector3 r = Right * Size.x;
-        Vector3 u = Up * Size.y;
-        Vector3 f = Forward * Size.z;
-        Simple.Size = new Vector3(
-            Mathf.Abs(r.x) + Mathf.Abs(u.x) + Mathf.Abs(f.x),
-            Mathf.Abs(r.y) + Mathf.Abs(u.y) + Mathf.Abs(f.y),
-            Mathf.Abs(r.z) + Mathf.Abs(u.z) + Mathf.Abs(f.z)
-        );
     }
 
     public float Project(Vector3 axis)

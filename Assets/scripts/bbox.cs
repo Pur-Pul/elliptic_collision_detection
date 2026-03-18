@@ -2,11 +2,54 @@ using UnityEngine;
 using System;
 using System.Diagnostics;
 using Unity.Mathematics;
+using NUnit.Framework.Internal.Execution;
 
 public class BBox : IBoundingVolume
 {
     private Vector3 position;
     private Vector3 size;
+    private Vector3 right;
+    private Vector3 up;
+    private Vector3 forward;
+
+    private bool shapeUpdated = false;
+
+    public virtual Vector3 Right
+    { 
+        get => right;
+        set
+        {
+            if (right != value)
+            {
+                shapeUpdated = true;
+            }
+            right = value;
+        }
+    }
+    public virtual Vector3 Up
+    { 
+        get => up;
+        set
+        {
+            if (up != value)
+            {
+                shapeUpdated = true;
+            }
+            up = value;
+        }
+    }
+    public virtual Vector3 Forward
+    { 
+        get => forward;
+        set
+        {
+            if (forward != value)
+            {
+                shapeUpdated = true;
+            }
+            forward = value;
+        }
+    }
 
     public RuntimeRecord Record { get; set; }
     public ISimpleBoundingVolume Simple { get; set; }
@@ -14,8 +57,12 @@ public class BBox : IBoundingVolume
         get => size;
         set
         {
-            Simple.Size = value;
-            size = value;
+            if (size != value)
+            {
+                shapeUpdated = true;
+                Simple.Size = value;
+                size = value;    
+            }
         }
     }
     public Vector3 Position 
@@ -25,6 +72,21 @@ public class BBox : IBoundingVolume
         {
             Simple.Position = value;
             position = value;
+        }
+    }
+
+    public virtual void UpdateSimpleSize ()
+    {
+        if (shapeUpdated) {
+            Vector3 r = Right * Size.x;
+            Vector3 u = Up * Size.y;
+            Vector3 f = Forward * Size.z;
+            Simple.Size = new Vector3(
+                Mathf.Abs(r.x) + Mathf.Abs(u.x) + Mathf.Abs(f.x),
+                Mathf.Abs(r.y) + Mathf.Abs(u.y) + Mathf.Abs(f.y),
+                Mathf.Abs(r.z) + Mathf.Abs(u.z) + Mathf.Abs(f.z)
+            );
+            shapeUpdated = false;
         }
     }
 
@@ -77,6 +139,7 @@ public class BBoxSphere : BBox
             Radius = value.x/2f;
         }
     }
+    public override void UpdateSimpleSize () {}
     public override bool CheckSphere(BBoxSphere sphere)
     {
         float centerDist = Radius + sphere.Radius;
@@ -87,62 +150,18 @@ public class BBoxSphere : BBox
 
 public class OBBox : BBox
 {
-    private Vector3 right;
-    private Vector3 up;
-    private Vector3 forward;
-
-    public Vector3 Right {
-        get => right;
-        set
-        {
-            right = value;
-            UpdateSimpleSize();
-        } 
-    }
-    public Vector3 Up
-    {
-        get => up;
-        set
-        {
-            up = value;
-            UpdateSimpleSize();
-        } 
-    }
-    public Vector3 Forward
-    {
-        get => forward;
-        set
-        {
-            forward = value;
-            UpdateSimpleSize();
-        } 
-    }
-
     public override Vector3 Size {
         get => base.Size;
         set
         {
             base.Size = value;
             halfSize = value/2f;
-            UpdateSimpleSize();
         }
     }
     private Vector3 halfSize;
     public Vector3 HalfSize
     {
         get => halfSize;
-    }
-
-    void UpdateSimpleSize ()
-    {
-        Vector3 r = Right * Size.x;
-        Vector3 u = Up * Size.y;
-        Vector3 f = Forward * Size.z;
-        Simple.Size = new Vector3(
-            Mathf.Abs(r.x) + Mathf.Abs(u.x) + Mathf.Abs(f.x),
-            Mathf.Abs(r.y) + Mathf.Abs(u.y) + Mathf.Abs(f.y),
-            Mathf.Abs(r.z) + Mathf.Abs(u.z) + Mathf.Abs(f.z)
-        );
     }
 
     public float Project(Vector3 axis)

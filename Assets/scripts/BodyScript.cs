@@ -115,21 +115,12 @@ public class BodyScript : MonoBehaviour, IItem
 
     public void UpdateBBox ()
     {
-        BBox.Position = Position;
+        BBox.Right = transform.right;
+        BBox.Up = transform.up;
+        BBox.Forward = transform.forward;
         BBox.Size = transform.localScale;
-
-        if (BBox is OBBox obbox)
-        {
-            obbox.Right = transform.right;
-            obbox.Up = transform.up;
-            obbox.Forward = transform.forward;
-        }
-        if (BBox is SOBR sobr)
-        {
-            sobr.Right = transform.right;
-            sobr.Up = transform.up;
-            sobr.Forward = transform.forward;
-        }
+        BBox.Position = Position;
+        BBox.UpdateSimpleSize();
     }
 
     public bool Move(int step)
