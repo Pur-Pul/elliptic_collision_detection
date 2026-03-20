@@ -65,7 +65,7 @@ public class BBox : IBoundingVolume
             }
         }
     }
-    public Vector3 Position 
+    public virtual Vector3 Position 
     {
         get => position;
         set
@@ -135,7 +135,7 @@ public class BBoxSphere : BBox
         get => base.Size;
         set
         {
-            base.Size = value;
+            base.Size = new Vector3(value.x, value.x, value.x);
             Radius = value.x/2f;
         }
     }
@@ -150,14 +150,29 @@ public class BBoxSphere : BBox
 
 public class OBBox : BBox
 {
-    public override Vector3 Size {
+    private float sagitta;
+    public override Vector3 Size
+    {
         get => base.Size;
         set
         {
-            base.Size = value;
-            halfSize = value/2f;
+            if (base.Size.x == value.x && base.Size.y == value.y) { return; }
+            float cordSqr = value.x * value.x + value.y * value.y;
+            sagitta = 1 - Mathf.Sqrt(1 - 0.25f * cordSqr);
+            Vector3 newSize = new(value.x, value.y, sagitta);
+            base.Size = newSize;
+            halfSize = newSize/2f;
         }
     }
+    public override Vector3 Position
+    {
+        get => base.Position;
+        set
+        {
+            base.Position = value * (1 - sagitta*0.5f);
+        }
+    }
+
     private Vector3 halfSize;
     public Vector3 HalfSize
     {
@@ -190,8 +205,8 @@ public class OBBox : BBox
         for (int i = 0; i < 3; i++)
         {
             Vector3 axis = axesB[i];
-            float rA = bbox.halfSize[i];
-            float rB = Project(axis);
+            float rA = Project(axis);
+            float rB = bbox.halfSize[i];
             float distance = MathF.Abs(Vector3.Dot(toVector, axis));
             if (distance > rA + rB) return false;
         }
@@ -201,7 +216,7 @@ public class OBBox : BBox
             foreach (var b in axesB)
             {
                 Vector3 cross = Vector3.Cross(a, b);
-                if (cross.sqrMagnitude < 1e-6f) continue;
+                if (cross.sqrMagnitude < float.Epsilon) continue;
                 Vector3 axis = cross.normalized;
                 float rA = Project(axis);
                 float rB = bbox.Project(axis);

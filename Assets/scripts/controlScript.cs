@@ -4,6 +4,7 @@ using System.IO;
 using TMPro;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class ControlScript : MonoBehaviour
 {
@@ -34,7 +35,7 @@ public class ControlScript : MonoBehaviour
             }
         }
     }
-    (int,int,long) best = (0,0,long.MaxValue);
+    (int,int,long) best = ( 0, 0, long.MaxValue );
     int iteration = 1;
     public int Iterations { 
         get {
@@ -116,6 +117,8 @@ public class ControlScript : MonoBehaviour
     public TMP_Dropdown RecordDropdown;
     public TMP_Text AccuracyText;
     public TMP_Text RuntimeText;
+    public Toggle CirclesInput;
+    public Toggle RectanglesInput;
     public int body_n;
     private int lastStep;
     private List<Sequence> sequences;
@@ -156,10 +159,7 @@ public class ControlScript : MonoBehaviour
         }
     }
 
-    public bool Ready()
-    {
-        return !(body_n <= 0 || lastStep <= 0);
-    }
+    public bool Ready() => !(body_n <= 0 || lastStep <= 0);
     void Awake()
     {
         step = 0;
@@ -183,10 +183,18 @@ public class ControlScript : MonoBehaviour
         DestroyBodies();
         body_n = ParseInputNumber(bodyNumperInput);
         lastStep = ParseInputNumber(lastStepInput);
-        
+
+        List<string> selectedBodies = new();
+        if (CirclesInput.isOn) { selectedBodies.Add("sphere"); }
+        if (RectanglesInput.isOn) { selectedBodies.Add("obb"); }
+        if (selectedBodies.Count == 0) {
+            body_n = 0;
+            lastStep = 0;
+            return;
+        }
         for (int i = 0; i < body_n; i++)
         {
-            Sequence s = Sequence.RandomSequence(lastStep, ellipseRadius);
+            Sequence s = Sequence.RandomSequence(lastStep, ellipseRadius, selectedBodies);
             s.Id = i;
             sequences.Add(s);
         }

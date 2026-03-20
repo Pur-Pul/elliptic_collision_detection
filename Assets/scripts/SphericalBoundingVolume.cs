@@ -123,18 +123,6 @@ public class SBC : SBV //Spherical Bounding Circle
     private float sRadius;
     private float radius;
     private float sagitta;
-    private float Sagitta
-    {
-        get
-        {
-            if (sagitta <= 0)
-            {
-                float l = Radius*2;
-                sagitta = 1 - Mathf.Sqrt(1 - 0.25f * l*l);
-            }
-            return sagitta;
-        }
-    }
     public float Radius {
         get => radius;
         set
@@ -149,20 +137,20 @@ public class SBC : SBV //Spherical Bounding Circle
         set
         {
             base.Position = value;
-            Simple.Position = value * (1 - Sagitta/2);
+            Simple.Position = value * (1 - sagitta/2);
         }
     }
     public override Vector3 Size { 
         get => base.Size;
         set
         {
-            if (base.Size == value) { return; }
-            sagitta = -1;
+            if (base.Size.x == value.x) { return; }
+            float cordSqr = value.x * value.x;
+            sagitta = 1 - Mathf.Sqrt(1 - 0.25f * cordSqr);
             Radius = value.x/2f;
-            base.Size = new Vector3(value.x, value.y, Sagitta);
+            base.Size = new Vector3(value.x, value.x, sagitta);
         }
     }
-
     public override bool CheckSBC(SBC other)
     {
         float sDist = SphericalUtils.SphericalDistance(Position, other.Position);
@@ -175,14 +163,30 @@ public class SBC : SBV //Spherical Bounding Circle
 
 public class SOBR : SBV //Spherical Oriented Bounding Volume
 {
-    public override Vector3 Size {
+    private float sagitta;
+    public override Vector3 Size
+    {
         get => base.Size;
         set
         {
-            base.Size = value;
-            halfSize = value/2f;
+            if (base.Size.x == value.x && base.Size.y == value.y) { return; }
+            float cordSqr = value.x * value.x + value.y * value.y;
+            sagitta = 1 - Mathf.Sqrt(1 - 0.25f * cordSqr);
+            Vector3 newSize = new(value.x, value.y, sagitta);
+            base.Size = newSize;
+            halfSize = newSize/2f;
         }
     }
+    public override Vector3 Position
+    {
+        get => base.Position;
+        set
+        {
+            base.Position = value * (1 - sagitta);
+            Simple.Position = value* (1 - sagitta*0.5f);
+        }
+    }
+
     private Vector3 halfSize;
     public Vector3 HalfSize
     {
@@ -191,71 +195,41 @@ public class SOBR : SBV //Spherical Oriented Bounding Volume
 
     public float Project(Vector3 axis)
     {
-        return MathF.Abs(Vector3.Dot(Size.x/2 * Right, axis))
-            + MathF.Abs(Vector3.Dot(Size.y/2 * Up, axis))
-            + MathF.Abs(Vector3.Dot(Size.z/2 * Forward, axis));
+        return MathF.Abs(Vector3.Dot(HalfSize.x * Right, axis))
+            + MathF.Abs(Vector3.Dot(HalfSize.y * Up, axis));
     }
 
     //https://dev.to/pratyush_mohanty_6b8f2749/the-math-behind-bounding-box-collision-detection-aabb-vs-obbseparate-axis-theorem-1gdn
     public bool SAT(SOBR obr)
     { 
         Vector3 toVector = obr.Position - Position;
-        Vector3[] axesA = { Right, Up, Forward };
-        Vector3[] axesB = { obr.Right, obr.Up, obr.Forward };
+        Vector3[] axes = { Right, Up, obr.Right, obr.Up};
 
-        for (int i = 0; i < 3; i++)
+        foreach (var axis in axes)
         {
-            Vector3 axis = axesA[i];
-            float rA = halfSize[i]; 
+            float rA = Project(axis);
             float rB = obr.Project(axis);
             float distance = MathF.Abs(Vector3.Dot(toVector, axis));
-            if (distance > rA + rB) return false;
-        }
-
-        for (int i = 0; i < 3; i++)
-        {
-            Vector3 axis = axesB[i];
-            float rA = obr.halfSize[i]; 
-            float rB = Project(axis);
-            float distance = MathF.Abs(Vector3.Dot(toVector, axis));
-            if (distance > rA + rB) return false;
-        }
-
-        foreach (var a in axesA)
-        {
-            foreach (var b in axesB)
-            {
-                Vector3 cross = Vector3.Cross(a, b);
-                if (cross.sqrMagnitude < 1e-6f) continue;
-                Vector3 axis = cross.normalized;
-                float rA = obr.Project(axis);
-                float rB = Project(axis);
-                float distance = MathF.Abs(Vector3.Dot(toVector, axis));
-                if (distance > rA + rB) return false;
-            }
+            if (distance > rA + rB)  { return false; }
         }
         return true;
     }
 
-    public override bool CheckOBR (SOBR obr)
-    {
-        return SAT(obr);
-    }
+    public override bool CheckOBR (SOBR obr) { return SAT(obr); }
 
     public override bool CheckSBC(SBC circle) //https://gamedev.stackexchange.com/questions/163873/separating-axis-theorem-obr-vs-circle
     {
         Vector3 obrToCircle = circle.Position - Position;
-
         Vector3 localCirclePos = new (
             Vector3.Dot(obrToCircle, Right),
             Vector3.Dot(obrToCircle, Up),
-            Vector3.Dot(obrToCircle, Forward)
+            0
         );
 
         Vector3 closestPointToLocalCircle = new(
             Mathf.Clamp(localCirclePos.x, -HalfSize.x, HalfSize.x),
             Mathf.Clamp(localCirclePos.y, -HalfSize.y, HalfSize.y),
-            Mathf.Clamp(localCirclePos.z, -HalfSize.z, HalfSize.z)
+            0
         );
 
         return (closestPointToLocalCircle - localCirclePos).sqrMagnitude < circle.Radius * circle.Radius;

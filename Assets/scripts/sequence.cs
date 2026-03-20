@@ -131,11 +131,12 @@ public class Sequence
     {
         cursor = 1;
     }
-    public static Sequence RandomSequence(int lastStep, float radius)
+    public static Sequence RandomSequence(int lastStep, float radius, List<string> selectedBodies)
     {
         Sequence seq = new()
         {
-            BodyType = BODY_TYPES[UnityEngine.Random.Range(0, BODY_TYPES.Length)],
+
+            BodyType = selectedBodies[UnityEngine.Random.Range(0, selectedBodies.Count)],
             Size = new Vector2(
                 UnityEngine.Random.Range(0.01f, 0.5f),
                 UnityEngine.Random.Range(0.01f, 0.5f)

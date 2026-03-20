@@ -12,32 +12,7 @@ public class BodyScript : MonoBehaviour, IItem
     public Sequence sequence;
     public Color color;
     public Color drawColor;
-    private Vector3 meshOffset = Vector3.zero;
-    Vector3 MeshOffset
-    {
-        get => meshOffset;
-        set
-        {
-            meshOffset = value;
-            transform.position = position 
-                + transform.right * meshOffset.x
-                + transform.up * meshOffset.y
-                + transform.forward * meshOffset.z;
-        }
-    }
-
-    private Vector3 position;
-    public Vector3 Position {
-        get => position;
-        set
-        {
-            position = value;
-            transform.position = position 
-                + transform.right * meshOffset.x
-                + transform.up * meshOffset.y
-                + transform.forward * meshOffset.z;
-        }
-    }
+    public Vector3 Position { get; set; }
     public int Id { get => sequence.Id; }
     private MeshRenderer meshRenderer;
     private MeshFilter meshFilter;
@@ -66,21 +41,10 @@ public class BodyScript : MonoBehaviour, IItem
                     case "sphere":
                         meshFilter.mesh = GameObject.CreatePrimitive(PrimitiveType.Sphere).GetComponent<MeshFilter>().sharedMesh;
                         BBox = new BBoxSphere();
-                        MeshOffset = new Vector3(0, 0, 0);
-                        transform.localScale = new Vector3(sequence.Size.x, sequence.Size.x, sequence.Size.x);
                         break;
                     case "obb":
                         
                         meshFilter.mesh = GameObject.CreatePrimitive(PrimitiveType.Cube).GetComponent<MeshFilter>().sharedMesh;
-                        float cord = Mathf.Sqrt(sequence.Size.x * sequence.Size.x + sequence.Size.y * sequence.Size.y);
-                        float sagitta = 1 - Mathf.Sqrt(1 - (cord/2) * (cord/2));
-                        MeshOffset = new Vector3(0, 0, sagitta/2);
-                        transform.localScale = new Vector3(
-                            sequence.Size.x,
-                            sequence.Size.y,
-                            sagitta
-                        );
-                        
                         BBox = new OBBox();
                         break;
                 }
@@ -90,19 +54,9 @@ public class BodyScript : MonoBehaviour, IItem
                 switch (sequence.BodyType)
                 {
                     case "sphere":
-                        transform.localScale = new Vector3(sequence.Size.x, sequence.Size.x, sequence.Size.x);
-                        MeshOffset = new Vector3(0, 0, 0);
                         BBox = new SBC();
                         break;
                     case "obb":
-                        float cord = Mathf.Sqrt(sequence.Size.x * sequence.Size.x + sequence.Size.y * sequence.Size.y);
-                        float sagitta = 1 - Mathf.Sqrt(1 - (cord/2) * (cord/2));
-                        transform.localScale = new Vector3(
-                            sequence.Size.x,
-                            sequence.Size.y,
-                            sagitta
-                        );
-                        MeshOffset = new Vector3(0, 0, 0);
                         BBox = new SOBR();
                         break;
                 }
@@ -118,9 +72,12 @@ public class BodyScript : MonoBehaviour, IItem
         BBox.Right = transform.right;
         BBox.Up = transform.up;
         BBox.Forward = transform.forward;
-        BBox.Size = transform.localScale;
+        BBox.Size = sequence.Size;
         BBox.Position = Position;
         BBox.UpdateSimpleSize();
+
+        transform.position = BBox.Position;
+        transform.localScale = BBox.Size;
     }
 
     public bool Move(int step)
