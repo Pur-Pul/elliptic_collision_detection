@@ -158,7 +158,7 @@ public class OBBox : BBox
         {
             if (base.Size.x == value.x && base.Size.y == value.y) { return; }
             float cordSqr = value.x * value.x + value.y * value.y;
-            sagitta = 1 - Mathf.Sqrt(1 - 0.25f * cordSqr);
+            sagitta = SphericalUtils.CalculateSagitta(cordSqr, true);
             Vector3 newSize = new(value.x, value.y, sagitta);
             base.Size = newSize;
             halfSize = newSize/2f;

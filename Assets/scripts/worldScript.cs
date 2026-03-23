@@ -39,12 +39,12 @@ public class worldScript : MonoBehaviour
         for (int i = 0; i < control.body_n; i++)
         {
             Matrix4x4 m = new Matrix4x4();
-
+            Vector3 pos = control.bodies[i].Position;
             switch (control.bodies[i].BBox)
             {
                 case SBC circle:
                     HandleSphere(
-                        circle.Position,
+                        pos,
                         circle.SRadius,
                         control.bodies[i].drawColor, 
                         m
@@ -52,7 +52,7 @@ public class worldScript : MonoBehaviour
                     break;
                 case BBoxSphere sphere:
                     HandleSphere(
-                        sphere.Position,
+                        pos,
                         SphericalUtils.EuclideanToSphericalDistance(sphere.Radius), 
                         control.bodies[i].drawColor,
                         m
@@ -60,7 +60,7 @@ public class worldScript : MonoBehaviour
                     break;
                 case SOBR sobr:
                     HandleRectangle(
-                        sobr.Position,
+                        pos,
                         sobr.Right,
                         sobr.Up,
                         sobr.Size.x,
@@ -71,7 +71,7 @@ public class worldScript : MonoBehaviour
                     break;
                 case OBBox obb:
                     HandleRectangle(
-                        obb.Position,
+                        pos,
                         obb.Right,
                         obb.Up,
                         obb.Size.x,

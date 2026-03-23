@@ -28,6 +28,7 @@ public interface IBoundingVolume
 public interface IItem
 {
     IBoundingVolume BBox { get; }
+    public string BodyType { get; }
     public int Id { get; }
 }
 

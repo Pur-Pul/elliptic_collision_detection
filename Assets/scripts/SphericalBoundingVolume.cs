@@ -52,6 +52,7 @@ public class SBV : IBoundingVolume //Spherical Bounding Volume
 
     public RuntimeRecord Record { get; set; }
     public ISimpleBoundingVolume Simple { get; set; }
+    public Vector3 SphereNormal { get; set; }
     public virtual Vector3 Position 
     {
         get => position;
@@ -59,6 +60,7 @@ public class SBV : IBoundingVolume //Spherical Bounding Volume
         {
             Simple.Position = value;
             position = value;
+            SphereNormal = value;
         }
     }
     public virtual Vector3 Size {
@@ -136,24 +138,25 @@ public class SBC : SBV //Spherical Bounding Circle
         get => base.Position;
         set
         {
-            base.Position = value;
-            Simple.Position = value * (1 - sagitta/2);
+            base.Position = value * (1 - sagitta);
+            Simple.Position = value* (1 - sagitta*0.5f);
+            SphereNormal = value;
         }
     }
+
     public override Vector3 Size { 
         get => base.Size;
         set
         {
             if (base.Size.x == value.x) { return; }
-            float cordSqr = value.x * value.x;
-            sagitta = 1 - Mathf.Sqrt(1 - 0.25f * cordSqr);
+            sagitta = SphericalUtils.CalculateSagitta(value.x);
             Radius = value.x/2f;
             base.Size = new Vector3(value.x, value.x, sagitta);
         }
     }
     public override bool CheckSBC(SBC other)
     {
-        float sDist = SphericalUtils.SphericalDistance(Position, other.Position);
+        float sDist = SphericalUtils.SphericalDistance(SphereNormal, other.SphereNormal);
         float sRadii = SphericalUtils.EuclideanToSphericalDistance(Radius + other.Radius);
         return sRadii > sDist;
     }
@@ -171,7 +174,7 @@ public class SOBR : SBV //Spherical Oriented Bounding Volume
         {
             if (base.Size.x == value.x && base.Size.y == value.y) { return; }
             float cordSqr = value.x * value.x + value.y * value.y;
-            sagitta = 1 - Mathf.Sqrt(1 - 0.25f * cordSqr);
+            sagitta = SphericalUtils.CalculateSagitta(cordSqr, true);
             Vector3 newSize = new(value.x, value.y, sagitta);
             base.Size = newSize;
             halfSize = newSize/2f;
@@ -184,6 +187,7 @@ public class SOBR : SBV //Spherical Oriented Bounding Volume
         {
             base.Position = value * (1 - sagitta);
             Simple.Position = value* (1 - sagitta*0.5f);
+            SphereNormal = value;
         }
     }
 
@@ -219,19 +223,18 @@ public class SOBR : SBV //Spherical Oriented Bounding Volume
 
     public override bool CheckSBC(SBC circle) //https://gamedev.stackexchange.com/questions/163873/separating-axis-theorem-obr-vs-circle
     {
-        Vector3 obrToCircle = circle.Position - Position;
+        Vector3 obbToSphere = circle.Position - Position;
         Vector3 localCirclePos = new (
-            Vector3.Dot(obrToCircle, Right),
-            Vector3.Dot(obrToCircle, Up),
+            Vector3.Dot(obbToSphere, Right),
+            Vector3.Dot(obbToSphere, Up),
             0
         );
-
-        Vector3 closestPointToLocalCircle = new(
-            Mathf.Clamp(localCirclePos.x, -HalfSize.x, HalfSize.x),
-            Mathf.Clamp(localCirclePos.y, -HalfSize.y, HalfSize.y),
-            0
-        );
-
-        return (closestPointToLocalCircle - localCirclePos).sqrMagnitude < circle.Radius * circle.Radius;
+        Vector3 closestPointToCircle =
+            Position
+            + Right * Mathf.Clamp(localCirclePos.x, -HalfSize.x, HalfSize.x)
+            + Up * Mathf.Clamp(localCirclePos.y, -HalfSize.y, HalfSize.y);
+        //return Vector3.Dot(closestPointToCircle, closestPointToCircle) < 1f;
+            //|| SphericalUtils.SphericalDistance(closestPointToCircle, circle.SphereNormal) < circle.SRadius;
+        return (closestPointToCircle - circle.Position).sqrMagnitude < circle.Radius * circle.Radius;
     }
 }

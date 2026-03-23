@@ -64,4 +64,10 @@ class SphericalUtils {
         float d = (dist*dist - 2) / (-2);
         return (d - 1) / (-2f);
     }
+
+    public static float CalculateSagitta(float coord, bool squared=false)
+    {
+        float x = 0.25f * (squared ? coord : coord * coord);
+        return 1f - Mathf.Sqrt(1f - x);
+    }
 }

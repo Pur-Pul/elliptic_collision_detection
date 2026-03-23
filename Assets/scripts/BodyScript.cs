@@ -16,6 +16,9 @@ public class BodyScript : MonoBehaviour, IItem
     public int Id { get => sequence.Id; }
     private MeshRenderer meshRenderer;
     private MeshFilter meshFilter;
+    public string BodyType {
+        get => sequence.BodyType;
+    }
     void Awake()
     {
         Renderer r = GetComponent<Renderer>();
@@ -108,6 +111,16 @@ public class BodyScript : MonoBehaviour, IItem
     public void CheckForCollision(int step)
     {
         List<IItem> collisions = control.collisionTree.CheckCollisions(this);
+        /*
+        if (sequence.BodyType == "sphere")
+        {
+            foreach (IItem collider in collisions)
+            {
+                Debug.Log(collider.BodyType);
+            }
+        }
+        */
+        
         if (collisions.Count > 0)
         {
             bodyMat.SetColor("_BaseColor", Color.red);
@@ -119,6 +132,7 @@ public class BodyScript : MonoBehaviour, IItem
         }
         if (control.CollisionList != null)
         {
+            //Debug.Log(control.CollisionList.method);
             control.CollisionList.Collision(Id, collisions.Select(item => item.Id).ToList(), step);
         } 
     }

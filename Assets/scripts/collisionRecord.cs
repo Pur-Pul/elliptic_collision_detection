@@ -78,12 +78,15 @@ public class CollisionRecord
         int intersect = 0;
         int basePositives = 0;
         int artifactPositives = 0;
-        foreach (int collisionId in artifact.collisions.Keys)
+
+        List<long> allKeys = baseline.collisions.Keys.Union(artifact.collisions.Keys).ToList();
+
+        foreach (long collisionId in allKeys)
         {
-            List<(int, int)> baseList = baseline.collisions.TryGetValue(collisionId, out var list)
-                ? list
-                : new List<(int,int)>();
-            List<(int, int)> artifactList = artifact.collisions[collisionId];
+            List<(int, int)> baseList;
+            List<(int, int)> artifactList;
+            if (!baseline.collisions.TryGetValue(collisionId, out baseList)) { baseList = new(); }
+            if (!artifact.collisions.TryGetValue(collisionId, out artifactList)) { artifactList = new(); }
 
             // Count the number of reported positives in both lists.
             foreach ((int start, int end) in artifactList)
