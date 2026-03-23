@@ -204,14 +204,16 @@ public class ControlScript : MonoBehaviour
 
     public void SetMethod()
     {
-        float _tree_width = 2*ellipseRadius + 0.5f;
+        float _tree_width = 2*ellipseRadius;
         switch (MethodDropdown.value)
         {
             case 0:
+                _tree_width = 2*ellipseRadius + 0.5f;
                 collisionTree = new Octree<BodyScript>();
                 collisionTree.Size = new Vector3(_tree_width,_tree_width,_tree_width);
                 break;
             case 1:
+            _tree_width = 2*ellipseRadius + 0.1f;
                 collisionTree = new Octree<BodyScript>();
                 collisionTree.Size = new Vector3(_tree_width,_tree_width,_tree_width);
                 break;

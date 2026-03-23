@@ -147,9 +147,9 @@ public class AABB : ISimpleBoundingVolume
     public virtual bool Intersects(AABB other)
     {
         return !(
-            MaxX <= other.MinX || MinX >= other.MaxX ||
-            MaxY <= other.MinY || MinY >= other.MaxY ||
-            MaxZ <= other.MinZ || MinZ >= other.MaxZ
+            MaxX < other.MinX || MinX > other.MaxX ||
+            MaxY < other.MinY || MinY > other.MaxY ||
+            MaxZ < other.MinZ || MinZ > other.MaxZ
 		);
     }
 

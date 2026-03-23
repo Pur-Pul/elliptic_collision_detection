@@ -139,7 +139,6 @@ public class SBC : SBV //Spherical Bounding Circle
         set
         {
             base.Position = value * (1 - sagitta);
-            Simple.Position = value* (1 - sagitta*0.5f);
             SphereNormal = value;
         }
     }
@@ -186,7 +185,6 @@ public class SOBR : SBV //Spherical Oriented Bounding Volume
         set
         {
             base.Position = value * (1 - sagitta);
-            Simple.Position = value* (1 - sagitta*0.5f);
             SphereNormal = value;
         }
     }
@@ -205,12 +203,13 @@ public class SOBR : SBV //Spherical Oriented Bounding Volume
 
     //https://dev.to/pratyush_mohanty_6b8f2749/the-math-behind-bounding-box-collision-detection-aabb-vs-obbseparate-axis-theorem-1gdn
     public bool SAT(SOBR obr)
-    { 
+    {
         Vector3 toVector = obr.Position - Position;
         Vector3[] axes = { Right, Up, obr.Right, obr.Up};
 
-        foreach (var axis in axes)
+        for (int i = 0; i < 4; i++)
         {
+            Vector3 axis = axes[i];
             float rA = Project(axis);
             float rB = obr.Project(axis);
             float distance = MathF.Abs(Vector3.Dot(toVector, axis));
@@ -223,18 +222,18 @@ public class SOBR : SBV //Spherical Oriented Bounding Volume
 
     public override bool CheckSBC(SBC circle) //https://gamedev.stackexchange.com/questions/163873/separating-axis-theorem-obr-vs-circle
     {
-        Vector3 obbToSphere = circle.Position - Position;
         Vector3 localCirclePos = new (
-            Vector3.Dot(obbToSphere, Right),
-            Vector3.Dot(obbToSphere, Up),
+            Vector3.Dot(circle.Position, Right),
+            Vector3.Dot(circle.Position, Up),
             0
         );
+
         Vector3 closestPointToCircle =
             Position
             + Right * Mathf.Clamp(localCirclePos.x, -HalfSize.x, HalfSize.x)
-            + Up * Mathf.Clamp(localCirclePos.y, -HalfSize.y, HalfSize.y);
-        //return Vector3.Dot(closestPointToCircle, closestPointToCircle) < 1f;
-            //|| SphericalUtils.SphericalDistance(closestPointToCircle, circle.SphereNormal) < circle.SRadius;
-        return (closestPointToCircle - circle.Position).sqrMagnitude < circle.Radius * circle.Radius;
+            + Up * Mathf.Clamp(localCirclePos.y, -HalfSize.y, HalfSize.y); 
+
+
+        return (closestPointToCircle - circle.Position).magnitude < circle.Radius;
     }
 }
