@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 class VectorUtils
@@ -33,7 +34,7 @@ class SphericalUtils {
         // dot product is in the range (-1, 1)
         // distance score needs to be in the range (0, 1) where 0 is close and 1 is opposite sides of the sphere.
         float d = Vector3.Dot(a, b);
-        return (d - 1) / (-2f);
+        return (1 - d) / 2f;
     }
 
     public static float EuclideanToSphericalDistance(float dist)
@@ -62,7 +63,7 @@ class SphericalUtils {
         */
 
         float d = (dist*dist - 2) / (-2);
-        return (d - 1) / (-2f);
+        return (1 - d) / 2f;
     }
 
     public static float CalculateSagitta(float coord, bool squared=false)

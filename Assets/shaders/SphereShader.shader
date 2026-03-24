@@ -75,7 +75,8 @@ Shader "Custom/sphere"
                     float radius = _Bodies[i][1].x;
                     float4 color = _Bodies[i][2];
                     float d = dot(normal, position);
-                    if (radius >= (d - 1.0f)/(-2.0f))
+                    
+                    if (radius >= (1.0f - d) / 2.0f)
                     {
                         fragColor *= color;
                     }

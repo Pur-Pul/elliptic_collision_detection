@@ -141,6 +141,8 @@ public class BBoxSphere : BBox
     }
     public override void UpdateSimpleSize () {}
     public override bool CheckSphere(BBoxSphere sphere)
+    // This needs to be changed as Euclidean distance between spheres is not a good representation of distance between circles on a sphere.
+    // The angle between the circle centers and their radii can be calculated instead. This is fine for the baseline and should be improved in the artifact.
     {
         float centerDist = Radius + sphere.Radius;
         return (Position - sphere.Position).sqrMagnitude < centerDist * centerDist;

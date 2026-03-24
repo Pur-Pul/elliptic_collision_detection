@@ -122,18 +122,9 @@ public class SBV : IBoundingVolume //Spherical Bounding Volume
 
 public class SBC : SBV //Spherical Bounding Circle
 {
-    private float sRadius;
-    private float radius;
     private float sagitta;
-    public float Radius {
-        get => radius;
-        set
-        {
-            radius = value;
-            sRadius = SphericalUtils.EuclideanToSphericalDistance(value);
-        }
-    }
-    public float SRadius { get => sRadius; }
+    public float Radius { get; set; }
+    public float SRadius { get; set; }
     public override Vector3 Position {
         get => base.Position;
         set
@@ -150,13 +141,18 @@ public class SBC : SBV //Spherical Bounding Circle
             if (base.Size.x == value.x) { return; }
             sagitta = SphericalUtils.CalculateSagitta(value.x);
             Radius = value.x/2f;
+            SRadius = SphericalUtils.EuclideanToSphericalDistance(Radius);
             base.Size = new Vector3(value.x, value.x, sagitta);
         }
     }
-    public override bool CheckSBC(SBC other)
+    public override bool CheckSBC(SBC other) 
+    // This needs to be changed. The dot product is not a linear representation of spherical distance.
+    // Acos can be used on the dot product to get the angle, which is a linear representation, but a slow way of getting it.
+    // Perhaps the sum of the circle radii can be calculated with angles and converted back to dot prodcut representation with cosine. 
+    // This could then be cached, so that it would only need to be calculated once per pair.
     {
         float sDist = SphericalUtils.SphericalDistance(SphereNormal, other.SphereNormal);
-        float sRadii = SphericalUtils.EuclideanToSphericalDistance(Radius + other.Radius);
+        float sRadii = SRadius + other.SRadius;
         return sRadii > sDist;
     }
     public override bool CheckOBR(SOBR obr) => obr.CheckSBC(this);
