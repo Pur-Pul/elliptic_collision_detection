@@ -1,11 +1,17 @@
 using UnityEngine;
 using System;
 using System.Diagnostics;
-using Unity.Mathematics;
-using NUnit.Framework.Internal.Execution;
 
 public class BBox : IBoundingVolume
 {
+    private int _id;
+    public int Id { get => _id; }
+
+    public BBox (int id)
+    {
+        _id = id;
+    }
+
     private Vector3 position;
     private Vector3 size;
     private Vector3 right;
@@ -121,6 +127,7 @@ public class BBox : IBoundingVolume
 
 public class BBoxSphere : BBox
 {
+    public BBoxSphere(int id) : base(id) {}
     private float radius;
     public float Radius2 { get; set; }
     public float Radius {
@@ -152,6 +159,7 @@ public class BBoxSphere : BBox
 
 public class OBBox : BBox
 {
+    public OBBox(int id) : base(id) {}
     private float sagitta;
     public override Vector3 Size
     {

@@ -43,12 +43,12 @@ public class BodyScript : MonoBehaviour, IItem
                 {
                     case "sphere":
                         meshFilter.mesh = GameObject.CreatePrimitive(PrimitiveType.Sphere).GetComponent<MeshFilter>().sharedMesh;
-                        BBox = new BBoxSphere();
+                        BBox = new BBoxSphere(Id);
                         break;
                     case "obb":
                         
                         meshFilter.mesh = GameObject.CreatePrimitive(PrimitiveType.Cube).GetComponent<MeshFilter>().sharedMesh;
-                        BBox = new OBBox();
+                        BBox = new OBBox(Id);
                         break;
                 }
                 break;
@@ -57,10 +57,10 @@ public class BodyScript : MonoBehaviour, IItem
                 switch (sequence.BodyType)
                 {
                     case "sphere":
-                        BBox = new SBC();
+                        BBox = new SBC(Id);
                         break;
                     case "obb":
-                        BBox = new SOBR();
+                        BBox = new SOBR(Id);
                         break;
                 }
                 break;

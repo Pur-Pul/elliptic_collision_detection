@@ -14,6 +14,7 @@ public interface ISimpleBoundingVolume
 
 public interface IBoundingVolume
 {
+    public int Id { get; }
     public Vector3 Position { get; set; }
     public RuntimeRecord Record { get; set; }
     public Vector3 Size { get; set; }

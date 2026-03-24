@@ -1,4 +1,3 @@
-using System;
 using UnityEngine;
 
 class VectorUtils
@@ -37,7 +36,7 @@ class SphericalUtils {
         return (1 - d) / 2f;
     }
 
-    public static float EuclideanToSphericalDistance(float dist)
+    public static float ChordToDot(float chord)
     {
         /* 
         law of cosines 
@@ -62,8 +61,23 @@ class SphericalUtils {
         where cos(C) equals the dot product between points A and B.
         */
 
-        float d = (dist*dist - 2) / (-2);
-        return (1 - d) / 2f;
+        return (chord*chord - 2) / (-2);
+    }
+
+    public static float ChordToSphericalDistance(float chord)
+    {
+        return (1 - ChordToDot(chord)) / 2f;
+    }
+
+    public static float ChordToAngle(float chord)
+    {
+        // The dot product between two unit vectors equals cosine of the angle between them.
+        return Mathf.Acos(ChordToDot(chord));
+    }
+
+    public static float AngleToSphericalDistance(float angle)
+    {
+        return (1 - Mathf.Cos(angle)) / 2f;
     }
 
     public static float CalculateSagitta(float coord, bool squared=false)

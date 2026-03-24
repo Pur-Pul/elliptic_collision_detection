@@ -4,6 +4,14 @@ using System.Diagnostics;
 
 public class SBV : IBoundingVolume //Spherical Bounding Volume
 {
+    private int _id;
+    public int Id { get => _id; }
+
+    public SBV (int id)
+    {
+        _id = id;
+    }
+
     private Vector3 right;
     private Vector3 up;
     private Vector3 forward;
@@ -122,8 +130,22 @@ public class SBV : IBoundingVolume //Spherical Bounding Volume
 
 public class SBC : SBV //Spherical Bounding Circle
 {
+    public SBC(int id) : base(id) {}
     private float sagitta;
     public float Radius { get; set; }
+    public float radiusAngle;
+    public float RadiusAngle {
+        get => radiusAngle;
+        set
+        {
+            radiusAngle = value;
+            SinRadius = Mathf.Sin(value);
+            CosRadius = Mathf.Cos(value);
+        }
+    }
+    public float SinRadius { get; set; }
+    public float CosRadius { get; set; }
+
     public float SRadius { get; set; }
     public override Vector3 Position {
         get => base.Position;
@@ -141,18 +163,24 @@ public class SBC : SBV //Spherical Bounding Circle
             if (base.Size.x == value.x) { return; }
             sagitta = SphericalUtils.CalculateSagitta(value.x);
             Radius = value.x/2f;
-            SRadius = SphericalUtils.EuclideanToSphericalDistance(Radius);
+            RadiusAngle = SphericalUtils.ChordToAngle(value.x) / 2f;
+            SRadius = SphericalUtils.AngleToSphericalDistance(RadiusAngle);
+            
             base.Size = new Vector3(value.x, value.x, sagitta);
         }
     }
-    public override bool CheckSBC(SBC other) 
-    // This needs to be changed. The dot product is not a linear representation of spherical distance.
-    // Acos can be used on the dot product to get the angle, which is a linear representation, but a slow way of getting it.
-    // Perhaps the sum of the circle radii can be calculated with angles and converted back to dot prodcut representation with cosine. 
-    // This could then be cached, so that it would only need to be calculated once per pair.
+    public override bool CheckSBC(SBC other)
+    // The dot product of two positions on a sphere is not a linear representation of spherical distance between them, but does contain the information.
+    // Instead of adding the dot products together, adding the angles produces the actual combined spherical distance.
+    // Trigonometric functions are expensive, so to avoid having to use cosinus during runtime, the cosine addition formula can be used to add the angles.
+    // cos(θ_1 + θ_2) = cos(θ_1)​ * cos(θ_2) - sin(θ1_) * ​sin(θ_2)
+    // The cosine of the combined angles are then normalized into the range [0, 1] as follows: (1 - cos(θ_1 + θ_2)) / 2
+    // The cosine and sine of the spherical distance representaion of the radii are precalculated for all circles and stored in the properties CosRadius and SinRadius.​
+    // This approach is more accurate than calculating the Euclidean distance between sphere representations of the circles but slightly slower.
     {
         float sDist = SphericalUtils.SphericalDistance(SphereNormal, other.SphereNormal);
-        float sRadii = SRadius + other.SRadius;
+        float sRadii = (1 - (CosRadius * other.CosRadius - SinRadius * other.SinRadius)) / 2f;
+
         return sRadii > sDist;
     }
     public override bool CheckOBR(SOBR obr) => obr.CheckSBC(this);
@@ -161,6 +189,7 @@ public class SBC : SBV //Spherical Bounding Circle
 
 public class SOBR : SBV //Spherical Oriented Bounding Volume
 {
+    public SOBR(int id) : base(id) {}
     private float sagitta;
     public override Vector3 Size
     {
