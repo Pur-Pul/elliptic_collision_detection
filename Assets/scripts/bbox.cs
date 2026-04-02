@@ -128,33 +128,42 @@ public class BBox : IBoundingVolume
 public class BBoxSphere : BBox
 {
     public BBoxSphere(int id) : base(id) {}
-    private float radius;
-    public float Radius2 { get; set; }
-    public float Radius {
-        get => radius;
-        set {
-            radius = value;
-            Radius2 = Radius*Radius;
-        } 
-    }
+    private float sagitta;
+    public float RadAngle { get; set; }
+    public float Radius { get; set; }
     public override Vector3 Size
     {
         get => base.Size;
         set
         {
-            base.Size = new Vector3(value.x, value.x, value.x);
+            float chord = value.x;
+            base.Size = new Vector3(chord, chord, chord);
+            sagitta = SphericalUtils.CalculateSagitta(value.x);
             Radius = value.x/2f;
+            RadAngle = SphericalUtils.ChordToAngle(value.x)/2;
+        }
+    }
+    public override Vector3 Position
+    {
+        get => base.Position;
+        set
+        {
+            base.Position = value * (1 - sagitta*0.5f);
         }
     }
     public override void UpdateSimpleSize () {}
     public override bool CheckSphere(BBoxSphere sphere)
-    // This needs to be changed as Euclidean distance between spheres is not a good representation of distance between circles on a sphere.
-    // The angle between the circle centers and their radii can be calculated instead. This is fine for the baseline and should be improved in the artifact.
+    // The radii of the spheres are converted into angles, which are added together and comared to the angle between the sphere centers.
     {
-        float centerDist = Radius + sphere.Radius;
-        return (Position - sphere.Position).sqrMagnitude < centerDist * centerDist;
+        float centerAngle = Vector3.Angle(Position, sphere.Position) * Mathf.Deg2Rad;
+        return centerAngle < RadAngle + sphere.RadAngle;
     }
     public override bool CheckOBB(OBBox obb) => obb.CheckSphere(this);
+
+    public float ProjectCylinder(Vector3 axis)
+    {
+        return Radius * Vector3.Cross(axis, Forward).magnitude + sagitta/2 * Mathf.Abs(Vector3.Dot(axis, Forward));
+    }
 }
 
 public class OBBox : BBox
@@ -242,14 +251,14 @@ public class OBBox : BBox
         return SAT(obb);
     }
 
-    public override bool CheckSphere(BBoxSphere sphere) //https://gamedev.stackexchange.com/questions/163873/separating-axis-theorem-obb-vs-sphere
+    public Vector3 ClosestPoint (Vector3 point)
     {
-        Vector3 obbToSphere = sphere.Position - Position;
+        Vector3 obbToPoint = point - Position;
 
         Vector3 local_pos = new (
-            Vector3.Dot(obbToSphere, Right),
-            Vector3.Dot(obbToSphere, Up),
-            Vector3.Dot(obbToSphere, Forward)
+            Vector3.Dot(obbToPoint, Right),
+            Vector3.Dot(obbToPoint, Up),
+            Vector3.Dot(obbToPoint, Forward)
         );
 
         Vector3 closestPointLocal = new(
@@ -258,6 +267,35 @@ public class OBBox : BBox
             Mathf.Clamp(local_pos.z, -Size.z/2, Size.z/2)
         );
 
-        return (closestPointLocal - local_pos).sqrMagnitude < sphere.Radius * sphere.Radius;
+        return Position + closestPointLocal;
+    }
+
+    public override bool CheckSphere(BBoxSphere sphere) //https://gamedev.stackexchange.com/questions/163873/separating-axis-theorem-obb-vs-sphere
+    {
+        Vector3 toVector = Position - sphere.Position;
+        Vector3[] axesOBB = { Right, Up, Forward };
+        float distance;
+
+        for (int i = 0; i < 3; i++)
+        {
+            Vector3 axis = axesOBB[i];
+            distance = MathF.Abs(Vector3.Dot(toVector, axis));
+            if (distance > halfSize[i] + sphere.ProjectCylinder(axis)) return false;
+
+            Vector3 crossAxis = Vector3.Cross(axis, sphere.Forward).normalized;
+            distance = MathF.Abs(Vector3.Dot(toVector, crossAxis));
+            if (distance > Project(crossAxis) + sphere.ProjectCylinder(crossAxis)) return false;
+        }
+
+        Vector3 closestAxis = (ClosestPoint(sphere.Position) - Position).normalized;
+
+        //Vector3 curvedSurfaceNormal = (
+        //    sphere.Right * Vector3.Dot(toVector, sphere.Right)
+        //    + sphere.Up * Vector3.Dot(toVector, sphere.Up)
+        //).normalized;
+        distance = MathF.Abs(Vector3.Dot(toVector, closestAxis));
+        if (distance > Project(closestAxis) + sphere.ProjectCylinder(closestAxis)) return false;
+
+        return true;
     }
 }
