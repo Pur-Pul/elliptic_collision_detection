@@ -287,14 +287,16 @@ public class OBBox : BBox
             if (distance > Project(crossAxis) + sphere.ProjectCylinder(crossAxis)) return false;
         }
 
-        Vector3 closestAxis = (ClosestPoint(sphere.Position) - Position).normalized;
+        Vector3 toClosestPoint = ClosestPoint(sphere.Position) - Position;
 
-        //Vector3 curvedSurfaceNormal = (
-        //    sphere.Right * Vector3.Dot(toVector, sphere.Right)
-        //    + sphere.Up * Vector3.Dot(toVector, sphere.Up)
-        //).normalized;
-        distance = MathF.Abs(Vector3.Dot(toVector, closestAxis));
-        if (distance > Project(closestAxis) + sphere.ProjectCylinder(closestAxis)) return false;
+        Vector3 relevantCylinderNormal = new Vector3(
+            Vector3.Dot(toClosestPoint, Right),
+            Vector3.Dot(toClosestPoint, Up),
+            0f
+        ).normalized;
+
+        distance = MathF.Abs(Vector3.Dot(toVector, relevantCylinderNormal));
+        if (distance > Project(relevantCylinderNormal) + sphere.ProjectCylinder(relevantCylinderNormal)) return false;
 
         return true;
     }
