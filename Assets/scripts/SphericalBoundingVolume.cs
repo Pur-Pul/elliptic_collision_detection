@@ -173,7 +173,7 @@ public class SBC : SBV //Spherical Bounding Circle
     // The dot product of two positions on a sphere is not a linear representation of spherical distance between them, but does contain the information.
     // Instead of adding the dot products together, adding the angles produces the actual combined spherical distance.
     // Trigonometric functions are expensive, so to avoid having to use cosinus during runtime, the cosine addition formula can be used to add the angles.
-    // cos(θ_1 + θ_2) = cos(θ_1)​ * cos(θ_2) - sin(θ1_) * ​sin(θ_2)
+    // cos(θ_1 + θ_2) = cos(θ_1)​ * cos(θ_2) - sin(θ_1) * ​sin(θ_2)
     // The cosine of the combined angles are then normalized into the range [0, 1] as follows: (1 - cos(θ_1 + θ_2)) / 2
     // The cosine and sine of the spherical distance representaion of the radii are precalculated for all circles and stored in the properties CosRadius and SinRadius.​
     // This approach is more accurate than calculating the Euclidean distance between sphere representations of the circles but slightly slower.
@@ -209,7 +209,7 @@ public class SOBR : SBV //Spherical Oriented Bounding Volume
         get => base.Position;
         set
         {
-            base.Position = value * (1 - sagitta);
+            base.Position = value * (1 - sagitta*0.5f);
             SphereNormal = value;
         }
     }
@@ -223,16 +223,19 @@ public class SOBR : SBV //Spherical Oriented Bounding Volume
     public float Project(Vector3 axis)
     {
         return MathF.Abs(Vector3.Dot(HalfSize.x * Right, axis))
-            + MathF.Abs(Vector3.Dot(HalfSize.y * Up, axis));
+            + MathF.Abs(Vector3.Dot(HalfSize.y * Up, axis))
+            + MathF.Abs(Vector3.Dot(HalfSize.z * Forward, axis));
     }
 
     //https://dev.to/pratyush_mohanty_6b8f2749/the-math-behind-bounding-box-collision-detection-aabb-vs-obbseparate-axis-theorem-1gdn
     public bool SAT(SOBR obr)
     {
+        // Not checking edge-edge separation reduces the number of axes to check by nine.
+        // This does mean some false positives compared to the baseline, since there still are a small number of possible edge-edge and corner-edge collisions.
         Vector3 toVector = obr.Position - Position;
-        Vector3[] axes = { Right, Up, obr.Right, obr.Up};
+        Vector3[] axes = { Right, Up, Forward, obr.Right, obr.Up, obr.Forward };
 
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < 6; i++)
         {
             Vector3 axis = axes[i];
             float rA = Project(axis);
