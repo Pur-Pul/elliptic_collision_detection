@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 class VectorUtils
@@ -23,6 +24,48 @@ class VectorUtils
         _vec = Vector3.Cross(_vec, vec);
         _vec.Normalize();
         return _vec;
+    }
+
+    public static (Quaternion, Quaternion) SwingTwistDecomposition(Quaternion q, Vector3 twistAxis)
+    {
+        // https://arxiv.org/pdf/1506.05481 page 3
+        // The original quaternion is defined like: q = [w, v]
+        // u_t is a unit vector representing the twist axis.
+        // q_p = [w, (v · u_t)u_t]
+        // q_t = q_p/|q_p|
+
+        float d = Vector3.Dot(new Vector3(q.x, q.y, q.z), twistAxis);
+		Quaternion twist = Quaternion.identity;
+		Vector3 proj = twistAxis * d;
+
+		if (d > 1e-6f) {
+			twist.w = q.w;
+            twist.x = proj.x;
+            twist.y = proj.y;
+            twist.z = proj.z;
+            twist = twist.normalized;
+		} else if (d < -1e-6f)
+        {
+            twist.w = q.w;
+            twist.x = -proj.x;
+            twist.y = -proj.y;
+            twist.z = -proj.z;
+            twist = twist.normalized;
+        }
+		Quaternion swing = q * Quaternion.Inverse(twist); 
+		return (swing, twist);
+    }
+
+    public static float TwistCosineInverseSquare(Quaternion q, Vector3 twistAxis)
+    {
+        float d = Vector3.Dot(new Vector3(q.x, q.y, q.z), twistAxis);
+        float cosine = 1;
+		Vector3 proj = twistAxis * d;
+        if (Mathf.Abs(d) > 1e-6f) {
+            float sqrTwistMagnitude = q.w*q.w + proj.sqrMagnitude;
+			cosine = q.w / sqrTwistMagnitude;
+		}
+        return cosine;
     }
 }
 

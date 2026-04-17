@@ -1,6 +1,7 @@
 using UnityEngine;
 using System;
 using System.Diagnostics;
+using Unity.Mathematics;
 
 public class SBV : IBoundingVolume //Spherical Bounding Volume
 {
@@ -184,6 +185,11 @@ public class SBC : SBV //Spherical Bounding Circle
         return sRadii > sDist;
     }
     public override bool CheckOBR(SOBR obr) => obr.CheckSBC(this);
+
+    public float ProjectCylinder(Vector3 axis)
+    {
+        return Radius * Vector3.Cross(axis, Forward).magnitude + sagitta/2 * Mathf.Abs(Vector3.Dot(axis, Forward));
+    }
 }
 
 
@@ -243,13 +249,136 @@ public class SOBR : SBV //Spherical Oriented Bounding Volume
             float distance = MathF.Abs(Vector3.Dot(toVector, axis));
             if (distance > rA + rB)  { return false; }
         }
+
+        /*
+        Vector3[] edgeAxes = { 
+            Vector3.Cross(Right, obr.Right).normalized,
+            Vector3.Cross(Up, obr.Right).normalized,
+            Vector3.Cross(Right, obr.Up).normalized,
+            Vector3.Cross(Up, obr.Up).normalized
+        };
+
+        for (int i = 0; i < 4; i++)
+        {
+            Vector3 axis = edgeAxes[i];
+            float rA = Project(axis);
+            float rB = obr.Project(axis);
+            float distance = MathF.Abs(Vector3.Dot(toVector, axis));
+            if (distance > rA + rB)  { return false; }
+        }
+        */
         return true;
     }
 
-    public override bool CheckOBR (SOBR obr) { return SAT(obr); }
+    public float SphericalProject(Vector3 axis)
+    {
+        float rightAng = SphericalUtils.ChordToAngle(halfSize.x) * Mathf.Rad2Deg;
+        float upAng = SphericalUtils.ChordToAngle(halfSize.y) * Mathf.Rad2Deg;
+
+        Quaternion rightQuat = Quaternion.AngleAxis(rightAng, Up);
+        Quaternion leftQuat = Quaternion.Inverse(rightQuat);
+        Quaternion upQuat = Quaternion.AngleAxis(upAng, Right);
+        Quaternion downQuat = Quaternion.Inverse(upQuat);
+
+        quaternion trQuat = rightQuat * upQuat;
+        quaternion tlQuat = leftQuat * upQuat;
+        quaternion brQuat = rightQuat * downQuat;
+        quaternion blQuat = leftQuat * downQuat;
+
+        //float trProj = VectorUtils.TwistCosineInverseSquare(trQuat, axis);
+        //float tlProj = VectorUtils.TwistCosineInverseSquare(tlQuat, axis);
+        //float brProj = VectorUtils.TwistCosineInverseSquare(brQuat, axis);
+        //float blProj = VectorUtils.TwistCosineInverseSquare(blQuat, axis);
+
+        float ang1;
+        float ang2;
+        float ang3;
+        float ang4;
+
+        Vector3 _axis;
+
+		VectorUtils.SwingTwistDecomposition(trQuat, axis).Item2.ToAngleAxis(out ang1, out _axis);
+        VectorUtils.SwingTwistDecomposition(tlQuat, axis).Item2.ToAngleAxis(out ang2, out _axis);
+		VectorUtils.SwingTwistDecomposition(brQuat, axis).Item2.ToAngleAxis(out ang3, out _axis);
+        VectorUtils.SwingTwistDecomposition(blQuat, axis).Item2.ToAngleAxis(out ang4, out _axis);
+
+        return Mathf.Max(ang1, Mathf.Max(ang2, Mathf.Max(ang3, ang4)));
+    }
+
+    public bool SphericalSAT(SOBR obr)
+    {
+        Vector3[] axes = { Right, Up, obr.Right, obr.Up };
+
+        Vector3 toAxis = Vector3.Cross(Position, obr.Position).normalized;
+        float toAngle = Vector3.Angle(Position, obr.Position);
+        Quaternion toQuat = Quaternion.AngleAxis(toAngle, toAxis);
+
+        for (int i = 0; i < 4; i++)
+        {
+            Vector3 axis = axes[i];
+            float rA = SphericalProject(axis);
+            float rB = obr.SphericalProject(axis);
+            //float angDist = VectorUtils.TwistCosineInverseSquare(toQuat, axis);
+            float angDist;
+            Vector3 _axis;
+            VectorUtils.SwingTwistDecomposition(toQuat, axis).Item2.ToAngleAxis(out angDist, out _axis);
+
+            if (angDist > rA + rB) return false;
+        }
+
+        return true;
+    }
+
+    public override bool CheckOBR (SOBR obr) { return SphericalSAT(obr); }
+
+    public Vector3 ClosestPoint (Vector3 point)
+    {
+        Vector3 obbToPoint = point - Position;
+
+        Vector3 local_pos = new (
+            Vector3.Dot(obbToPoint, Right),
+            Vector3.Dot(obbToPoint, Up),
+            Vector3.Dot(obbToPoint, Forward)
+        );
+
+        Vector3 closestPointLocal = new(
+            Mathf.Clamp(local_pos.x, -Size.x/2, Size.x/2),
+            Mathf.Clamp(local_pos.y, -Size.y/2, Size.y/2),
+            Mathf.Clamp(local_pos.z, -Size.z/2, Size.z/2)
+        );
+
+        return Position + closestPointLocal;
+    }
+
 
     public override bool CheckSBC(SBC circle) //https://gamedev.stackexchange.com/questions/163873/separating-axis-theorem-obr-vs-circle
     {
+        Vector3 toVector = Position - circle.Position;
+        Vector3[] axesOBB = { Right, Up, Forward };
+        float distance;
+
+        for (int i = 0; i < 3; i++)
+        {
+            Vector3 axis = axesOBB[i];
+            distance = MathF.Abs(Vector3.Dot(toVector, axis));
+            if (distance > halfSize[i] + circle.ProjectCylinder(axis)) return false;
+
+            Vector3 crossAxis = Vector3.Cross(axis, circle.Forward).normalized;
+            distance = MathF.Abs(Vector3.Dot(toVector, crossAxis));
+            if (distance > Project(crossAxis) + circle.ProjectCylinder(crossAxis)) return false;
+        }
+
+        Vector3 toClosestPoint = ClosestPoint(circle.Position) - Position;
+
+        Vector3 relevantCylinderNormal = new Vector3(
+            Vector3.Dot(toClosestPoint, Right),
+            Vector3.Dot(toClosestPoint, Up),
+            0f
+        ).normalized;
+
+        distance = MathF.Abs(Vector3.Dot(toVector, relevantCylinderNormal));
+        if (distance > Project(relevantCylinderNormal) + circle.ProjectCylinder(relevantCylinderNormal)) return false;
+
         Vector3 localCirclePos = new (
             Vector3.Dot(circle.Position, Right),
             Vector3.Dot(circle.Position, Up),

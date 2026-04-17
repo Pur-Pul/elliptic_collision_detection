@@ -208,6 +208,7 @@ public class OBBox : BBox
     //https://dev.to/pratyush_mohanty_6b8f2749/the-math-behind-bounding-box-collision-detection-aabb-vs-obbseparate-axis-theorem-1gdn
     public bool SAT(OBBox bbox)
     {
+        // This allows for false positive collisions, since the bottom edges of the OBB may collide before the spherical rectangles do.
         Vector3 toVector = bbox.Position - Position;
         Vector3[] axesA = { Right, Up, Forward };
         Vector3[] axesB = { bbox.Right, bbox.Up, bbox.Forward };
@@ -246,9 +247,60 @@ public class OBBox : BBox
         return true;
     }
 
+    public float SphericalProject(Vector3 axis)
+    {
+        float rightAng = SphericalUtils.ChordToAngle(halfSize.x) * Mathf.Rad2Deg;
+        float upAng = SphericalUtils.ChordToAngle(halfSize.y) * Mathf.Rad2Deg;
+
+        Quaternion rightQuat = Quaternion.AngleAxis(rightAng, Up);
+        Quaternion upQuat = Quaternion.AngleAxis(upAng, Right);
+
+        float ang1;
+        float ang2;
+        float ang3;
+
+        Vector3 _axis;
+
+		Quaternion quat1 = VectorUtils.SwingTwistDecomposition(rightQuat, axis).Item2;
+        Quaternion quat2 = VectorUtils.SwingTwistDecomposition(upQuat, axis).Item2;
+        
+        quat1.ToAngleAxis(out ang1, out _axis);
+        quat2.ToAngleAxis(out ang2, out _axis);
+        (quat1 * quat2).ToAngleAxis(out ang3, out _axis);
+        //(quat2 * quat1).ToAngleAxis(out ang4, out _axis);
+        //UnityEngine.Debug.Log($"{ang1} | {ang2} | {ang3}");
+
+
+        return ang3;
+
+    }
+
+    public bool SphericalSAT(OBBox bbox)
+    {
+        Vector3[] axes = { Right, Up, bbox.Right, bbox.Up };
+
+        Vector3 toAxis = Vector3.Cross(Position, bbox.Position).normalized;
+        float toAngle = Vector3.Angle(Position, bbox.Position);
+        Quaternion toQuat = Quaternion.AngleAxis(toAngle, toAxis);
+
+        for (int i = 0; i < 4; i++)
+        {
+            Vector3 axis = axes[i];
+            float rA = SphericalProject(axis);
+            float rB = bbox.SphericalProject(axis);
+            float angDist;
+            Vector3 _axis;
+            VectorUtils.SwingTwistDecomposition(toQuat, axis).Item2.ToAngleAxis(out angDist, out _axis);
+
+            if (angDist > rA + rB) return false;
+        }
+
+        return true;
+    }
+
     public override bool CheckOBB (OBBox obb)
     {
-        return SAT(obb);
+        return SphericalSAT(obb);
     }
 
     public Vector3 ClosestPoint (Vector3 point)

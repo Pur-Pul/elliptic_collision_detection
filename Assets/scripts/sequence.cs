@@ -138,8 +138,8 @@ public class Sequence
 
             BodyType = selectedBodies[UnityEngine.Random.Range(0, selectedBodies.Count)],
             Size = new Vector2(
-                UnityEngine.Random.Range(0.01f, 0.5f),
-                UnityEngine.Random.Range(0.01f, 0.5f)
+                UnityEngine.Random.Range(0.01f, 1f),
+                UnityEngine.Random.Range(0.01f, 1f)
             )
             
         };
