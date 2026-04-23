@@ -26,7 +26,7 @@ class VectorUtils
         return _vec;
     }
 
-    public static (Quaternion, Quaternion) SwingTwistDecomposition(Quaternion q, Vector3 twistAxis)
+    public static (Quaternion, Quaternion) TwistSwingDecomposition(Quaternion q, Vector3 twistAxis)
     {
         // https://arxiv.org/pdf/1506.05481 page 3
         // The original quaternion is defined like: q = [w, v]
@@ -34,26 +34,34 @@ class VectorUtils
         // q_p = [w, (v · u_t)u_t]
         // q_t = q_p/|q_p|
 
+        Quaternion twist = Quaternion.identity;
         float d = Vector3.Dot(new Vector3(q.x, q.y, q.z), twistAxis);
-		Quaternion twist = Quaternion.identity;
 		Vector3 proj = twistAxis * d;
 
-		if (d > 1e-6f) {
+		if (Mathf.Abs(d) > 0) {
 			twist.w = q.w;
             twist.x = proj.x;
             twist.y = proj.y;
             twist.z = proj.z;
             twist = twist.normalized;
-		} else if (d < -1e-6f)
-        {
-            twist.w = q.w;
-            twist.x = -proj.x;
-            twist.y = -proj.y;
-            twist.z = -proj.z;
-            twist = twist.normalized;
-        }
+		}
 		Quaternion swing = q * Quaternion.Inverse(twist); 
 		return (swing, twist);
+    }
+
+    public static (Quaternion, Quaternion) SwingTwistDecomposition(Quaternion q, Vector3 twistAxis)
+    {   
+        Vector3 rotatedAxis = q * twistAxis;
+
+        Vector3 v = new(q.x, q.y, q.z);
+        float d = Vector3.Dot(v, rotatedAxis);
+        Vector3 proj = rotatedAxis * d;
+
+        Quaternion twist = new Quaternion(proj.x, proj.y, proj.z, q.w).normalized;
+
+        Quaternion swing = Quaternion.Inverse(twist) * q;
+
+        return (swing, twist);
     }
 
     public static float TwistCosineInverseSquare(Quaternion q, Vector3 twistAxis)
@@ -123,9 +131,9 @@ class SphericalUtils {
         return (1 - Mathf.Cos(angle)) / 2f;
     }
 
-    public static float CalculateSagitta(float coord, bool squared=false)
+    public static float CalculateSagitta(float chord, bool squared=false)
     {
-        float x = 0.25f * (squared ? coord : coord * coord);
-        return 1f - Mathf.Sqrt(1f - x);
+        float chordSquared = squared ? chord : chord * chord;
+        return 1f - Mathf.Sqrt(1f -  0.25f * chordSquared);
     }
 }

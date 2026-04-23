@@ -261,8 +261,8 @@ public class OBBox : BBox
 
         Vector3 _axis;
 
-		Quaternion quat1 = VectorUtils.SwingTwistDecomposition(rightQuat, axis).Item2;
-        Quaternion quat2 = VectorUtils.SwingTwistDecomposition(upQuat, axis).Item2;
+		Quaternion quat1 = VectorUtils.TwistSwingDecomposition(rightQuat, axis).Item2;
+        Quaternion quat2 = VectorUtils.TwistSwingDecomposition(upQuat, axis).Item2;
         
         quat1.ToAngleAxis(out ang1, out _axis);
         quat2.ToAngleAxis(out ang2, out _axis);
@@ -270,9 +270,7 @@ public class OBBox : BBox
         //(quat2 * quat1).ToAngleAxis(out ang4, out _axis);
         //UnityEngine.Debug.Log($"{ang1} | {ang2} | {ang3}");
 
-
         return ang3;
-
     }
 
     public bool SphericalSAT(OBBox bbox)
@@ -290,7 +288,7 @@ public class OBBox : BBox
             float rB = bbox.SphericalProject(axis);
             float angDist;
             Vector3 _axis;
-            VectorUtils.SwingTwistDecomposition(toQuat, axis).Item2.ToAngleAxis(out angDist, out _axis);
+            VectorUtils.TwistSwingDecomposition(toQuat, axis).Item2.ToAngleAxis(out angDist, out _axis);
 
             if (angDist > rA + rB) return false;
         }
@@ -300,7 +298,7 @@ public class OBBox : BBox
 
     public override bool CheckOBB (OBBox obb)
     {
-        return SphericalSAT(obb);
+        return SAT(obb);
     }
 
     public Vector3 ClosestPoint (Vector3 point)

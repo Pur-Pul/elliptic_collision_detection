@@ -2,6 +2,7 @@ using UnityEngine;
 using System;
 using System.Diagnostics;
 using Unity.Mathematics;
+using System.Linq;
 
 public class SBV : IBoundingVolume //Spherical Bounding Volume
 {
@@ -193,7 +194,7 @@ public class SBC : SBV //Spherical Bounding Circle
 }
 
 
-public class SOBR : SBV //Spherical Oriented Bounding Volume
+public class SOBR : SBV //Spherical Oriented Bounding Rectangle
 {
     public SOBR(int id) : base(id) {}
     private float sagitta;
@@ -208,8 +209,16 @@ public class SOBR : SBV //Spherical Oriented Bounding Volume
             Vector3 newSize = new(value.x, value.y, sagitta);
             base.Size = newSize;
             halfSize = newSize/2f;
+
+            RightAng = SphericalUtils.ChordToAngle(Size.x) * Mathf.Rad2Deg / 2f;
+            UpAng = SphericalUtils.ChordToAngle(Size.y) * Mathf.Rad2Deg / 2f;
         }
     }
+
+
+    public float RightAng { get; set; }
+    public float UpAng { get; set; }
+
     public override Vector3 Position
     {
         get => base.Position;
@@ -236,6 +245,47 @@ public class SOBR : SBV //Spherical Oriented Bounding Volume
     //https://dev.to/pratyush_mohanty_6b8f2749/the-math-behind-bounding-box-collision-detection-aabb-vs-obbseparate-axis-theorem-1gdn
     public bool SAT(SOBR obr)
     {
+        // This allows for false positive collisions, since the bottom edges of the OBB may collide before the spherical rectangles do.
+        Vector3 toVector = obr.Position - Position;
+        Vector3[] axesA = { Right, Up, Forward };
+        Vector3[] axesB = { obr.Right, obr.Up, obr.Forward };
+
+        for (int i = 0; i < 3; i++)
+        {
+            Vector3 axis = axesA[i];
+            float rA = halfSize[i];
+            float rB = obr.Project(axis);
+            float distance = MathF.Abs(Vector3.Dot(toVector, axis));
+            if (distance > rA + rB) return false;
+        }
+
+        for (int i = 0; i < 3; i++)
+        {
+            Vector3 axis = axesB[i];
+            float rA = Project(axis);
+            float rB = obr.halfSize[i];
+            float distance = MathF.Abs(Vector3.Dot(toVector, axis));
+            if (distance > rA + rB) return false;
+        }
+
+        /*
+        foreach (var a in axesA)
+        {
+            foreach (var b in axesB)
+            {
+                Vector3 cross = Vector3.Cross(a, b);
+                if (cross.sqrMagnitude < float.Epsilon) continue;
+                Vector3 axis = cross.normalized;
+                float rA = Project(axis);
+                float rB = obr.Project(axis);
+                float distance = MathF.Abs(Vector3.Dot(toVector, axis));
+                if (distance > rA + rB) return false;
+            }
+        }
+        */
+        return true;
+        
+        /*
         // Not checking edge-edge separation reduces the number of axes to check by nine.
         // This does mean some false positives compared to the baseline, since there still are a small number of possible edge-edge and corner-edge collisions.
         Vector3 toVector = obr.Position - Position;
@@ -266,70 +316,69 @@ public class SOBR : SBV //Spherical Oriented Bounding Volume
             float distance = MathF.Abs(Vector3.Dot(toVector, axis));
             if (distance > rA + rB)  { return false; }
         }
-        */
+        
         return true;
+        */
     }
 
     public float SphericalProject(Vector3 axis)
     {
-        float rightAng = SphericalUtils.ChordToAngle(halfSize.x) * Mathf.Rad2Deg;
-        float upAng = SphericalUtils.ChordToAngle(halfSize.y) * Mathf.Rad2Deg;
+        Vector3 right = Right * RightAng;
+        Vector3 up = Up * UpAng;
 
-        Quaternion rightQuat = Quaternion.AngleAxis(rightAng, Up);
-        Quaternion leftQuat = Quaternion.Inverse(rightQuat);
-        Quaternion upQuat = Quaternion.AngleAxis(upAng, Right);
-        Quaternion downQuat = Quaternion.Inverse(upQuat);
+        float ang1 = Mathf.Abs(Vector3.Dot(right, axis));
+        float ang2 = Mathf.Abs(Vector3.Dot(up, axis));
 
-        quaternion trQuat = rightQuat * upQuat;
-        quaternion tlQuat = leftQuat * upQuat;
-        quaternion brQuat = rightQuat * downQuat;
-        quaternion blQuat = leftQuat * downQuat;
-
-        //float trProj = VectorUtils.TwistCosineInverseSquare(trQuat, axis);
-        //float tlProj = VectorUtils.TwistCosineInverseSquare(tlQuat, axis);
-        //float brProj = VectorUtils.TwistCosineInverseSquare(brQuat, axis);
-        //float blProj = VectorUtils.TwistCosineInverseSquare(blQuat, axis);
-
-        float ang1;
-        float ang2;
-        float ang3;
-        float ang4;
-
-        Vector3 _axis;
-
-		VectorUtils.SwingTwistDecomposition(trQuat, axis).Item2.ToAngleAxis(out ang1, out _axis);
-        VectorUtils.SwingTwistDecomposition(tlQuat, axis).Item2.ToAngleAxis(out ang2, out _axis);
-		VectorUtils.SwingTwistDecomposition(brQuat, axis).Item2.ToAngleAxis(out ang3, out _axis);
-        VectorUtils.SwingTwistDecomposition(blQuat, axis).Item2.ToAngleAxis(out ang4, out _axis);
-
-        return Mathf.Max(ang1, Mathf.Max(ang2, Mathf.Max(ang3, ang4)));
+        return ang1 + ang2;
     }
 
     public bool SphericalSAT(SOBR obr)
     {
-        Vector3[] axes = { Right, Up, obr.Right, obr.Up };
+        Vector3[] axes = {
+            Right,
+            Up,
+            obr.Right,
+            obr.Up
+        };
 
-        Vector3 toAxis = Vector3.Cross(Position, obr.Position).normalized;
-        float toAngle = Vector3.Angle(Position, obr.Position);
-        Quaternion toQuat = Quaternion.AngleAxis(toAngle, toAxis);
+        Quaternion toQuat = Quaternion.FromToRotation(SphereNormal, obr.SphereNormal);
+        Vector3 toTangent = Vector3.Cross(Vector3.Cross(SphereNormal, obr.SphereNormal), SphereNormal).normalized * Vector3.Angle(SphereNormal, obr.SphereNormal);
 
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < axes.Length; i++)
         {
             Vector3 axis = axes[i];
-            float rA = SphericalProject(axis);
-            float rB = obr.SphericalProject(axis);
-            //float angDist = VectorUtils.TwistCosineInverseSquare(toQuat, axis);
-            float angDist;
-            Vector3 _axis;
-            VectorUtils.SwingTwistDecomposition(toQuat, axis).Item2.ToAngleAxis(out angDist, out _axis);
 
+            float rA;
+            float rB;
+            float angDist;
+            if (i < 2)
+            {
+                rA = SphericalProject(axis);
+                rB = obr.SphericalProject(toQuat * axis);
+                angDist = Mathf.Abs(Vector3.Dot(toTangent, axis));
+            } else
+            {
+                Vector3 aAxis = Quaternion.Inverse(toQuat) * axis;
+                rA = SphericalProject(aAxis);
+                rB = obr.SphericalProject(axis);
+                angDist = Mathf.Abs(Vector3.Dot(toTangent, aAxis));
+            }
+        
             if (angDist > rA + rB) return false;
         }
 
         return true;
     }
 
-    public override bool CheckOBR (SOBR obr) { return SphericalSAT(obr); }
+    public override bool CheckOBR (SOBR obr) { 
+        //bool sat = SAT(obr);
+        bool ssat = SphericalSAT(obr);
+        
+        //if (sat == false && ssat == true) { UnityEngine.Debug.Log("conflict 1"); }
+        //if (sat == true && ssat == false) { UnityEngine.Debug.Log("conflict 2"); }
+
+        return ssat;
+    }
 
     public Vector3 ClosestPoint (Vector3 point)
     {
@@ -350,9 +399,26 @@ public class SOBR : SBV //Spherical Oriented Bounding Volume
         return Position + closestPointLocal;
     }
 
-
     public override bool CheckSBC(SBC circle) //https://gamedev.stackexchange.com/questions/163873/separating-axis-theorem-obr-vs-circle
     {
+        float angle = Vector3.Angle(SphereNormal, circle.SphereNormal);
+        Vector3 toCircle = Vector3.Cross(Vector3.Cross(SphereNormal, circle.SphereNormal), SphereNormal).normalized * angle;
+
+        Vector2 localPos = new (
+            Vector3.Dot(toCircle, Right),
+            Vector3.Dot(toCircle, Up)
+        );
+
+        Vector2 closestPointLocal = new(
+            Mathf.Clamp(localPos.x, -RightAng, RightAng),
+            Mathf.Clamp(localPos.y, -UpAng, UpAng)
+        );
+
+        float radAng = circle.RadiusAngle * Mathf.Rad2Deg;
+
+        return Vector2.Distance(closestPointLocal, localPos) < radAng;
+
+        /*
         Vector3 toVector = Position - circle.Position;
         Vector3[] axesOBB = { Right, Up, Forward };
         float distance;
@@ -392,5 +458,6 @@ public class SOBR : SBV //Spherical Oriented Bounding Volume
 
 
         return (closestPointToCircle - circle.Position).magnitude < circle.Radius;
+        */
     }
 }

@@ -208,12 +208,12 @@ public class ControlScript : MonoBehaviour
         switch (MethodDropdown.value)
         {
             case 0:
-                _tree_width = 2*ellipseRadius + 0.5f;
+                _tree_width = 2*ellipseRadius + 2.5f;
                 collisionTree = new Octree<BodyScript>();
                 collisionTree.Size = new Vector3(_tree_width,_tree_width,_tree_width);
                 break;
             case 1:
-                _tree_width = 2*ellipseRadius + 0.5f;
+                _tree_width = 2*ellipseRadius + 2.5f;
                 collisionTree = new Octree<BodyScript>();
                 collisionTree.Size = new Vector3(_tree_width,_tree_width,_tree_width);
                 break;

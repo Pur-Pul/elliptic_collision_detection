@@ -20,6 +20,8 @@ Shader "Custom/sphere"
             Tags {"LightMode" = "UniversalForward"}
             HLSLPROGRAM
 
+            static const float PI = 3.14159265359;
+
             #define _SPECULAR_COLOR
             #pragma vertex vert
             #pragma fragment frag
@@ -62,6 +64,28 @@ Shader "Custom/sphere"
                 return OUT;
             }
 
+            float4 qProduct(float4 q1, float4 q2) {
+                return float4(
+                    q1.w*q2.x + q1.x*q2.w + q1.y*q2.z - q1.z*q2.y,
+                    q1.w*q2.y - q1.x*q2.z + q1.y*q2.w + q1.z*q2.x,
+                    q1.w*q2.z + q1.x*q2.y - q1.y*q2.x + q1.z*q2.w,
+                    q1.w*q2.w - q1.x*q2.x - q1.y*q2.y - q1.z*q2.z
+                );
+            }
+
+            float twistAngle(float4 q, float3 a) 
+            {
+                float ang = 0.0;
+                float d = dot(q.xyz, a);
+                float3 proj = a * d;
+
+                if (abs(d) > 0.0) {
+                    ang = acos(q.w / length(float4(proj, q.w))) * 2.0;
+                }
+                return ang;
+            }
+            
+
             half4 frag(Varyings IN) : SV_Target
             {
                 half4 fragColor = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, IN.uv) * _BaseColor;
@@ -84,26 +108,27 @@ Shader "Custom/sphere"
                 for (int i = 1+sphere_n; i < 1 + sphere_n + obb_n; i++)
                 {
                     float3 center = _Bodies[i][0].xyz;
+                    float3 forward = normalize(center);
 
                     float3 right = _Bodies[i][1].xyz;
                     float width = _Bodies[i][1].w;
 
                     float3 up = _Bodies[i][2].xyz;
                     float height = _Bodies[i][2].w;
-
                     float4 color = _Bodies[i][3];
 
-                    float x = dot(normal, right);
-                    float y = dot(normal, up);
-                    float z = dot(normal, center);
+                    float widthAngle = acos((width*width - 2.0) * -0.5) * 0.5;
+                    float heightAngle = acos((height*height - 2.0) * -0.5) * 0.5;
 
-                    if (z > 0)
-                    {
-                        if (abs(x) <= width * 0.5 &&
-                            abs(y) <= height * 0.5)
-                        {
-                            fragColor *= color;
-                        }
+                    float angle = acos(dot(forward, normal));
+                    float3 axis = normalize(cross(forward, normal));
+
+                    float3 toTangent = normalize(cross(cross(forward, normal), forward)) * angle;
+                    float ang1 = abs(dot(toTangent, right));
+                    float ang2 = abs(dot(toTangent, up));
+
+                    if (ang1 < widthAngle && ang2 < heightAngle) { 
+                        fragColor = color;
                     }
                 }
 
