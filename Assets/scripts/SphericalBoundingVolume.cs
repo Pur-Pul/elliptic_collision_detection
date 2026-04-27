@@ -370,14 +370,62 @@ public class SOBR : SBV //Spherical Oriented Bounding Rectangle
         return true;
     }
 
+    public Vector3[] GCNormals()
+    {
+        Quaternion q1 = Quaternion.AngleAxis(RightAng, Up);
+        Quaternion q1Inverse = Quaternion.Inverse(q1);
+        Quaternion q2 = Quaternion.AngleAxis(UpAng, Right);
+        Quaternion q2Inverse = Quaternion.Inverse(q2);
+
+        Vector3 GC1 = q1 * Right;
+        Vector3 GC2 = q1Inverse * Right;
+        Vector3 GC3 = q2 * Up;
+        Vector3 GC4 = q2Inverse * Up;
+
+        return new [] { GC1, GC2, GC3, GC4 };
+    }
+
+    public bool ContainsPoint(Vector3 point, Vector3[] GCs = null)
+    {
+        const float EPS = 1e-5f;
+        GCs ??= GCNormals();
+        return Vector3.Dot(point, GCs[0]) >= -EPS &&
+            Vector3.Dot(point, GCs[1]) < EPS &&
+            Vector3.Dot(point, GCs[2]) < EPS &&
+            Vector3.Dot(point, GCs[3]) >= -EPS;
+    }
+
+    public bool GCIntersect(SOBR obr)
+    {
+        Vector3[] normals = GCNormals();
+        Vector3[] obrNormals = obr.GCNormals();
+
+        if (ContainsPoint(obr.SphereNormal, normals) || obr.ContainsPoint(SphereNormal, obrNormals)) { return true; }
+
+        for (int i = 0; i < 4; i++)
+        {
+            for (int j = 0; j < 4; j++)
+            {
+                Vector3 i1 = Vector3.Cross(normals[i], obrNormals[j]).normalized;
+                Vector3 i2 = -i1;
+                if (
+                    (ContainsPoint(i1, normals) && obr.ContainsPoint(i1, obrNormals)) 
+                    || (ContainsPoint(i2, normals) && obr.ContainsPoint(i2, obrNormals))
+                ) { return true; }
+            }
+        }
+
+        return false;
+    }
+
     public override bool CheckOBR (SOBR obr) { 
         //bool sat = SAT(obr);
-        bool ssat = SphericalSAT(obr);
+        //bool ssat = SphericalSAT(obr);
         
         //if (sat == false && ssat == true) { UnityEngine.Debug.Log("conflict 1"); }
         //if (sat == true && ssat == false) { UnityEngine.Debug.Log("conflict 2"); }
 
-        return ssat;
+        return GCIntersect(obr);//ssat;
     }
 
     public Vector3 ClosestPoint (Vector3 point)

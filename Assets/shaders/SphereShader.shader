@@ -119,7 +119,28 @@ Shader "Custom/sphere"
 
                     float widthAngle = acos((width*width - 2.0) * -0.5) * 0.5;
                     float heightAngle = acos((height*height - 2.0) * -0.5) * 0.5;
+                    
+                    float4 q1 = float4(sin(widthAngle * 0.5) * up, cos(widthAngle * 0.5));
+                    float4 q1Inverse = float4(-q1.xyz, q1.w);
+                    float4 q2 = float4(sin(heightAngle * 0.5) * right, cos(heightAngle * 0.5));
+                    float4 q2Inverse = float4(-q2.xyz, q2.w);
 
+                    float3 h1 = qProduct(qProduct(q1, float4(right, 0)), q1Inverse).xyz;
+                    float3 h2 = qProduct(qProduct(q1Inverse, float4(right, 0)), q1).xyz;
+                    float3 h3 = qProduct(qProduct(q2, float4(up, 0)), q2Inverse).xyz;
+                    float3 h4 = qProduct(qProduct(q2Inverse, float4(up, 0)), q2).xyz;
+
+                    if (
+                        dot(normal, h1) >= 0.0 &&
+                        dot(normal, h2) < 0.0 &&
+                        dot(normal, h3) < 0.0 &&
+                        dot(normal, h4) >= 0.0
+                    )
+                    {
+                        fragColor *= color;
+                    }
+                    
+                    /*
                     float angle = acos(dot(forward, normal));
                     float3 axis = normalize(cross(forward, normal));
 
@@ -130,6 +151,7 @@ Shader "Custom/sphere"
                     if (ang1 < widthAngle && ang2 < heightAngle) { 
                         fragColor = color;
                     }
+                    */
                 }
 
                 InputData lighting = (InputData) 0;
