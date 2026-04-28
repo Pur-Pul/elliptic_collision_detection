@@ -3,6 +3,7 @@ using System;
 using System.Diagnostics;
 using Unity.Mathematics;
 using System.Linq;
+using System.Collections.Generic;
 
 public class SBV : IBoundingVolume //Spherical Bounding Volume
 {
@@ -191,8 +192,21 @@ public class SBC : SBV //Spherical Bounding Circle
     {
         return Radius * Vector3.Cross(axis, Forward).magnitude + sagitta/2 * Mathf.Abs(Vector3.Dot(axis, Forward));
     }
-}
 
+    public Vector3[] GCIntersection(Vector3 gc)
+    {
+        // Angle between GC normal and spherical circle normal.
+        float angle = Vector3.Angle(gc, SphereNormal);
+
+        // t is 0 when the angle between the circle centers is equal to 90 + small circle angle.
+        // t is 1 when the angle is equal to 90.
+        float t = 1 - Mathf.Clamp(0, 1, radiusAngle * Mathf.Deg2Rad / (angle - 90f));
+
+        Vector3 axis = Vector3.Cross(gc, SphereNormal).normalized;
+
+        return new [] { Vector3.zero };
+    }
+}
 
 public class SOBR : SBV //Spherical Oriented Bounding Rectangle
 {
@@ -449,6 +463,60 @@ public class SOBR : SBV //Spherical Oriented Bounding Rectangle
 
     public override bool CheckSBC(SBC circle) //https://gamedev.stackexchange.com/questions/163873/separating-axis-theorem-obr-vs-circle
     {
+        Vector3[] gcNormals = GCNormals();
+        if (ContainsPoint(circle.SphereNormal, gcNormals)) { return true; }
+
+        List<Vector3> corners = new();
+        //0-2, 0-3, 1-2, 1-3
+        for (int i = 0; i < 2; i++) 
+        {
+            for (int j = 2; j < 4; j++)
+            {
+                Vector3 intersection = Vector3.Cross(gcNormals[i], gcNormals[j]).normalized;
+                if (ContainsPoint(intersection, gcNormals))
+                {
+                    corners.Add(intersection);
+                } 
+                else
+                {
+                    corners.Add(-intersection);
+                }
+            }    
+        }
+
+        for (int i = 0; i < 4; i++)
+        {
+            // Find the closest point on the given great circle to the center of the spherical circle.
+            Vector3 gcClosest = (circle.SphereNormal - Vector3.Dot(gcNormals[i], circle.SphereNormal) * gcNormals[i]).normalized;
+
+            // Find the center of the great circle arc defining the edge of the SOBR.
+            Vector3 gcArcCenter = (SphereNormal - Vector3.Dot(gcNormals[i], SphereNormal) * gcNormals[i]).normalized;
+
+            // Find the ends of the great circle arc.
+            // i=0 | 0, 1
+            // i=1 | 2, 3
+            // i=2 | 0, 2
+            // i=3 | 1, 3
+
+            Vector3 c1 = corners[(i < 2) ? i * 2 : i - 2];
+            Vector3 c2 = corners[(i < 2) ? i * 2 + 1 : i];
+
+            // Clamp the closest point on the great circle within the bounds of the great circle arc.
+            Vector3 pointOnArc;
+            if (Vector3.Angle(gcArcCenter, gcClosest) < Vector3.Angle(gcArcCenter, c1)) { pointOnArc = gcClosest; }
+            else
+            {
+                float sign = Mathf.Sign(Vector3.Dot(Vector3.Cross(gcArcCenter, gcClosest), Vector3.Cross(gcArcCenter, c1)));
+                if (sign > 0) { pointOnArc = c1; }
+                else { pointOnArc = c2; }
+            }
+
+            // Check if the closest point on the arc is within the bounds of the spherical circle.
+            if (Vector3.Angle(pointOnArc, circle.SphereNormal) < circle.RadiusAngle * Mathf.Rad2Deg) { return true; }
+        }
+        return false;
+
+        /*
         float angle = Vector3.Angle(SphereNormal, circle.SphereNormal);
         Vector3 toCircle = Vector3.Cross(Vector3.Cross(SphereNormal, circle.SphereNormal), SphereNormal).normalized * angle;
 
@@ -465,6 +533,7 @@ public class SOBR : SBV //Spherical Oriented Bounding Rectangle
         float radAng = circle.RadiusAngle * Mathf.Rad2Deg;
 
         return Vector2.Distance(closestPointLocal, localPos) < radAng;
+        */
 
         /*
         Vector3 toVector = Position - circle.Position;
