@@ -87,6 +87,16 @@ public class SBV : IBoundingVolume //Spherical Bounding Volume
         }
     }
 
+    public virtual void Update(Vector3 _pos, Vector3 _size, Quaternion _orientation)
+    {
+        Right = _orientation * Vector3.right;
+        Up = _orientation * Vector3.up;
+        Forward = _orientation * Vector3.forward;
+        Size = _size;
+        Position = _pos;
+        UpdateSimpleSize();
+    }
+
     public virtual void UpdateSimpleSize ()
     {
         if (shapeUpdated) {
@@ -226,6 +236,8 @@ public class SOBR : SBV //Spherical Oriented Bounding Rectangle
 
             RightAng = SphericalUtils.ChordToAngle(Size.x) * Mathf.Rad2Deg / 2f;
             UpAng = SphericalUtils.ChordToAngle(Size.y) * Mathf.Rad2Deg / 2f;
+
+            _GCBaseNormals = null;
         }
     }
 
@@ -242,6 +254,49 @@ public class SOBR : SBV //Spherical Oriented Bounding Rectangle
             SphereNormal = value;
         }
     }
+
+    Vector3[] _GCBaseNormals = null;
+
+    Vector3[] GCBaseNormals { 
+        get
+        {
+            if (_GCBaseNormals == null) {
+                Quaternion q1 = Quaternion.AngleAxis(RightAng, Vector3.up);
+                Quaternion q1inv = Quaternion.Inverse(q1);
+                Quaternion q2 = Quaternion.AngleAxis(UpAng, Vector3.right);
+                Quaternion q2inv = Quaternion.Inverse(q2);
+
+                _GCBaseNormals = new[] {
+                    q1 * Vector3.right,
+                    q1inv * -Vector3.right,
+                    q2 * -Vector3.up,
+                    q2inv * Vector3.up,
+                };
+            }
+
+            return _GCBaseNormals;
+        } 
+    }
+
+    public Vector3[] GCNormals { get; set; }
+
+
+    public override void Update(Vector3 _pos, Vector3 _size, Quaternion _orientation)
+    {
+        Size = _size;
+        Right = _orientation * Vector3.right;
+        Up = _orientation * Vector3.up;
+        Forward = _orientation * Vector3.forward;
+        GCNormals = new [] {
+            _orientation * GCBaseNormals[0],
+            _orientation * GCBaseNormals[1],
+            _orientation * GCBaseNormals[2],
+            _orientation * GCBaseNormals[3]
+        };
+        Position = _pos;
+        UpdateSimpleSize();
+    }
+
 
     private Vector3 halfSize;
     public Vector3 HalfSize
@@ -384,7 +439,8 @@ public class SOBR : SBV //Spherical Oriented Bounding Rectangle
         return true;
     }
 
-    public Vector3[] GCNormals()
+
+    public Vector3[] GCNormalsOld()
     {
         Quaternion q1 = Quaternion.AngleAxis(RightAng, Up);
         Quaternion q1Inverse = Quaternion.Inverse(q1);
@@ -392,29 +448,30 @@ public class SOBR : SBV //Spherical Oriented Bounding Rectangle
         Quaternion q2Inverse = Quaternion.Inverse(q2);
 
         Vector3 GC1 = q1 * Right;
-        Vector3 GC2 = q1Inverse * Right;
-        Vector3 GC3 = q2 * Up;
+        Vector3 GC2 = q1Inverse * -Right;
+        Vector3 GC3 = q2 * -Up;
         Vector3 GC4 = q2Inverse * Up;
 
         return new [] { GC1, GC2, GC3, GC4 };
     }
 
-    public bool ContainsPoint(Vector3 point, Vector3[] GCs = null)
+
+    public bool ContainsPoint(Vector3 point)
     {
         const float EPS = 1e-5f;
-        GCs ??= GCNormals();
-        return Vector3.Dot(point, GCs[0]) >= -EPS &&
-            Vector3.Dot(point, GCs[1]) < EPS &&
-            Vector3.Dot(point, GCs[2]) < EPS &&
-            Vector3.Dot(point, GCs[3]) >= -EPS;
+
+        return Vector3.Dot(point, GCNormals[0]) >= -EPS &&
+            Vector3.Dot(point, GCNormals[1]) >= -EPS &&
+            Vector3.Dot(point, GCNormals[2]) >= -EPS &&
+            Vector3.Dot(point, GCNormals[3]) >= -EPS;
     }
 
     public bool GCIntersect(SOBR obr)
     {
-        Vector3[] normals = GCNormals();
-        Vector3[] obrNormals = obr.GCNormals();
+        Vector3[] normals = GCNormals;
+        Vector3[] obrNormals = obr.GCNormals;
 
-        if (ContainsPoint(obr.SphereNormal, normals) || obr.ContainsPoint(SphereNormal, obrNormals)) { return true; }
+        if (ContainsPoint(obr.SphereNormal) || obr.ContainsPoint(SphereNormal)) { return true; }
 
         for (int i = 0; i < 4; i++)
         {
@@ -423,8 +480,8 @@ public class SOBR : SBV //Spherical Oriented Bounding Rectangle
                 Vector3 i1 = Vector3.Cross(normals[i], obrNormals[j]).normalized;
                 Vector3 i2 = -i1;
                 if (
-                    (ContainsPoint(i1, normals) && obr.ContainsPoint(i1, obrNormals)) 
-                    || (ContainsPoint(i2, normals) && obr.ContainsPoint(i2, obrNormals))
+                    (ContainsPoint(i1) && obr.ContainsPoint(i1)) 
+                    || (ContainsPoint(i2) && obr.ContainsPoint(i2))
                 ) { return true; }
             }
         }
@@ -463,8 +520,8 @@ public class SOBR : SBV //Spherical Oriented Bounding Rectangle
 
     public override bool CheckSBC(SBC circle) //https://gamedev.stackexchange.com/questions/163873/separating-axis-theorem-obr-vs-circle
     {
-        Vector3[] gcNormals = GCNormals();
-        if (ContainsPoint(circle.SphereNormal, gcNormals)) { return true; }
+        Vector3[] gcNormals = GCNormals;
+        if (ContainsPoint(circle.SphereNormal)) { return true; }
 
         List<Vector3> corners = new();
         //0-2, 0-3, 1-2, 1-3
@@ -473,7 +530,7 @@ public class SOBR : SBV //Spherical Oriented Bounding Rectangle
             for (int j = 2; j < 4; j++)
             {
                 Vector3 intersection = Vector3.Cross(gcNormals[i], gcNormals[j]).normalized;
-                if (ContainsPoint(intersection, gcNormals))
+                if (ContainsPoint(intersection))
                 {
                     corners.Add(intersection);
                 } 

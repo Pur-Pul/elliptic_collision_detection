@@ -81,6 +81,16 @@ public class BBox : IBoundingVolume
         }
     }
 
+    public virtual void Update(Vector3 _pos, Vector3 _size, Quaternion _orientation)
+    {
+        Right = _orientation * Vector3.right;
+        Up = _orientation * Vector3.up;
+        Forward = _orientation * Vector3.forward;
+        Size = _size;
+        Position = _pos;
+        UpdateSimpleSize();
+    }
+
     public virtual void UpdateSimpleSize ()
     {
         if (shapeUpdated) {
@@ -151,6 +161,7 @@ public class BBoxSphere : BBox
             base.Position = value * (1 - sagitta*0.5f);
         }
     }
+    
     public override void UpdateSimpleSize () {}
     public override bool CheckSphere(BBoxSphere sphere)
     // The radii of the spheres are converted into angles, which are added together and comared to the angle between the sphere centers.

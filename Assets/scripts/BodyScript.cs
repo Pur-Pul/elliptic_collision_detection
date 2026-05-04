@@ -72,13 +72,7 @@ public class BodyScript : MonoBehaviour, IItem
 
     public void UpdateBBox ()
     {
-        BBox.Right = transform.right;
-        BBox.Up = transform.up;
-        BBox.Forward = transform.forward;
-        BBox.Size = sequence.Size;
-        BBox.Position = Position;
-        BBox.UpdateSimpleSize();
-
+        BBox.Update(Position, sequence.Size, transform.rotation);
         transform.position = BBox.Position;
         transform.localScale = BBox.Size;
     }
