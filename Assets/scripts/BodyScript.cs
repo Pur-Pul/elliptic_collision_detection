@@ -64,6 +64,18 @@ public class BodyScript : MonoBehaviour, IItem
                         break;
                 }
                 break;
+            case 2:
+                meshRenderer.enabled = false;
+                switch (sequence.BodyType)
+                {
+                    case "sphere":
+                        BBox = new SBCA(Id);
+                        break;
+                    case "obb":
+                        BBox = new SOBRA(Id);
+                        break;
+                }
+                break;
         }
         BBox.Simple = new AABB();
         BBox.Record = control.runtimeRecord;

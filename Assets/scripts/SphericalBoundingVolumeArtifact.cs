@@ -3,12 +3,12 @@ using System;
 using System.Diagnostics;
 using System.Collections.Generic;
 
-public class SBV : IBoundingVolume //Spherical Bounding Volume
+public class SBVA : IBoundingVolume //Spherical Bounding Volume
 {
     private int _id;
     public int Id { get => _id; }
 
-    public SBV (int id)
+    public SBVA (int id)
     {
         _id = id;
     }
@@ -111,8 +111,8 @@ public class SBV : IBoundingVolume //Spherical Bounding Volume
     }
 
     public bool CheckFastOverlaps(IBoundingVolume other) => Simple.SimpleIntersects(other.Simple);
-    public virtual bool CheckSBC (SBC circle) => false;
-    public virtual bool CheckOBR (SOBR obr) => false;
+    public virtual bool CheckSBCA (SBCA circle) => false;
+    public virtual bool CheckOBRA (SOBRA obr) => false;
 
     bool Timed<T>(
         T volume,
@@ -132,16 +132,16 @@ public class SBV : IBoundingVolume //Spherical Bounding Volume
     {
         return other switch
         {
-            SBC circle => Timed(circle, CheckSBC),
-            SOBR obr => Timed(obr, CheckOBR),
+            SBCA circle => Timed(circle, CheckSBCA),
+            SOBRA obr => Timed(obr, CheckOBRA),
             _ => false
         };
     }
 }
 
-public class SBC : SBV //Spherical Bounding Circle
+public class SBCA : SBVA //Spherical Bounding Circle
 {
-    public SBC(int id) : base(id) {}
+    public SBCA(int id) : base(id) {}
     private float sagitta;
     public float Radius { get; set; }
     public float radiusAngle;
@@ -180,7 +180,7 @@ public class SBC : SBV //Spherical Bounding Circle
             base.Size = new Vector3(value.x, value.x, sagitta);
         }
     }
-    public override bool CheckSBC(SBC other)
+    public override bool CheckSBCA(SBCA other)
     // The dot product of two positions on a sphere is not a linear representation of spherical distance between them, but does contain the information.
     // Instead of adding the dot products together, adding the angles produces the actual combined spherical distance.
     // Trigonometric functions are expensive, so to avoid having to use cosinus during runtime, the cosine addition formula can be used to add the angles.
@@ -194,7 +194,7 @@ public class SBC : SBV //Spherical Bounding Circle
 
         return sRadii > sDist;
     }
-    public override bool CheckOBR(SOBR obr) => obr.CheckSBC(this);
+    public override bool CheckOBRA(SOBRA obr) => obr.CheckSBCA(this);
 
     public float ProjectCylinder(Vector3 axis)
     {
@@ -216,9 +216,9 @@ public class SBC : SBV //Spherical Bounding Circle
     }
 }
 
-public class SOBR : SBV //Spherical Oriented Bounding Rectangle
+public class SOBRA : SBVA //Spherical Oriented Bounding Rectangle
 {
-    public SOBR(int id) : base(id) {}
+    public SOBRA(int id) : base(id) {}
     private float sagitta;
     public override Vector3 Size
     {
@@ -292,17 +292,24 @@ public class SOBR : SBV //Spherical Oriented Bounding Rectangle
         UpdateSimpleSize();
     }
 
-    public bool ContainsPoint(Vector3 point)
+    public bool ContainsPoint(Vector3 point, bool checkInv = false)
     {
         const float EPS = 1e-5f;
 
-        return Vector3.Dot(point, GCNormals[0]) >= -EPS &&
-            Vector3.Dot(point, GCNormals[1]) >= -EPS &&
-            Vector3.Dot(point, GCNormals[2]) >= -EPS &&
-            Vector3.Dot(point, GCNormals[3]) >= -EPS;
+        bool contains = false;
+        bool containsInv = false;
+
+        for (int i = 0; i < 4; i ++)
+        {
+            bool withinGC = Vector3.Dot(point, GCNormals[i]) >= -EPS;
+            contains = (i == 0 || contains) && withinGC;
+            containsInv = checkInv && (i == 0 || containsInv) && !withinGC;
+        }
+
+        return contains || containsInv;
     }
 
-    public bool GCIntersect(SOBR obr)
+    public bool GCIntersect(SOBRA obr)
     {
         Vector3[] normals = GCNormals;
         Vector3[] obrNormals = obr.GCNormals;
@@ -313,23 +320,19 @@ public class SOBR : SBV //Spherical Oriented Bounding Rectangle
         {
             for (int j = 0; j < 4; j++)
             {
-                Vector3 i1 = Vector3.Cross(normals[i], obrNormals[j]).normalized;
-                Vector3 i2 = -i1;
-                if (
-                    (ContainsPoint(i1) && obr.ContainsPoint(i1)) 
-                    || (ContainsPoint(i2) && obr.ContainsPoint(i2))
-                ) { return true; }
+                Vector3 i1 = Vector3.Cross(normals[i], obrNormals[j]);
+                if (ContainsPoint(i1, true) && obr.ContainsPoint(i1, true)) { return true; }
             }
         }
 
         return false;
     }
 
-    public override bool CheckOBR (SOBR obr) {
+    public override bool CheckOBRA (SOBRA obr) {
         return GCIntersect(obr);
     }
 
-    public override bool CheckSBC(SBC circle)
+    public override bool CheckSBCA(SBCA circle)
     {
         // The edge half angles and signs need to be cached.
         // The edge points and centers themselves could also be cached and rotated during an update, but there could be a better solution.

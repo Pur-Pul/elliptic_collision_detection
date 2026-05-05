@@ -217,6 +217,11 @@ public class ControlScript : MonoBehaviour
                 collisionTree = new Octree<BodyScript>();
                 collisionTree.Size = new Vector3(_tree_width,_tree_width,_tree_width);
                 break;
+            case 2:
+                _tree_width = 2*ellipseRadius + 2.5f;
+                collisionTree = new Octree<BodyScript>();
+                collisionTree.Size = new Vector3(_tree_width,_tree_width,_tree_width);
+                break;
         }
         collisionTree.Record = runtimeRecord;
         for (int i = 0; i < body_n; i++)
