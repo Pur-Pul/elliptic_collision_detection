@@ -36,8 +36,8 @@ public class Octree<T>: AABB,
             int x = ((i & 1) == 0) ? -1 : 1;
             int y = ((i & 2) == 0) ? -1 : 1;
             int z = ((i & 4) == 0) ? -1 : 1;
-            Vector3 new_center = Position + Vector3.Scale(new Vector3(x,y,z), Size / 4f);
-            octants[i] = new Octree<T>(new_center, Size / 2f, depth + 1)
+            Vector3 new_center = Position + Vector3.Scale(new Vector3(x,y,z), Size * 0.25f);
+            octants[i] = new Octree<T>(new_center, Size * 0.5f, depth + 1)
             {
                 Record = Record,
                 MaxDepth = MaxDepth,

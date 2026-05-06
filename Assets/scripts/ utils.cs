@@ -84,7 +84,7 @@ class SphericalUtils {
         // dot product is in the range (-1, 1)
         // distance score needs to be in the range (0, 1) where 0 is close and 1 is opposite sides of the sphere.
         float d = Vector3.Dot(a, b);
-        return (1 - d) / 2f;
+        return (1 - d) * 0.5f;
     }
 
     public static float ChordToDot(float chord)
@@ -112,12 +112,12 @@ class SphericalUtils {
         where cos(C) equals the dot product between points A and B.
         */
 
-        return (chord*chord - 2) / (-2);
+        return (chord*chord - 2) * (-0.5f);
     }
 
     public static float ChordToSphericalDistance(float chord)
     {
-        return (1 - ChordToDot(chord)) / 2f;
+        return (1 - ChordToDot(chord)) * 0.5f;
     }
 
     public static float ChordToAngle(float chord)
@@ -128,7 +128,7 @@ class SphericalUtils {
 
     public static float AngleToSphericalDistance(float angle)
     {
-        return (1 - Mathf.Cos(angle)) / 2f;
+        return (1 - Mathf.Cos(angle)) * 0.5f;
     }
 
     public static float CalculateSagitta(float chord, bool squared=false)

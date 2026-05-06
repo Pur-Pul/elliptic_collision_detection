@@ -61,7 +61,7 @@ public class worldScript : MonoBehaviour
                 case BBoxSphere sphere:
                     HandleSphere(
                         pos,
-                        SphericalUtils.AngleToSphericalDistance(SphericalUtils.ChordToAngle(sphere.Radius * 2f) / 2f),
+                        SphericalUtils.AngleToSphericalDistance(SphericalUtils.ChordToAngle(sphere.Radius * 2f) * 0.5f),
                         control.bodies[i].drawColor,
                         m
                     );
