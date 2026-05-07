@@ -216,6 +216,7 @@ public class SOBRA : SBVA //Spherical Oriented Bounding Rectangle
             UpAng = SphericalUtils.ChordToAngle(Size.y) * Mathf.Rad2Deg * 0.5f;
 
             _GCBaseNormals = null;
+            _BaseCorners = null;
         }
     }
 
@@ -233,6 +234,7 @@ public class SOBRA : SBVA //Spherical Oriented Bounding Rectangle
         }
     }
 
+    Vector3[] _BaseCorners = null;
     Vector3[] _GCBaseNormals = null;
     Vector3[] GCBaseNormals { 
         get
@@ -249,14 +251,29 @@ public class SOBRA : SBVA //Spherical Oriented Bounding Rectangle
                     q1inv * -Vector3.right,
                     q2 * -Vector3.up,
                 };
-            
             }
             return _GCBaseNormals;
         } 
     }
+    Vector3[] BaseCorners
+    {
+        get
+        {
+            if (_BaseCorners == null)
+            {
+                _BaseCorners = new Vector3[4];
+                for (int i = 0; i < 4; i++)
+                {
+                    _BaseCorners[i] = Vector3.Cross(GCBaseNormals[i], GCBaseNormals[(i + 3) % 4]).normalized;
+                }
+            }
+            return _BaseCorners;
+        }
+    }
+
     public float[] ArcAngles { get; set; }
     public Vector3[] GCNormals { get; set; }
-
+    public Vector3[] Corners { get; set; }
     public override void Update(Vector3 _pos, Vector3 _size, Quaternion _orientation)
     {
         Size = _size;
@@ -268,6 +285,13 @@ public class SOBRA : SBVA //Spherical Oriented Bounding Rectangle
             _orientation * GCBaseNormals[1],
             _orientation * GCBaseNormals[2],
             _orientation * GCBaseNormals[3]
+        };
+        Corners = new []
+        {
+            _orientation * BaseCorners[0],
+            _orientation * BaseCorners[1],
+            _orientation * BaseCorners[2],
+            _orientation * BaseCorners[3]
         };
         Position = _pos;
         UpdateSimpleSize();
@@ -315,44 +339,41 @@ public class SOBRA : SBVA //Spherical Oriented Bounding Rectangle
 
     public override bool CheckSBCA(SBCA circle)
     {
-        // The arcAngle can be cached.
-        // The edge points themselves could also be cached and rotated during an update, but there could be a better solution.
-        // Instead of checking if gcClosest is within arc bounds, it can be checked to be within the SOBR, which would allow skipping normalizations.
-        // The sign calculation also does not require normalized points.
         Vector3[] gcNormals = GCNormals;
         if (ContainsPoint(circle.SphereNormal)) { return true; }
 
-        List<Vector3> corners = new();
         for (int i = 0; i < 4; i++)
         {
-            corners.Add(Vector3.Cross(gcNormals[i], gcNormals[(i + 3) % 4]).normalized); 
-        }
-
-        for (int i = 0; i < 4; i++)
-        {
-            // Find the closest point on the given great circle to the center of the spherical circle.
-            Vector3 gcClosest = (circle.SphereNormal - Vector3.Dot(gcNormals[i], circle.SphereNormal) * gcNormals[i]).normalized;
+            // Find the direction of the closest point on the given great circle to the center of the spherical circle.
+            float d = Vector3.Dot(gcNormals[i], circle.SphereNormal);
+            Vector3 gcClosest = circle.SphereNormal - d * gcNormals[i];
 
             // Find the ends of the great circle arc.
-            Vector3 a = corners[i];
-            Vector3 b = corners[(i + 1) % 4];
-
-            float arcDist = SphericalUtils.SphericalDistance(a, b);
-            float aDist = SphericalUtils.SphericalDistance(a, gcClosest);
-            float bDist = SphericalUtils.SphericalDistance(b, gcClosest);
+            Vector3 a = Corners[i];
+            Vector3 b = Corners[(i + 1) % 4];
 
             // Clamp the closest point on the great circle within the bounds of the great circle arc.
-            Vector3 pointOnArc;
-            if (aDist < arcDist && bDist < arcDist) { pointOnArc = gcClosest; } // Inside the arc
+            if (
+                Vector3.Dot(Vector3.Cross(a, gcClosest), Vector3.Cross(a, b)) >= 0 &&
+                Vector3.Dot(Vector3.Cross(b, gcClosest), Vector3.Cross(b, a)) >= 0
+            ) // Inside the arc
+            {
+                // The dot product between gcNormal and circle.SphereNormal is equal to the sine of the angle between circle.SphereNormal and gcClosest.
+                // dot(p, n) = cos(theta + pi/2) = sin(theta) = |cross(p, q)|, where p = circle.SphereNormal, n = GCNormal and q = gcClosest.
+                // This holds true since p is not between q and n.
+                float sinRadiusSquared = 1f - circle.CosRadius * circle.CosRadius;
+                if (d * d <= sinRadiusSquared) { return true; }
+                else { continue; }
+            }
             else // Outside the arc
             {
+                // The closest point on the arc is one of the ends.
                 float sign = Mathf.Sign(Vector3.Dot(Vector3.Cross(a, gcClosest), Vector3.Cross(a, b)));
-                if (sign > 0) { pointOnArc = b; }
-                else { pointOnArc = a; }
+                if (
+                    (sign > 0 && Vector3.Dot(b, circle.SphereNormal) >= circle.CosRadius) 
+                    || (sign < 0 && Vector3.Dot(a, circle.SphereNormal) >= circle.CosRadius)
+                ) { return true; }
             }
-
-            // Check if the closest point on the arc is within the bounds of the spherical circle.
-            if (SphericalUtils.SphericalDistance(pointOnArc, circle.SphereNormal) < (1 - circle.CosRadius) * 0.5) { return true; }
         }
         return false;
     }
