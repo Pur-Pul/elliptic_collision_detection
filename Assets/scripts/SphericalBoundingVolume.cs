@@ -181,39 +181,10 @@ public class SBC : SBV //Spherical Bounding Circle
         }
     }
     public override bool CheckSBC(SBC other)
-    // The dot product of two positions on a sphere is not a linear representation of spherical distance between them, but does contain the information.
-    // Instead of adding the dot products together, adding the angles produces the actual combined spherical distance.
-    // Trigonometric functions are expensive, so to avoid having to use cosinus during runtime, the cosine addition formula can be used to add the angles.
-    // cos(θ_1 + θ_2) = cos(θ_1)​ * cos(θ_2) - sin(θ_1) * ​sin(θ_2)
-    // The cosine of the combined angles are then normalized into the range [0, 1] as follows: (1 - cos(θ_1 + θ_2)) / 2
-    // The cosine and sine of the spherical distance representaion of the radii are precalculated for all circles and stored in the properties CosRadius and SinRadius.​
-    // This approach is more accurate than calculating the Euclidean distance between sphere representations of the circles but slightly slower.
     {
-        float sDist = SphericalUtils.SphericalDistance(SphereNormal, other.SphereNormal);
-        float sRadii = (1 - (CosRadius * other.CosRadius - SinRadius * other.SinRadius)) * 0.5f;
-
-        return sRadii > sDist;
+        return radiusAngle + other.radiusAngle > Vector3.Angle(SphereNormal, other.SphereNormal) * Mathf.Deg2Rad;
     }
     public override bool CheckOBR(SOBR obr) => obr.CheckSBC(this);
-
-    public float ProjectCylinder(Vector3 axis)
-    {
-        return Radius * Vector3.Cross(axis, Forward).magnitude + sagitta/2 * Mathf.Abs(Vector3.Dot(axis, Forward));
-    }
-
-    public Vector3[] GCIntersection(Vector3 gc)
-    {
-        // Angle between GC normal and spherical circle normal.
-        float angle = Vector3.Angle(gc, SphereNormal);
-
-        // t is 0 when the angle between the circle centers is equal to 90 + small circle angle.
-        // t is 1 when the angle is equal to 90.
-        float t = 1 - Mathf.Clamp(0, 1, radiusAngle * Mathf.Deg2Rad / (angle - 90f));
-
-        Vector3 axis = Vector3.Cross(gc, SphereNormal).normalized;
-
-        return new [] { Vector3.zero };
-    }
 }
 
 public class SOBR : SBV //Spherical Oriented Bounding Rectangle

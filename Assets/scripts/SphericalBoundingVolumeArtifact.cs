@@ -1,7 +1,6 @@
 using UnityEngine;
 using System;
 using System.Diagnostics;
-using System.Collections.Generic;
 
 public class SBVA : IBoundingVolume //Spherical Bounding Volume
 {
@@ -185,14 +184,15 @@ public class SBCA : SBVA //Spherical Bounding Circle
     // Instead of adding the dot products together, adding the angles produces the actual combined spherical distance.
     // Trigonometric functions are expensive, so to avoid having to use cosinus during runtime, the cosine addition formula can be used to add the angles.
     // cos(θ_1 + θ_2) = cos(θ_1)​ * cos(θ_2) - sin(θ_1) * ​sin(θ_2)
-    // The cosine of the combined angles are then normalized into the range [0, 1] as follows: (1 - cos(θ_1 + θ_2)) / 2
     // The cosine and sine of the spherical distance representaion of the radii are precalculated for all circles and stored in the properties CosRadius and SinRadius.​
     // This approach is more accurate than calculating the Euclidean distance between sphere representations of the circles but slightly slower.
+    // The cosine comparison only holds if the cosines represent angles smaller than 180 degrees.
+    // An additional check is performed to see if the combined radii are larger than 180 degrees, in which case they are allways intersecting.
     {
-        float sDist = SphericalUtils.SphericalDistance(SphereNormal, other.SphereNormal);
-        float sRadii = (1 - (CosRadius * other.CosRadius - SinRadius * other.SinRadius)) * 0.5f;
-
-        return sRadii > sDist;
+        if (radiusAngle + other.radiusAngle >= Mathf.PI) { return true; }
+        float cosine = Vector3.Dot(SphereNormal, other.SphereNormal);
+        float radCosine = CosRadius * other.CosRadius - SinRadius * other.SinRadius;
+        return radCosine <= cosine;
     }
     public override bool CheckOBRA(SOBRA obr) => obr.CheckSBCA(this);
 }
@@ -351,27 +351,25 @@ public class SOBRA : SBVA //Spherical Oriented Bounding Rectangle
             // Find the ends of the great circle arc.
             Vector3 a = Corners[i];
             Vector3 b = Corners[(i + 1) % 4];
+            Vector3 aCrossB = Vector3.Cross(a, b);
+            float aSign = Vector3.Dot(Vector3.Cross(a, gcClosest), aCrossB);
+            float bSign = Vector3.Dot(Vector3.Cross(b, gcClosest), -aCrossB);
 
             // Clamp the closest point on the great circle within the bounds of the great circle arc.
-            if (
-                Vector3.Dot(Vector3.Cross(a, gcClosest), Vector3.Cross(a, b)) >= 0 &&
-                Vector3.Dot(Vector3.Cross(b, gcClosest), Vector3.Cross(b, a)) >= 0
-            ) // Inside the arc
+            if (aSign >= 0 && bSign >= 0) // Inside the arc
             {
-                // The dot product between gcNormal and circle.SphereNormal is equal to the sine of the angle between circle.SphereNormal and gcClosest.
-                // dot(p, n) = cos(theta + pi/2) = sin(theta) = |cross(p, q)|, where p = circle.SphereNormal, n = GCNormal and q = gcClosest.
-                // This holds true since p is not between q and n.
-                float sinRadiusSquared = 1f - circle.CosRadius * circle.CosRadius;
-                if (d * d <= sinRadiusSquared) { return true; }
+                // Check if SBC intersects with the great circle
+                // Taking the absolute value of the dot ensures that only intersection with the great circle returns true.
+                // Otherwise it would be an intersection check with the hemisphere, which would result in false positives.
+                if (Mathf.Abs(d) <= circle.SinRadius) { return true; }
                 else { continue; }
             }
             else // Outside the arc
             {
                 // The closest point on the arc is one of the ends.
-                float sign = Mathf.Sign(Vector3.Dot(Vector3.Cross(a, gcClosest), Vector3.Cross(a, b)));
                 if (
-                    (sign > 0 && Vector3.Dot(b, circle.SphereNormal) >= circle.CosRadius) 
-                    || (sign < 0 && Vector3.Dot(a, circle.SphereNormal) >= circle.CosRadius)
+                    (aSign > 0 && Vector3.Dot(b, circle.SphereNormal) >= circle.CosRadius) 
+                    || (aSign < 0 && Vector3.Dot(a, circle.SphereNormal) >= circle.CosRadius)
                 ) { return true; }
             }
         }
