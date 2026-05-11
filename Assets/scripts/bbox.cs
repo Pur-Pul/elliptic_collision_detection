@@ -139,7 +139,6 @@ public class BBoxSphere : BBox
 {
     public BBoxSphere(int id) : base(id) {}
     private float sagitta;
-    public float RadAngle { get; set; }
     public float Radius { get; set; }
     public override Vector3 Size
     {
@@ -150,7 +149,6 @@ public class BBoxSphere : BBox
             base.Size = new Vector3(chord, chord, chord);
             sagitta = SphericalUtils.CalculateSagitta(value.x);
             Radius = value.x/2f;
-            RadAngle = SphericalUtils.ChordToAngle(value.x)/2;
         }
     }
     public override Vector3 Position
@@ -164,17 +162,12 @@ public class BBoxSphere : BBox
     
     public override void UpdateSimpleSize () {}
     public override bool CheckSphere(BBoxSphere sphere)
-    // The radii of the spheres are converted into angles, which are added together and comared to the angle between the sphere centers.
     {
-        float centerAngle = Vector3.Angle(Position, sphere.Position) * Mathf.Deg2Rad;
-        return centerAngle < RadAngle + sphere.RadAngle;
+        float sqrDist = (sphere.Position - Position).sqrMagnitude;
+        float combinedRadius = Radius + sphere.Radius;
+        return sqrDist < combinedRadius * combinedRadius;
     }
     public override bool CheckOBB(OBBox obb) => obb.CheckSphere(this);
-
-    public float ProjectCylinder(Vector3 axis)
-    {
-        return Radius * Vector3.Cross(axis, Forward).magnitude + sagitta/2 * Mathf.Abs(Vector3.Dot(axis, Forward));
-    }
 }
 
 public class OBBox : BBox
@@ -191,7 +184,7 @@ public class OBBox : BBox
             sagitta = SphericalUtils.CalculateSagitta(cordSqr, true);
             Vector3 newSize = new(value.x, value.y, sagitta);
             base.Size = newSize;
-            halfSize = newSize/2f;
+            halfSize = newSize * 0.5f;
         }
     }
     public override Vector3 Position
@@ -258,107 +251,28 @@ public class OBBox : BBox
         return true;
     }
 
-    public float SphericalProject(Vector3 axis)
-    {
-        float rightAng = SphericalUtils.ChordToAngle(halfSize.x) * Mathf.Rad2Deg;
-        float upAng = SphericalUtils.ChordToAngle(halfSize.y) * Mathf.Rad2Deg;
-
-        Quaternion rightQuat = Quaternion.AngleAxis(rightAng, Up);
-        Quaternion upQuat = Quaternion.AngleAxis(upAng, Right);
-
-        float ang1;
-        float ang2;
-        float ang3;
-
-        Vector3 _axis;
-
-		Quaternion quat1 = VectorUtils.TwistSwingDecomposition(rightQuat, axis).Item2;
-        Quaternion quat2 = VectorUtils.TwistSwingDecomposition(upQuat, axis).Item2;
-        
-        quat1.ToAngleAxis(out ang1, out _axis);
-        quat2.ToAngleAxis(out ang2, out _axis);
-        (quat1 * quat2).ToAngleAxis(out ang3, out _axis);
-        //(quat2 * quat1).ToAngleAxis(out ang4, out _axis);
-        //UnityEngine.Debug.Log($"{ang1} | {ang2} | {ang3}");
-
-        return ang3;
-    }
-
-    public bool SphericalSAT(OBBox bbox)
-    {
-        Vector3[] axes = { Right, Up, bbox.Right, bbox.Up };
-
-        Vector3 toAxis = Vector3.Cross(Position, bbox.Position).normalized;
-        float toAngle = Vector3.Angle(Position, bbox.Position);
-        Quaternion toQuat = Quaternion.AngleAxis(toAngle, toAxis);
-
-        for (int i = 0; i < 4; i++)
-        {
-            Vector3 axis = axes[i];
-            float rA = SphericalProject(axis);
-            float rB = bbox.SphericalProject(axis);
-            float angDist;
-            Vector3 _axis;
-            VectorUtils.TwistSwingDecomposition(toQuat, axis).Item2.ToAngleAxis(out angDist, out _axis);
-
-            if (angDist > rA + rB) return false;
-        }
-
-        return true;
-    }
-
     public override bool CheckOBB (OBBox obb)
     {
         return SAT(obb);
     }
 
-    public Vector3 ClosestPoint (Vector3 point)
+    public override bool CheckSphere(BBoxSphere sphere) //https://gamedev.stackexchange.com/questions/163873/separating-axis-theorem-obb-vs-sphere
     {
-        Vector3 obbToPoint = point - Position;
+        Vector3 obbToPoint = sphere.Position - Position;
 
-        Vector3 local_pos = new (
+        Vector3 spherePosLocal = new (
             Vector3.Dot(obbToPoint, Right),
             Vector3.Dot(obbToPoint, Up),
             Vector3.Dot(obbToPoint, Forward)
         );
 
         Vector3 closestPointLocal = new(
-            Mathf.Clamp(local_pos.x, -Size.x/2, Size.x/2),
-            Mathf.Clamp(local_pos.y, -Size.y/2, Size.y/2),
-            Mathf.Clamp(local_pos.z, -Size.z/2, Size.z/2)
+            Mathf.Clamp(spherePosLocal.x, -HalfSize.x, HalfSize.x),
+            Mathf.Clamp(spherePosLocal.y, -HalfSize.y, HalfSize.y),
+            Mathf.Clamp(spherePosLocal.z, -HalfSize.z, HalfSize.z)
         );
 
-        return Position + closestPointLocal;
-    }
-
-    public override bool CheckSphere(BBoxSphere sphere) //https://gamedev.stackexchange.com/questions/163873/separating-axis-theorem-obb-vs-sphere
-    {
-        Vector3 toVector = Position - sphere.Position;
-        Vector3[] axesOBB = { Right, Up, Forward };
-        float distance;
-
-        for (int i = 0; i < 3; i++)
-        {
-            Vector3 axis = axesOBB[i];
-            distance = MathF.Abs(Vector3.Dot(toVector, axis));
-            if (distance > halfSize[i] + sphere.ProjectCylinder(axis)) return false;
-
-            Vector3 crossAxis = Vector3.Cross(axis, sphere.Forward).normalized;
-            distance = MathF.Abs(Vector3.Dot(toVector, crossAxis));
-            if (distance > Project(crossAxis) + sphere.ProjectCylinder(crossAxis)) return false;
-        }
-
-        Vector3 toClosestPoint = ClosestPoint(sphere.Position) - Position;
-
-        Vector3 relevantCylinderNormal = new Vector3(
-            Vector3.Dot(toClosestPoint, Right),
-            Vector3.Dot(toClosestPoint, Up),
-            0f
-        ).normalized;
-
-        distance = MathF.Abs(Vector3.Dot(toVector, relevantCylinderNormal));
-        if (distance > Project(relevantCylinderNormal) + sphere.ProjectCylinder(relevantCylinderNormal)) return false;
-
-        return true;
+        float sqrDist = (closestPointLocal - spherePosLocal).sqrMagnitude;
+        return sqrDist < sphere.Radius * sphere.Radius;
     }
 }

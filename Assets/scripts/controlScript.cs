@@ -292,8 +292,14 @@ public class ControlScript : MonoBehaviour
         if (CollisionList != null)
         {
             CollisionList.Finish(step);
-            float[] accuracy_data = CollisionRecord.CalculateAccuracy(baselineList, artifactList);
-            AccuracyText.text = $"Baseline: {baselineList.method}\nArtifact: {artifactList.method}\nPrecision: {accuracy_data[0]}\nRecall: {accuracy_data[1]}\nF1: {accuracy_data[2]}";
+            Dictionary<string, SumData> accuracy_data = CollisionRecord.CalculateAccuracy(baselineList, artifactList);
+            AccuracyText.text = $"Baseline: {baselineList.method}\nArtifact: {artifactList.method}\n{accuracy_data["all"].Header()}";
+            foreach (string key in accuracy_data.Keys)
+            {
+                if (key == "all") { continue; }
+                AccuracyText.text += $"{accuracy_data[key]}";
+            }
+            AccuracyText.text += $"{accuracy_data["all"]}";
         }
         RuntimeText.text = runtimeRecord.ToString();
         step = 0;

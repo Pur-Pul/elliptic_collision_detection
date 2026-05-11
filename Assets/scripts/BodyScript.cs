@@ -128,7 +128,7 @@ public class BodyScript : MonoBehaviour, IItem
         }
         if (control.CollisionList != null)
         {
-            control.CollisionList.Collision(Id, collisions.Select(item => item.Id).ToList(), step);
+            control.CollisionList.Collision(this, collisions, step);
         } 
     }
 
