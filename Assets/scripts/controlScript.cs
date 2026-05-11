@@ -309,6 +309,39 @@ public class ControlScript : MonoBehaviour
         }
     }
 
+    public void SaveMetrics()
+    {
+        string currentDir = Directory.GetCurrentDirectory();
+        string timeStamp = $"{DateTime.Now:yyyy.MM.dd_hh:mm:ss}";
+
+        Dictionary<string, SumData> accuracy_data = CollisionRecord.CalculateAccuracy(baselineList, artifactList);
+        string accuracyText = "Type,Precision,Recall,F1\n";
+        foreach (string key in accuracy_data.Keys)
+        {
+            if (key == "all") { continue; }
+            accuracyText += $"{accuracy_data[key].type},{accuracy_data[key].Precision},{accuracy_data[key].Recall},{accuracy_data[key].F1}\n";
+        }
+        accuracyText += $"{accuracy_data["all"].type},{accuracy_data["all"].Precision},{accuracy_data["all"].Recall},{accuracy_data["all"].F1}\n";
+        File.WriteAllText(
+            Path.Combine(currentDir, $"out/accuracy-{baselineList.method}-{artifactList.method}-{timeStamp}.csv"),
+            accuracyText
+        );
+
+        string runtimeText = "Class,Method,Runtime,Calls\n";
+        foreach ((Type, System.Reflection.MethodInfo) key in runtimeRecord.records.Keys)
+        {
+            string className = key.Item1.Name;
+            string functionName = key.Item2.Name;
+            (long time, int n) = runtimeRecord.records[key];
+            runtimeText += $"{className},{functionName},{time},{n}\n";
+        }
+        runtimeText += $"Total,,,{runtimeRecord.total_time},{runtimeRecord.total_n}\n";
+        File.WriteAllText(
+            Path.Combine(currentDir, $"out/runtime-{timeStamp}.csv"),
+            runtimeText
+        );
+    }
+
     void Stop()
     {
         Active = false;

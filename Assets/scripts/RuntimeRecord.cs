@@ -4,7 +4,7 @@ using System.Diagnostics;
 
 public class RuntimeRecord
 {
-    Dictionary<(Type, System.Reflection.MethodInfo), (long, int)> records;
+    public Dictionary<(Type, System.Reflection.MethodInfo), (long, int)> records;
     public long total_time = 0;
     public int total_n = 0;
     public RuntimeRecord() {
