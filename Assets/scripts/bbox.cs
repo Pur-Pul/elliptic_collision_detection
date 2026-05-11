@@ -81,14 +81,29 @@ public class BBox : IBoundingVolume
         }
     }
 
-    public virtual void Update(Vector3 _pos, Vector3 _size, Quaternion _orientation)
+    public void Reorient(Quaternion _orientation)
     {
         Right = _orientation * Vector3.right;
         Up = _orientation * Vector3.up;
         Forward = _orientation * Vector3.forward;
+    }
+
+    public void Resize(Vector3 _size)
+    {
         Size = _size;
+    }
+
+    public void Reposition(Vector3 _pos)
+    {
         Position = _pos;
-        UpdateSimpleSize();
+    }
+
+    public void Update(Vector3 _pos, Vector3 _size, Quaternion _orientation)
+    {
+        Timed(new Action<Quaternion>(Reorient), _orientation);
+        Timed(new Action<Vector3>(Resize), _size);
+        Timed(new Action<Vector3>(Reposition), _pos);
+        Timed(new Action(UpdateSimpleSize));
     }
 
     public virtual void UpdateSimpleSize ()
@@ -110,16 +125,13 @@ public class BBox : IBoundingVolume
 	public virtual bool CheckSphere (BBoxSphere sphere) => false;
     public virtual bool CheckOBB (OBBox obb) => false;
 
-    bool Timed<T>(
-        T volume,
-        Func<T, bool> check
-    ) where T : IBoundingVolume
+    object Timed(Delegate func, params object[] args)
     {
         long start = Stopwatch.GetTimestamp();
-        bool result = check(volume);
+        object result = func.DynamicInvoke(args);
         long end = Stopwatch.GetTimestamp();
 
-        Record.Write(start, end, (this.GetType(), check.Method));
+        Record.Write(start, end, (this.GetType(), func.Method));
 
         return result;
     }
@@ -128,8 +140,8 @@ public class BBox : IBoundingVolume
     {
         return other switch
         {
-            BBoxSphere sphere => Timed(sphere, CheckSphere),
-            OBBox obb => Timed(obb, CheckOBB),
+            BBoxSphere sphere => (bool)Timed(new Func<BBoxSphere, bool>(CheckSphere),sphere),
+            OBBox obb => (bool)Timed(new Func<OBBox, bool>(CheckOBB),obb),
             _ => false
         };
     }

@@ -85,14 +85,29 @@ public class SBV : IBoundingVolume //Spherical Bounding Volume
         }
     }
 
-    public virtual void Update(Vector3 _pos, Vector3 _size, Quaternion _orientation)
+    public virtual void Reorient(Quaternion _orientation)
     {
         Right = _orientation * Vector3.right;
         Up = _orientation * Vector3.up;
         Forward = _orientation * Vector3.forward;
+    }
+
+    public void Resize(Vector3 _size)
+    {
         Size = _size;
+    }
+
+    public void Reposition(Vector3 _pos)
+    {
         Position = _pos;
-        UpdateSimpleSize();
+    }
+
+    public void Update(Vector3 _pos, Vector3 _size, Quaternion _orientation)
+    {
+        Timed(new Action<Vector3>(Resize), _size);
+        Timed(new Action<Quaternion>(Reorient), _orientation);
+        Timed(new Action<Vector3>(Reposition), _pos);
+        Timed(new Action(UpdateSimpleSize));
     }
 
     public virtual void UpdateSimpleSize ()
@@ -114,16 +129,13 @@ public class SBV : IBoundingVolume //Spherical Bounding Volume
     public virtual bool CheckSBC (SBC circle) => false;
     public virtual bool CheckOBR (SOBR obr) => false;
 
-    bool Timed<T>(
-        T volume,
-        Func<T, bool> check
-    ) where T : IBoundingVolume
+    object Timed(Delegate func, params object[] args)
     {
         long start = Stopwatch.GetTimestamp();
-        bool result = check(volume);
+        object result = func.DynamicInvoke(args);
         long end = Stopwatch.GetTimestamp();
 
-        Record.Write(start, end, (GetType(), check.Method));
+        Record.Write(start, end, (this.GetType(), func.Method));
 
         return result;
     }
@@ -132,8 +144,8 @@ public class SBV : IBoundingVolume //Spherical Bounding Volume
     {
         return other switch
         {
-            SBC circle => Timed(circle, CheckSBC),
-            SOBR obr => Timed(obr, CheckOBR),
+            SBC circle => (bool)Timed(new Func<SBC, bool>(CheckSBC),circle),
+            SOBR obr => (bool)Timed(new Func<SOBR, bool>(CheckOBR),obr),
             _ => false
         };
     }
@@ -247,20 +259,15 @@ public class SOBR : SBV //Spherical Oriented Bounding Rectangle
 
     public Vector3[] GCNormals { get; set; }
 
-    public override void Update(Vector3 _pos, Vector3 _size, Quaternion _orientation)
+    public override void Reorient(Quaternion _orientation)
     {
-        Size = _size;
-        Right = _orientation * Vector3.right;
-        Up = _orientation * Vector3.up;
-        Forward = _orientation * Vector3.forward;
+        base.Reorient(_orientation);
         GCNormals = new [] {
             _orientation * GCBaseNormals[0],
             _orientation * GCBaseNormals[1],
             _orientation * GCBaseNormals[2],
             _orientation * GCBaseNormals[3]
         };
-        Position = _pos;
-        UpdateSimpleSize();
     }
 
     public bool ContainsPoint(Vector3 point)

@@ -84,14 +84,29 @@ public class SBVA : IBoundingVolume //Spherical Bounding Volume
         }
     }
 
-    public virtual void Update(Vector3 _pos, Vector3 _size, Quaternion _orientation)
+    public virtual void Reorient(Quaternion _orientation)
     {
         Right = _orientation * Vector3.right;
         Up = _orientation * Vector3.up;
         Forward = _orientation * Vector3.forward;
+    }
+
+    public void Resize(Vector3 _size)
+    {
         Size = _size;
+    }
+
+    public void Reposition(Vector3 _pos)
+    {
         Position = _pos;
-        UpdateSimpleSize();
+    }
+
+    public void Update(Vector3 _pos, Vector3 _size, Quaternion _orientation)
+    {
+        Timed(new Action<Vector3>(Resize), _size);
+        Timed(new Action<Quaternion>(Reorient), _orientation);
+        Timed(new Action<Vector3>(Reposition), _pos);
+        Timed(new Action(UpdateSimpleSize));
     }
 
     public virtual void UpdateSimpleSize ()
@@ -113,16 +128,13 @@ public class SBVA : IBoundingVolume //Spherical Bounding Volume
     public virtual bool CheckSBCA (SBCA circle) => false;
     public virtual bool CheckOBRA (SOBRA obr) => false;
 
-    bool Timed<T>(
-        T volume,
-        Func<T, bool> check
-    ) where T : IBoundingVolume
+        object Timed(Delegate func, params object[] args)
     {
         long start = Stopwatch.GetTimestamp();
-        bool result = check(volume);
+        object result = func.DynamicInvoke(args);
         long end = Stopwatch.GetTimestamp();
 
-        Record.Write(start, end, (GetType(), check.Method));
+        Record.Write(start, end, (this.GetType(), func.Method));
 
         return result;
     }
@@ -131,8 +143,8 @@ public class SBVA : IBoundingVolume //Spherical Bounding Volume
     {
         return other switch
         {
-            SBCA circle => Timed(circle, CheckSBCA),
-            SOBRA obr => Timed(obr, CheckOBRA),
+            SBCA circle => (bool)Timed(new Func<SBCA, bool>(CheckSBCA),circle),
+            SOBRA obr => (bool)Timed(new Func<SOBRA, bool>(CheckOBRA),obr),
             _ => false
         };
     }
@@ -220,7 +232,6 @@ public class SOBRA : SBVA //Spherical Oriented Bounding Rectangle
         }
     }
 
-
     public float RightAng { get; set; }
     public float UpAng { get; set; }
 
@@ -274,12 +285,9 @@ public class SOBRA : SBVA //Spherical Oriented Bounding Rectangle
     public float[] ArcAngles { get; set; }
     public Vector3[] GCNormals { get; set; }
     public Vector3[] Corners { get; set; }
-    public override void Update(Vector3 _pos, Vector3 _size, Quaternion _orientation)
+    public override void Reorient(Quaternion _orientation)
     {
-        Size = _size;
-        Right = _orientation * Vector3.right;
-        Up = _orientation * Vector3.up;
-        Forward = _orientation * Vector3.forward;
+        base.Reorient(_orientation);
         GCNormals = new [] {
             _orientation * GCBaseNormals[0],
             _orientation * GCBaseNormals[1],
@@ -293,8 +301,6 @@ public class SOBRA : SBVA //Spherical Oriented Bounding Rectangle
             _orientation * BaseCorners[2],
             _orientation * BaseCorners[3]
         };
-        Position = _pos;
-        UpdateSimpleSize();
     }
 
     public bool ContainsPoint(Vector3 point, bool checkInv = false)
