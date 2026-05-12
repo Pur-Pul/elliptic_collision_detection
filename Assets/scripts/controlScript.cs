@@ -333,6 +333,9 @@ public class ControlScript : MonoBehaviour
 
         string runtimeText = 
             $"#Sequence: {currentSequence}\n" +
+            $"#Iterations: {Iterations}\n" +
+            $"#Tree depth: {MaxDepth}\n" +
+            $"#Tree items: {MaxItems}\n" +
             "Class,Method,Runtime,Calls\n";
         foreach ((Type, System.Reflection.MethodInfo) key in runtimeRecord.records.Keys)
         {
