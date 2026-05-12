@@ -122,6 +122,7 @@ public class ControlScript : MonoBehaviour
     public int body_n;
     private int lastStep;
     private List<Sequence> sequences;
+    public string currentSequence = null;
     public CameraScript cam;
     public CollisionRecord baselineList;
     public CollisionRecord artifactList;
@@ -175,6 +176,14 @@ public class ControlScript : MonoBehaviour
         }
         bodies.Clear();
         sequences.Clear();
+        baselineList.Reset();
+        baselineList.method = "";
+        artifactList.Reset();
+        artifactList.method = "";
+        runtimeRecord.Reset();
+        AccuracyText.text = "Baseline: \nArtifact: \nType            | Precision | Recall    | F1";
+        RuntimeText.text = "Class           | Method               | Runtime    | Calls     ";
+        currentSequence = null;
     }
 
     public void GenerateBodies()
@@ -232,10 +241,12 @@ public class ControlScript : MonoBehaviour
 
     public void LoadFromFile()
     {
-        string f = EditorUtility.OpenFilePanel("Load sequence from file", Directory.GetCurrentDirectory(), "xml");
+        string wd = Directory.GetCurrentDirectory();
+        string f = EditorUtility.OpenFilePanel("Load sequence from file", wd, "xml");
         if (f == "") { return; }
         List<Sequence> sl = SequenceUtils.FromFile(f);
         DestroyBodies();
+        currentSequence = Path.GetRelativePath(wd, f);
         sequences = sl;
         lastStep = SequenceUtils.GetLastStep(sl);
         step = 0;
@@ -244,10 +255,15 @@ public class ControlScript : MonoBehaviour
         SetMethod();
     }
 
-    public void SaveToFile()
+    public void SaveToFile(string name = null)
     {
-        string currentDir = Directory.GetCurrentDirectory();
-        SequenceUtils.SaveToFile(Path.Combine(currentDir, $"out/{DateTime.Now.ToString("yyyy.MM.dd_hh:mm:ss")}.xml"), sequences);
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            name = $"{DateTime.Now:yyyy.MM.dd_HH:mm:ss}";
+        }
+        string wd = Directory.GetCurrentDirectory();
+        currentSequence = $"out/{name}.xml";
+        SequenceUtils.SaveToFile(Path.Combine(wd, currentSequence), sequences);
     }
 
     int ParseInputNumber(TMP_InputField input)
@@ -276,7 +292,7 @@ public class ControlScript : MonoBehaviour
             if (body.Move(step))
             {
                 collisionTree.Remove(body);
-                body.UpdateBBox();
+                body.UpdateBBox(true);
                 collisionTree.Add(body);
             }
         }
@@ -309,25 +325,15 @@ public class ControlScript : MonoBehaviour
         }
     }
 
-    public void SaveMetrics()
+    public void SaveRuntimeMetrics()
     {
         string currentDir = Directory.GetCurrentDirectory();
         string timeStamp = $"{DateTime.Now:yyyy.MM.dd_hh:mm:ss}";
+        if (currentSequence == null) { SaveToFile(timeStamp); }
 
-        Dictionary<string, SumData> accuracy_data = CollisionRecord.CalculateAccuracy(baselineList, artifactList);
-        string accuracyText = "Type,Precision,Recall,F1\n";
-        foreach (string key in accuracy_data.Keys)
-        {
-            if (key == "all") { continue; }
-            accuracyText += $"{accuracy_data[key].type},{accuracy_data[key].Precision},{accuracy_data[key].Recall},{accuracy_data[key].F1}\n";
-        }
-        accuracyText += $"{accuracy_data["all"].type},{accuracy_data["all"].Precision},{accuracy_data["all"].Recall},{accuracy_data["all"].F1}\n";
-        File.WriteAllText(
-            Path.Combine(currentDir, $"out/accuracy-{baselineList.method}-{artifactList.method}-{timeStamp}.csv"),
-            accuracyText
-        );
-
-        string runtimeText = "Class,Method,Runtime,Calls\n";
+        string runtimeText = 
+            $"#Sequence: {currentSequence}\n" +
+            "Class,Method,Runtime,Calls\n";
         foreach ((Type, System.Reflection.MethodInfo) key in runtimeRecord.records.Keys)
         {
             string className = key.Item1.Name;
@@ -339,6 +345,30 @@ public class ControlScript : MonoBehaviour
         File.WriteAllText(
             Path.Combine(currentDir, $"out/runtime-{timeStamp}.csv"),
             runtimeText
+        );
+    }
+
+    public void SaveAccuracyMetrics()
+    {
+        string currentDir = Directory.GetCurrentDirectory();
+        string timeStamp = $"{DateTime.Now:yyyy.MM.dd_hh:mm:ss}";
+        if (currentSequence == null) { SaveToFile(timeStamp); }
+
+        Dictionary<string, SumData> accuracy_data = CollisionRecord.CalculateAccuracy(baselineList, artifactList);
+        string accuracyText = 
+            $"#Sequence: {currentSequence}\n" +
+            $"#Baseline: {baselineList.method}\n" +
+            $"#Artifact: {artifactList.method}\n" +
+            "Type,Precision,Recall,F1\n";
+        foreach (string key in accuracy_data.Keys)
+        {
+            if (key == "all") { continue; }
+            accuracyText += $"{accuracy_data[key].type},{accuracy_data[key].Precision},{accuracy_data[key].Recall},{accuracy_data[key].F1}\n";
+        }
+        accuracyText += $"{accuracy_data["all"].type},{accuracy_data["all"].Precision},{accuracy_data["all"].Recall},{accuracy_data["all"].F1}\n";
+        File.WriteAllText(
+            Path.Combine(currentDir, $"out/accuracy-{timeStamp}.csv"),
+            accuracyText
         );
     }
 

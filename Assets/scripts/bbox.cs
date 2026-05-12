@@ -87,25 +87,8 @@ public class BBox : IBoundingVolume
         Up = _orientation * Vector3.up;
         Forward = _orientation * Vector3.forward;
     }
-
-    public void Resize(Vector3 _size)
-    {
-        Size = _size;
-    }
-
-    public void Reposition(Vector3 _pos)
-    {
-        Position = _pos;
-    }
-
-    public void Update(Vector3 _pos, Vector3 _size, Quaternion _orientation)
-    {
-        Timed(new Action<Quaternion>(Reorient), _orientation);
-        Timed(new Action<Vector3>(Resize), _size);
-        Timed(new Action<Vector3>(Reposition), _pos);
-        Timed(new Action(UpdateSimpleSize));
-    }
-
+    public void Resize(Vector3 _size) { Size = _size; }
+    public void Reposition(Vector3 _pos) { Position = _pos; }
     public virtual void UpdateSimpleSize ()
     {
         if (shapeUpdated) {
@@ -118,6 +101,22 @@ public class BBox : IBoundingVolume
                 Mathf.Abs(r.z) + Mathf.Abs(u.z) + Mathf.Abs(f.z)
             );
             shapeUpdated = false;
+        }
+    }
+    public void Update(Vector3 _pos, Vector3 _size, Quaternion _orientation, bool timed)
+    {
+        if (timed)
+        {
+            Timed(new Action<Quaternion>(Reorient), _orientation);
+            Timed(new Action<Vector3>(Resize), _size);
+            Timed(new Action<Vector3>(Reposition), _pos);
+            Timed(new Action(UpdateSimpleSize));    
+        } else
+        {
+            Reorient(_orientation);
+            Resize(_size);
+            Reposition(_pos);
+            UpdateSimpleSize();   
         }
     }
 

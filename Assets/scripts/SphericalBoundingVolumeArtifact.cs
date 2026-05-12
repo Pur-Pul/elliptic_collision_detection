@@ -90,25 +90,8 @@ public class SBVA : IBoundingVolume //Spherical Bounding Volume
         Up = _orientation * Vector3.up;
         Forward = _orientation * Vector3.forward;
     }
-
-    public void Resize(Vector3 _size)
-    {
-        Size = _size;
-    }
-
-    public void Reposition(Vector3 _pos)
-    {
-        Position = _pos;
-    }
-
-    public void Update(Vector3 _pos, Vector3 _size, Quaternion _orientation)
-    {
-        Timed(new Action<Vector3>(Resize), _size);
-        Timed(new Action<Quaternion>(Reorient), _orientation);
-        Timed(new Action<Vector3>(Reposition), _pos);
-        Timed(new Action(UpdateSimpleSize));
-    }
-
+    public void Resize(Vector3 _size) { Size = _size; }
+    public void Reposition(Vector3 _pos) { Position = _pos; }
     public virtual void UpdateSimpleSize ()
     {
         if (shapeUpdated) {
@@ -123,12 +106,27 @@ public class SBVA : IBoundingVolume //Spherical Bounding Volume
             shapeUpdated = false;
         }
     }
-
+    public void Update(Vector3 _pos, Vector3 _size, Quaternion _orientation, bool timed)
+    {
+        if (timed)
+        {
+            Timed(new Action<Vector3>(Resize), _size);
+            Timed(new Action<Quaternion>(Reorient), _orientation);
+            Timed(new Action<Vector3>(Reposition), _pos);
+            Timed(new Action(UpdateSimpleSize));    
+        } else
+        {
+            Resize(_size);
+            Reorient(_orientation);
+            Reposition(_pos);
+            UpdateSimpleSize();   
+        }
+    }
     public bool CheckFastOverlaps(IBoundingVolume other) => Simple.SimpleIntersects(other.Simple);
     public virtual bool CheckSBCA (SBCA circle) => false;
     public virtual bool CheckOBRA (SOBRA obr) => false;
 
-        object Timed(Delegate func, params object[] args)
+    object Timed(Delegate func, params object[] args)
     {
         long start = Stopwatch.GetTimestamp();
         object result = func.DynamicInvoke(args);

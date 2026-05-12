@@ -176,7 +176,7 @@ public class SequenceUtils
     public static void SaveToFile(string filePath, List<Sequence> sequences)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(filePath));
-        FileStream outFile = File.Create(filePath);
+        using FileStream outFile = File.Create(filePath);
         XmlSerializer formatter = new(typeof(List<KeyframeList>));
         formatter.Serialize(outFile, GetKeyframeList(sequences));
     }
@@ -184,15 +184,16 @@ public class SequenceUtils
     public static List<Sequence> FromFile(string filePath)
     {
         XmlSerializer formatter = new(typeof(List<KeyframeList>));
-        FileStream f = new(filePath, FileMode.Open);
-        byte[] buffer = new byte[f.Length];
-        f.Read(buffer, 0, (int)f.Length);
-        MemoryStream stream = new(buffer);
 
-        List<KeyframeList> keyframeListList = (List<KeyframeList>)formatter.Deserialize(stream);
-        List<Sequence> sl = GetSequenceList(keyframeListList);
-        
-        return sl;
+        using FileStream f = new(filePath, FileMode.Open);
+
+        //FileStream f = new(filePath, FileMode.Open);
+        //byte[] buffer = new byte[f.Length];
+        //f.Read(buffer, 0, (int)f.Length);
+        //MemoryStream stream = new(buffer);
+
+        List<KeyframeList> keyframeListList = (List<KeyframeList>)formatter.Deserialize(f);
+        return GetSequenceList(keyframeListList);
     }
     public static int GetLastStep(List<Sequence> sl)
     {
