@@ -88,6 +88,7 @@ public class BodyScript : MonoBehaviour, IItem
 
     public void UpdateBBox (bool timed = false)
     {
+        Debug.Log(Position);
         BBox.Update(Position, sequence.Size, transform.rotation, timed);
         transform.position = BBox.Position;
         transform.localScale = BBox.Size;
