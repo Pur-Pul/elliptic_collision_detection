@@ -8,7 +8,7 @@ public class SaveButtonScript : MonoBehaviour
 
     void Update()
     {
-        if (control.Active || control.step > 0 || control.currentSequence != null) { button.interactable = false; }
+        if (control.Active || control.step > 0 || control.currentSequenceList != null) { button.interactable = false; }
         else { button.interactable = true; }
     }
 }
