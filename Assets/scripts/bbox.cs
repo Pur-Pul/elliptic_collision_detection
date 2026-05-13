@@ -192,6 +192,7 @@ public class OBBox : BBox
         {
             if (base.Size.x == value.x && base.Size.y == value.y) { return; }
             float cordSqr = value.x * value.x + value.y * value.y;
+            UnityEngine.Debug.Log(cordSqr);
             sagitta = SphericalUtils.CalculateSagitta(cordSqr, true);
             Vector3 newSize = new(value.x, value.y, sagitta);
             base.Size = newSize;

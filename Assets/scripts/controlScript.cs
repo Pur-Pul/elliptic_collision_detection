@@ -88,6 +88,34 @@ public class ControlScript : MonoBehaviour
             collisionTree.MaxItems = value;
         } 
     }
+    public float MinSize
+    {
+        get
+        {
+            if (!float.TryParse(minSizeInput.text, out float number))
+            {
+                number = 0.01f;
+                
+            }
+            number = Mathf.Clamp(number, 0.01f, 1.99f);
+            minSizeInput.text = $"{number}";
+            return number;
+        }
+    }
+    public float MaxSize
+    {
+        get
+        {
+            if (!float.TryParse(maxSizeInput.text, out float number))
+            {
+                number = 1.00f;
+                
+            }
+            number = Mathf.Clamp(number, 0.01f, 1.99f);
+            maxSizeInput.text = $"{number}";
+            return number;
+        }
+    }
     private (int, int) optimizeEnd = (0, 0);
     private bool optimize = false;
     public bool Optimize
@@ -113,6 +141,8 @@ public class ControlScript : MonoBehaviour
     public TMP_InputField maxDepthInput;
     public TMP_InputField maxItemsInput;
     public TMP_InputField IterationInput;
+    public TMP_InputField minSizeInput;
+    public TMP_InputField maxSizeInput;
     public TMP_Dropdown MethodDropdown;
     public TMP_Dropdown RecordDropdown;
     public TMP_Text AccuracyText;
@@ -194,8 +224,8 @@ public class ControlScript : MonoBehaviour
         lastStep = ParseInputNumber(lastStepInput);
 
         List<string> selectedBodies = new();
-        if (CirclesInput.isOn) { selectedBodies.Add("sphere"); }
-        if (RectanglesInput.isOn) { selectedBodies.Add("obb"); }
+        if (CirclesInput.isOn) { selectedBodies.Add("circle"); }
+        if (RectanglesInput.isOn) { selectedBodies.Add("rectangle"); }
         if (selectedBodies.Count == 0) {
             body_n = 0;
             lastStep = 0;
@@ -203,7 +233,7 @@ public class ControlScript : MonoBehaviour
         }
         for (int i = 0; i < body_n; i++)
         {
-            Sequence s = Sequence.RandomSequence(lastStep, ellipseRadius, selectedBodies);
+            Sequence s = Sequence.RandomSequence(lastStep, ellipseRadius, selectedBodies, MinSize, MaxSize);
             s.Id = i;
             sequences.Add(s);
         }

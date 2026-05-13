@@ -16,7 +16,7 @@ public class Keyframe
 public class KeyframeList
 {
     public List<Keyframe> Keyframes { get; set; } = new ();
-    public string BodyType { get; set; } = "sphere";
+    public string BodyType { get; set; } = "circle";
     public Vector2 Size { get; set; }
     public int id = -1;
 
@@ -131,22 +131,29 @@ public class Sequence
     {
         cursor = 1;
     }
-    public static Sequence RandomSequence(int lastStep, float radius, List<string> selectedBodies)
+    public static Sequence RandomSequence(int lastStep, float radius, List<string> selectedBodies, float MinSize, float MaxSize)
     {
+        float chord = UnityEngine.Random.Range(MinSize, MaxSize);
+        string bodyType = selectedBodies[UnityEngine.Random.Range(0, selectedBodies.Count)];
+        float width = chord;
+        float height = chord;
+        if (bodyType == "rectangle")
+        {
+            float aspect = UnityEngine.Random.Range(0.01f, 0.99f);
+            height = chord / Mathf.Sqrt(aspect*aspect + 1);
+            width = aspect * height;    
+        }
+        
         Sequence seq = new()
         {
-
-            BodyType = selectedBodies[UnityEngine.Random.Range(0, selectedBodies.Count)],
-            Size = new Vector2(
-                UnityEngine.Random.Range(0.01f, 1f),
-                UnityEngine.Random.Range(0.01f, 1f)
-            )
+            BodyType = bodyType,
+            Size = new Vector2(width, height)
             
         };
         seq.Randomize(lastStep, radius);
         return seq;
     }
-    public static readonly string[] BODY_TYPES = { "sphere", "obb" };
+    public static readonly string[] BODY_TYPES = { "circle", "rectangle" };
 }
 
 public class SequenceUtils

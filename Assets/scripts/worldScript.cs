@@ -18,7 +18,7 @@ public class worldScript : MonoBehaviour
         List<Matrix4x4> BSList = new();
         List<Matrix4x4> OBBList = new();
 
-        void HandleSphere (Vector3 pos, float sRadius, Color color, Matrix4x4 m)
+        void HandleCircle (Vector3 pos, float sRadius, Color color, Matrix4x4 m)
         {
             m.SetRow(0, new Vector4(pos.x, pos.y, pos.z, 0));
             m.SetRow(1, new Vector4(sRadius, 0, 0, 0));
@@ -43,7 +43,7 @@ public class worldScript : MonoBehaviour
             switch (control.bodies[i].BBox)
             {
                 case SBC circle:
-                    HandleSphere(
+                    HandleCircle(
                         pos,
                         circle.SRadius,
                         control.bodies[i].drawColor, 
@@ -51,7 +51,7 @@ public class worldScript : MonoBehaviour
                     );
                     break;
                 case SBCA circle:
-                    HandleSphere(
+                    HandleCircle(
                         pos,
                         circle.SRadius,
                         control.bodies[i].drawColor, 
@@ -59,7 +59,7 @@ public class worldScript : MonoBehaviour
                     );
                     break;
                 case BBoxSphere sphere:
-                    HandleSphere(
+                    HandleCircle(
                         pos,
                         SphericalUtils.AngleToSphericalDistance(SphericalUtils.ChordToAngle(sphere.Radius * 2f) * 0.5f),
                         control.bodies[i].drawColor,
