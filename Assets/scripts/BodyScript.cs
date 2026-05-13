@@ -41,13 +41,17 @@ public class BodyScript : MonoBehaviour, IItem
                 meshRenderer.enabled = true;
                 switch (sequence.BodyType)
                 {
-                    case "sphere":
-                        meshFilter.mesh = GameObject.CreatePrimitive(PrimitiveType.Sphere).GetComponent<MeshFilter>().sharedMesh;
+                    case "circle":
+                        GameObject tempSphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                        meshFilter.mesh = tempSphere.GetComponent<MeshFilter>().sharedMesh;
+                        Destroy(tempSphere);
                         BBox = new BBoxSphere(Id);
                         break;
-                    case "obb":
+                    case "rectangle":
+                        GameObject tempCube = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                        meshFilter.mesh = tempCube.GetComponent<MeshFilter>().sharedMesh;
+                        Destroy(tempCube);
                         
-                        meshFilter.mesh = GameObject.CreatePrimitive(PrimitiveType.Cube).GetComponent<MeshFilter>().sharedMesh;
                         BBox = new OBBox(Id);
                         break;
                 }
@@ -56,10 +60,10 @@ public class BodyScript : MonoBehaviour, IItem
                 meshRenderer.enabled = false;
                 switch (sequence.BodyType)
                 {
-                    case "sphere":
+                    case "circle":
                         BBox = new SBC(Id);
                         break;
-                    case "obb":
+                    case "rectangle":
                         BBox = new SOBR(Id);
                         break;
                 }
@@ -68,10 +72,10 @@ public class BodyScript : MonoBehaviour, IItem
                 meshRenderer.enabled = false;
                 switch (sequence.BodyType)
                 {
-                    case "sphere":
+                    case "circle":
                         BBox = new SBCA(Id);
                         break;
-                    case "obb":
+                    case "rectangle":
                         BBox = new SOBRA(Id);
                         break;
                 }
@@ -84,6 +88,7 @@ public class BodyScript : MonoBehaviour, IItem
 
     public void UpdateBBox (bool timed = false)
     {
+        Debug.Log(Position);
         BBox.Update(Position, sequence.Size, transform.rotation, timed);
         transform.position = BBox.Position;
         transform.localScale = BBox.Size;
