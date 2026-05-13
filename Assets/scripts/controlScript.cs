@@ -147,12 +147,13 @@ public class ControlScript : MonoBehaviour
     public TMP_Dropdown RecordDropdown;
     public TMP_Text AccuracyText;
     public TMP_Text RuntimeText;
+    public TMP_Text CurrentSequenceListText;
     public Toggle CirclesInput;
     public Toggle RectanglesInput;
     public int body_n;
     private int lastStep;
     private List<Sequence> sequences;
-    public string currentSequence = null;
+    public string currentSequenceList = null;
     public CameraScript cam;
     public CollisionRecord baselineList;
     public CollisionRecord artifactList;
@@ -213,7 +214,8 @@ public class ControlScript : MonoBehaviour
         runtimeRecord.Reset();
         AccuracyText.text = "Baseline: \nArtifact: \nType            | Precision | Recall    | F1";
         RuntimeText.text = "Class           | Method               | Runtime    | Calls     ";
-        currentSequence = null;
+        currentSequenceList = null;
+        CurrentSequenceListText.text = "Current sequence list: none";
     }
 
     public void GenerateBodies()
@@ -239,6 +241,7 @@ public class ControlScript : MonoBehaviour
         }
         SpawnBodies();
         SetMethod();
+        CurrentSequenceListText.text = "Current sequence list: Undefined*";
     }
 
     public void SetMethod()
@@ -276,7 +279,8 @@ public class ControlScript : MonoBehaviour
         if (f == "") { return; }
         List<Sequence> sl = SequenceUtils.FromFile(f);
         DestroyBodies();
-        currentSequence = Path.GetRelativePath(wd, f);
+        currentSequenceList = Path.GetRelativePath(wd, f);
+        CurrentSequenceListText.text = $"Current sequence list: {currentSequenceList}";
         sequences = sl;
         lastStep = SequenceUtils.GetLastStep(sl);
         step = 0;
@@ -292,8 +296,9 @@ public class ControlScript : MonoBehaviour
             name = $"{DateTime.Now:yyyy.MM.dd_HH:mm:ss}";
         }
         string wd = Directory.GetCurrentDirectory();
-        currentSequence = $"out/{name}.xml";
-        SequenceUtils.SaveToFile(Path.Combine(wd, currentSequence), sequences);
+        currentSequenceList = $"out/{name}.xml";
+        SequenceUtils.SaveToFile(Path.Combine(wd, currentSequenceList), sequences);
+        CurrentSequenceListText.text = $"Current sequence list: {currentSequenceList}";
     }
 
     int ParseInputNumber(TMP_InputField input)
@@ -359,10 +364,10 @@ public class ControlScript : MonoBehaviour
     {
         string currentDir = Directory.GetCurrentDirectory();
         string timeStamp = $"{DateTime.Now:yyyy.MM.dd_hh:mm:ss}";
-        if (currentSequence == null) { SaveToFile(timeStamp); }
+        if (currentSequenceList == null) { SaveToFile(timeStamp); }
 
         string runtimeText = 
-            $"#Sequence: {currentSequence}\n" +
+            $"#Sequence: {currentSequenceList}\n" +
             $"#Iterations: {Iterations}\n" +
             $"#Tree depth: {MaxDepth}\n" +
             $"#Tree items: {MaxItems}\n" +
@@ -385,11 +390,11 @@ public class ControlScript : MonoBehaviour
     {
         string currentDir = Directory.GetCurrentDirectory();
         string timeStamp = $"{DateTime.Now:yyyy.MM.dd_hh:mm:ss}";
-        if (currentSequence == null) { SaveToFile(timeStamp); }
+        if (currentSequenceList == null) { SaveToFile(timeStamp); }
 
         Dictionary<string, SumData> accuracy_data = CollisionRecord.CalculateAccuracy(baselineList, artifactList);
         string accuracyText = 
-            $"#Sequence: {currentSequence}\n" +
+            $"#Sequence: {currentSequenceList}\n" +
             $"#Baseline: {baselineList.method}\n" +
             $"#Artifact: {artifactList.method}\n" +
             "Type,Precision,Recall,F1\n";
