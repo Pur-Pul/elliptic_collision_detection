@@ -174,7 +174,7 @@ public class SBC : SBV //Spherical Bounding Circle
         get => base.Position;
         set
         {
-            base.Position = value * (1 - sagitta);
+            base.Position = value * (1 - sagitta * 0.5f);
             SphereNormal = value;
         }
     }
@@ -189,9 +189,10 @@ public class SBC : SBV //Spherical Bounding Circle
             RadiusAngle = SphericalUtils.ChordToAngle(value.x) * 0.5f;
             SRadius = SphericalUtils.AngleToSphericalDistance(RadiusAngle);
             
-            base.Size = new Vector3(value.x, value.x, sagitta);
+            base.Size = new Vector3(value.x, value.x, value.x);
         }
     }
+    public override void UpdateSimpleSize () {}
     public override bool CheckSBC(SBC other)
     {
         return radiusAngle + other.radiusAngle > Vector3.Angle(SphereNormal, other.SphereNormal) * Mathf.Deg2Rad;

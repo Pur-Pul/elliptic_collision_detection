@@ -156,6 +156,7 @@ public class BBoxSphere : BBox
         get => base.Size;
         set
         {
+            if (base.Size.x == value.x) { return; }
             float chord = value.x;
             base.Size = new Vector3(chord, chord, chord);
             sagitta = SphericalUtils.CalculateSagitta(value.x);

@@ -171,7 +171,7 @@ public class SBCA : SBVA //Spherical Bounding Circle
         get => base.Position;
         set
         {
-            base.Position = value * (1 - sagitta);
+            base.Position = value * (1 - sagitta * 0.5f);
             SphereNormal = value;
         }
     }
@@ -186,9 +186,10 @@ public class SBCA : SBVA //Spherical Bounding Circle
             RadiusAngle = SphericalUtils.ChordToAngle(value.x) * 0.5f;
             SRadius = SphericalUtils.AngleToSphericalDistance(RadiusAngle);
             
-            base.Size = new Vector3(value.x, value.x, sagitta);
+            base.Size = new Vector3(value.x, value.x, value.x);
         }
     }
+    public override void UpdateSimpleSize () {}
     public override bool CheckSBCA(SBCA other)
     // The dot product of two positions on a sphere is not a linear representation of spherical distance between them, but does contain the information.
     // Instead of adding the dot products together, adding the angles produces the actual combined spherical distance.
