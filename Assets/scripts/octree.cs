@@ -103,7 +103,6 @@ public class Octree<T>: AABB,
     }
     public List<IItem> CheckCollisions(T item)
     {
-        long start = Stopwatch.GetTimestamp();
         List<T> found_items = new ();
         Query(item.BBox, found_items);
         List<IItem> collisions = new();
@@ -115,8 +114,6 @@ public class Octree<T>: AABB,
                 collisions.Add(other);
             }
         }
-        long end = Stopwatch.GetTimestamp();
-        Record.total_time += end - start;
         return collisions;
     }
     public bool Remove(IItem item)

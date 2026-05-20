@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using TMPro;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
+using System.Linq;
 
 public class ControlScript : MonoBehaviour
 {
@@ -150,6 +152,7 @@ public class ControlScript : MonoBehaviour
     public TMP_Text CurrentSequenceListText;
     public Toggle CirclesInput;
     public Toggle RectanglesInput;
+    public Toggle RenderInput;
     public int body_n;
     private int lastStep;
     private List<Sequence> sequences;
@@ -215,7 +218,7 @@ public class ControlScript : MonoBehaviour
         AccuracyText.text = "Baseline: \nArtifact: \nType            | Precision | Recall    | F1";
         RuntimeText.text = "Class           | Method               | Runtime    | Calls     ";
         currentSequenceList = null;
-        CurrentSequenceListText.text = "Current sequence list: none";
+        CurrentSequenceListText.text = "Current sequence list: none | Step NaN : NaN | Iteration NaN : NaN";
     }
 
     public void GenerateBodies()
@@ -241,7 +244,7 @@ public class ControlScript : MonoBehaviour
         }
         SpawnBodies();
         SetMethod();
-        CurrentSequenceListText.text = "Current sequence list: Undefined*";
+        CurrentSequenceListText.text = $"Current sequence list: Undefined* | Step {step} : {lastStep} | Iteration {iteration} : {Iterations}";
     }
 
     public void SetMethod()
@@ -280,7 +283,7 @@ public class ControlScript : MonoBehaviour
         List<Sequence> sl = SequenceUtils.FromFile(f);
         DestroyBodies();
         currentSequenceList = Path.GetRelativePath(wd, f);
-        CurrentSequenceListText.text = $"Current sequence list: {currentSequenceList}";
+        CurrentSequenceListText.text = $"Current sequence list: {currentSequenceList} | Step {step} : {lastStep} | Iteration {iteration} : {Iterations}";
         sequences = sl;
         lastStep = SequenceUtils.GetLastStep(sl);
         step = 0;
@@ -289,23 +292,23 @@ public class ControlScript : MonoBehaviour
         SetMethod();
     }
 
-    public void SaveToFile(string name = null)
+    public void SaveToFile(string timestamp = null)
     {
-        if (string.IsNullOrWhiteSpace(name))
+        if (string.IsNullOrWhiteSpace(timestamp))
         {
-            name = $"{DateTime.Now:yyyy.MM.dd_HH:mm:ss}";
+            timestamp = $"{DateTime.Now:yyyy.MM.dd_HH:mm:ss}";
         }
         string wd = Directory.GetCurrentDirectory();
-        currentSequenceList = $"out/{name}.xml";
+        currentSequenceList = $"out/{timestamp}-{body_n}-{lastStep}.xml";
         SequenceUtils.SaveToFile(Path.Combine(wd, currentSequenceList), sequences);
-        CurrentSequenceListText.text = $"Current sequence list: {currentSequenceList}";
+        CurrentSequenceListText.text = $"Current sequence list: {currentSequenceList} | Step {step} : {lastStep} | Iteration {iteration} : {Iterations}";
     }
 
     int ParseInputNumber(TMP_InputField input)
     {
         if (!int.TryParse(input.text, out int number))
         {
-            Debug.LogError("Invalid number input: " + input.text);
+            UnityEngine.Debug.LogError("Invalid number input: " + input.text);
             number = 0;
         }
         return number;
@@ -371,15 +374,25 @@ public class ControlScript : MonoBehaviour
             $"#Iterations: {Iterations}\n" +
             $"#Tree depth: {MaxDepth}\n" +
             $"#Tree items: {MaxItems}\n" +
-            "Class,Method,Runtime,Calls\n";
-        foreach ((Type, System.Reflection.MethodInfo) key in runtimeRecord.records.Keys)
+            "Class,Method,Runtime,Calls,Average\n";
+        foreach (var kvp in runtimeRecord.records
+            .OrderBy(kvp => kvp.Key.Item1.Name)
+            .ThenBy(kvp => kvp.Key.Item2.Name))
         {
+            var key = kvp.Key;
+            (long time, int n) = kvp.Value;
+
             string className = key.Item1.Name;
             string functionName = key.Item2.Name;
-            (long time, int n) = runtimeRecord.records[key];
-            runtimeText += $"{className},{functionName},{time},{n}\n";
+            
+            double microseconds = time * 1_000_000.0 / Stopwatch.Frequency;
+            double average = (double)time / n * 1_000_000.0 / Stopwatch.Frequency;
+
+            runtimeText += $"{className},{functionName},{microseconds},{n},{average}\n";
         }
-        runtimeText += $"Total,,,{runtimeRecord.total_time},{runtimeRecord.total_n}\n";
+        double total_microseconds = runtimeRecord.total_time * 1_000_000.0 / Stopwatch.Frequency;
+        double total_average = (double)runtimeRecord.total_time / runtimeRecord.total_n * 1_000_000.0 / Stopwatch.Frequency;
+        runtimeText += $"Total,,{total_microseconds},{runtimeRecord.total_n},{total_average}\n";
         File.WriteAllText(
             Path.Combine(currentDir, $"out/runtime-{timeStamp}.csv"),
             runtimeText
@@ -440,8 +453,8 @@ public class ControlScript : MonoBehaviour
                     if (Optimize)
                     {
                         long averageRuntime = (long)Math.Round(runtimeRecord.total_time / (double)Iterations);
-                        Debug.Log(averageRuntime);
-                        Debug.Log(best);
+                        UnityEngine.Debug.Log(averageRuntime);
+                        UnityEngine.Debug.Log(best);
                         best = best.Item3 > averageRuntime
                             ? (MaxDepth, MaxItems, averageRuntime)
                             : best;
@@ -459,13 +472,14 @@ public class ControlScript : MonoBehaviour
                             MaxDepth = best.Item1;
                             MaxItems = best.Item2;
                             Optimize = false;
-                            Debug.Log($"Best item limit: {MaxItems}");
-                            Debug.Log($"Best depth: {MaxDepth}");
+                            UnityEngine.Debug.Log($"Best item limit: {MaxItems}");
+                            UnityEngine.Debug.Log($"Best depth: {MaxDepth}");
                             best = (0,0,long.MaxValue);
                         }
                     }
                 }
             }
+            CurrentSequenceListText.text = $"Current sequence list: {currentSequenceList ?? "Undefined*"} | Step {step} : {lastStep} | Iteration {iteration} : {Iterations}";
         }
     }
     
@@ -486,7 +500,7 @@ public class ControlScript : MonoBehaviour
             Vector3 cam_pos = cam.transform.position;
             float dist = Mathf.Min((cam_pos - edge[0]).magnitude, (cam_pos - edge[1]).magnitude);
             float t = (dist - (cam_pos.magnitude - 1f))/2f;            
-            Debug.DrawLine(edge[0], edge[1], Color.Lerp(Color.magenta, Color.black, t));
+            UnityEngine.Debug.DrawLine(edge[0], edge[1], Color.Lerp(Color.magenta, Color.black, t));
         }
     }
 }

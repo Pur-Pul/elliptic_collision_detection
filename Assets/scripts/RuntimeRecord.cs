@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
 
 public class RuntimeRecord
 {
@@ -22,21 +24,31 @@ public class RuntimeRecord
         records.TryGetValue(key, out var record);
         long time = end - start;
         records[key] = (record.Item1 + time, record.Item2 + 1);
-        //total_time += time;
+        total_time += time;
         total_n++;
     }
 
     public override string ToString()
     {
-        string stats = $"{"Class", -15} | {"Method", -20} | {"Runtime", 10} | {"Calls", 5}\n";
-        foreach ((Type, System.Reflection.MethodInfo) key in records.Keys)
+
+        string stats = $"{"Class", -15} | {"Method", -20} | {"Runtime", 10} | {"Calls", 5} | {"Average", 10}\n";
+        foreach (var kvp in records
+            .OrderBy(kvp => kvp.Key.Item1.Name)
+            .ThenBy(kvp => kvp.Key.Item2.Name))
         {
+            var key = kvp.Key;
+            (long time, int n) = kvp.Value;
+            
             string className = key.Item1.Name;
             string functionName = key.Item2.Name;
-            (long time, int n) = records[key];
-            stats += $"{className,-15} | {functionName,-20} | {time,10} | {n,5}\n";
+
+            double microseconds = time * 1_000_000.0 / Stopwatch.Frequency;
+            double average = (double)time / n * 1_000_000.0 / Stopwatch.Frequency;
+            stats += $"{className,-15} | {functionName,-20} | {microseconds,10} | {n,5} | {average,10}\n";
         }
-        stats += $"{"Total",-15} | {"",-20} | {total_time,10} | {total_n,5}\n";
+        double total_microseconds = total_time * 1_000_000.0 / Stopwatch.Frequency;
+        double total_average = (double)total_time / total_n * 1_000_000.0 / Stopwatch.Frequency;
+        stats += $"{"Total",-15} | {"",-20} | {total_microseconds,10} | {total_n,5} | {total_average,10}\n";
         UnityEngine.Debug.Log(stats);
         return stats;
     }

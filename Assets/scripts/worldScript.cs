@@ -7,14 +7,24 @@ public class worldScript : MonoBehaviour
     public ControlScript control;
     public Material material;
     ComputeBuffer BodyBuffer;
+    public Renderer rend;
 
     void Start()
     {
         BodyBuffer = new ComputeBuffer(1024, sizeof(float) * 16);
+        rend = GetComponent<Renderer>();
     }
 
     void Update()
     {
+        bool shouldRender = control.RenderInput.isOn;
+        
+        if (rend.enabled != shouldRender)
+        {
+            rend.enabled = shouldRender;
+        }
+
+        if (rend.enabled == false) { return; }
         List<Matrix4x4> BSList = new();
         List<Matrix4x4> OBBList = new();
 
