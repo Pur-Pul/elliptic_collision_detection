@@ -19,6 +19,7 @@ public class BBox : IBoundingVolume
     private Vector3 forward;
 
     private bool shapeUpdated = false;
+    public float sagitta;
 
     public virtual Vector3 Right
     { 
@@ -67,7 +68,12 @@ public class BBox : IBoundingVolume
             {
                 shapeUpdated = true;
                 Simple.Size = value;
-                size = value;    
+                if (size.x != value.x && size.y != value.y)
+                {
+                    float cordSqr = value.x * value.x + value.y * value.y;
+                    sagitta = SphericalUtils.CalculateSagitta(cordSqr, true);
+                }
+                size = value;
             }
         }
     }
@@ -76,8 +82,8 @@ public class BBox : IBoundingVolume
         get => position;
         set
         {
-            Simple.Position = value;
-            position = value;
+            position = value * (1 - sagitta * 0.5f);
+            Simple.Position = position;
         }
     }
 
@@ -103,19 +109,19 @@ public class BBox : IBoundingVolume
             shapeUpdated = false;
         }
     }
-    public void Update(Vector3 _pos, Vector3 _size, Quaternion _orientation, bool timed)
+    public void Update(Vector3 _size, Quaternion _orientation, bool timed)
     {
         if (timed)
         {
             Timed(new Action<Quaternion>(Reorient), _orientation);
             Timed(new Action<Vector3>(Resize), _size);
-            Timed(new Action<Vector3>(Reposition), _pos);
+            Timed(new Action<Vector3>(Reposition), -Forward);
             Timed(new Action(UpdateSimpleSize));    
         } else
         {
             Reorient(_orientation);
             Resize(_size);
-            Reposition(_pos);
+            Reposition(-Forward);
             UpdateSimpleSize();   
         }
     }
@@ -149,7 +155,6 @@ public class BBox : IBoundingVolume
 public class BBoxSphere : BBox
 {
     public BBoxSphere(int id) : base(id) {}
-    private float sagitta;
     public float Radius { get; set; }
     public override Vector3 Size
     {
@@ -157,18 +162,8 @@ public class BBoxSphere : BBox
         set
         {
             if (base.Size.x == value.x) { return; }
-            float chord = value.x;
-            base.Size = new Vector3(chord, chord, chord);
-            sagitta = SphericalUtils.CalculateSagitta(value.x);
+            base.Size = new Vector3(value.x, value.x, value.x);
             Radius = value.x/2f;
-        }
-    }
-    public override Vector3 Position
-    {
-        get => base.Position;
-        set
-        {
-            base.Position = value * (1 - sagitta*0.5f);
         }
     }
     
@@ -185,34 +180,23 @@ public class BBoxSphere : BBox
 public class OBBox : BBox
 {
     public OBBox(int id) : base(id) {}
-    private float sagitta;
+
     public override Vector3 Size
     {
         get => base.Size;
         set
         {
             if (base.Size.x == value.x && base.Size.y == value.y) { return; }
-            float cordSqr = value.x * value.x + value.y * value.y;
-            sagitta = SphericalUtils.CalculateSagitta(cordSqr, true);
-            Vector3 newSize = new(value.x, value.y, sagitta);
-            base.Size = newSize;
-            halfSize = newSize * 0.5f;
-        }
-    }
-    public override Vector3 Position
-    {
-        get => base.Position;
-        set
-        {
-            base.Position = value * (1 - sagitta*0.5f);
+
+            base.Size = value;
+            base.Size = new(value.x, value.y, sagitta);
+            
+            halfSize = base.Size * 0.5f;
         }
     }
 
     private Vector3 halfSize;
-    public Vector3 HalfSize
-    {
-        get => halfSize;
-    }
+    public Vector3 HalfSize { get => halfSize; }
 
     public float Project(Vector3 axis)
     {

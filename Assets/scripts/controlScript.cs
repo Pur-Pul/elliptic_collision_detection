@@ -182,16 +182,23 @@ public class ControlScript : MonoBehaviour
     {
         baselineList.IdN = sequences.Count;
         artifactList.IdN = sequences.Count;
+        int circleN = 0;
+        int rectangleN = 0;
         foreach (Sequence s in sequences)
         {
             BodyScript body = Instantiate(_bodyPrefab);
             body.transform.rotation = s.SlerpOrientation(0);
-            body.Position = s.SlerpPosition(0);
             body.sequence = s;
             body.color = UnityEngine.Random.ColorHSV();
             body.control = this;
             bodies.Add(body);
+
+            circleN = s.BodyType == "circle" ? circleN + 1 : circleN;
+            rectangleN = s.BodyType == "rectangle" ? rectangleN + 1 : rectangleN;
         }
+
+        UnityEngine.Debug.Log($"circles: {circleN}");
+        UnityEngine.Debug.Log($"rectangles: {rectangleN}");
     }
 
     public bool Ready() => !(body_n <= 0 || lastStep <= 0);

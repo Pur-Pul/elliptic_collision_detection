@@ -61,17 +61,20 @@ public class SBV : IBoundingVolume //Spherical Bounding Volume
 
     public RuntimeRecord Record { get; set; }
     public ISimpleBoundingVolume Simple { get; set; }
-    public Vector3 SphereNormal { get; set; }
+
+    float simpleOffset;
+    public float sagitta;
+
     public virtual Vector3 Position 
     {
         get => position;
         set
         {
-            Simple.Position = value;
+            Simple.Position = value * simpleOffset;
             position = value;
-            SphereNormal = value;
         }
     }
+
     public virtual Vector3 Size {
         get => size;
         set
@@ -80,7 +83,11 @@ public class SBV : IBoundingVolume //Spherical Bounding Volume
             {
                 shapeUpdated = true;
                 Simple.Size = value;
-                size = value;    
+                             
+                float cordSqr = value.x * value.x + value.y * value.y;
+                sagitta = SphericalUtils.CalculateSagitta(cordSqr, true);
+                simpleOffset = 1 - sagitta * 0.5f;
+                size = value;
             }
         }
     }
@@ -108,19 +115,19 @@ public class SBV : IBoundingVolume //Spherical Bounding Volume
             shapeUpdated = false;
         }
     }
-    public void Update(Vector3 _pos, Vector3 _size, Quaternion _orientation, bool timed)
+    public void Update(Vector3 _size, Quaternion _orientation, bool timed)
     {
         if (timed)
         {
             Timed(new Action<Vector3>(Resize), _size);
             Timed(new Action<Quaternion>(Reorient), _orientation);
-            Timed(new Action<Vector3>(Reposition), _pos);
+            Timed(new Action<Vector3>(Reposition), -Forward);
             Timed(new Action(UpdateSimpleSize));    
         } else
         {
             Resize(_size);
             Reorient(_orientation);
-            Reposition(_pos);
+            Reposition(-Forward);
             UpdateSimpleSize();   
         }
     }
@@ -154,7 +161,6 @@ public class SBV : IBoundingVolume //Spherical Bounding Volume
 public class SBC : SBV //Spherical Bounding Circle
 {
     public SBC(int id) : base(id) {}
-    private float sagitta;
     public float Radius { get; set; }
     public float radiusAngle;
     public float RadiusAngle {
@@ -168,34 +174,22 @@ public class SBC : SBV //Spherical Bounding Circle
     }
     public float SinRadius { get; set; }
     public float CosRadius { get; set; }
-
     public float SRadius { get; set; }
-    public override Vector3 Position {
-        get => base.Position;
-        set
-        {
-            base.Position = value * (1 - sagitta * 0.5f);
-            SphereNormal = value;
-        }
-    }
-
     public override Vector3 Size { 
         get => base.Size;
         set
         {
             if (base.Size.x == value.x) { return; }
-            sagitta = SphericalUtils.CalculateSagitta(value.x);
             Radius = value.x/2f;
             RadiusAngle = SphericalUtils.ChordToAngle(value.x) * 0.5f;
-            SRadius = SphericalUtils.AngleToSphericalDistance(RadiusAngle);
-            
+            SRadius = SphericalUtils.AngleToSphericalDistance(RadiusAngle);     
             base.Size = new Vector3(value.x, value.x, value.x);
         }
     }
     public override void UpdateSimpleSize () {}
     public override bool CheckSBC(SBC other)
     {
-        return radiusAngle + other.radiusAngle > Vector3.Angle(SphereNormal, other.SphereNormal) * Mathf.Deg2Rad;
+        return radiusAngle + other.radiusAngle > Vector3.Angle(Position, other.Position) * Mathf.Deg2Rad;
     }
     public override bool CheckOBR(SOBR obr) => obr.CheckSBC(this);
 }
@@ -203,17 +197,13 @@ public class SBC : SBV //Spherical Bounding Circle
 public class SOBR : SBV //Spherical Oriented Bounding Rectangle
 {
     public SOBR(int id) : base(id) {}
-    private float sagitta;
     public override Vector3 Size
     {
         get => base.Size;
         set
         {
             if (base.Size.x == value.x && base.Size.y == value.y) { return; }
-            float cordSqr = value.x * value.x + value.y * value.y;
-            sagitta = SphericalUtils.CalculateSagitta(cordSqr, true);
-            Vector3 newSize = new(value.x, value.y, sagitta);
-            base.Size = newSize;
+            base.Size = value;
 
             RightAng = SphericalUtils.ChordToAngle(Size.x) * Mathf.Rad2Deg * 0.5f;
             UpAng = SphericalUtils.ChordToAngle(Size.y) * Mathf.Rad2Deg * 0.5f;
@@ -222,19 +212,8 @@ public class SOBR : SBV //Spherical Oriented Bounding Rectangle
         }
     }
 
-
     public float RightAng { get; set; }
     public float UpAng { get; set; }
-
-    public override Vector3 Position
-    {
-        get => base.Position;
-        set
-        {
-            base.Position = value * (1 - sagitta*0.5f);
-            SphereNormal = value;
-        }
-    }
 
     Vector3[] _GCBaseNormals = null;
     Vector3[] GCBaseNormals { 
@@ -273,8 +252,9 @@ public class SOBR : SBV //Spherical Oriented Bounding Rectangle
 
     public bool ContainsPoint(Vector3 point)
     {
-        const float EPS = 1e-5f;
-
+        // epsilon = e-5 caused false positives and e-8 caused floating point flicker.
+        const float EPS = 1e-7f;
+        
         return Vector3.Dot(point, GCNormals[0]) >= -EPS &&
             Vector3.Dot(point, GCNormals[1]) >= -EPS &&
             Vector3.Dot(point, GCNormals[2]) >= -EPS &&
@@ -286,7 +266,7 @@ public class SOBR : SBV //Spherical Oriented Bounding Rectangle
         Vector3[] normals = GCNormals;
         Vector3[] obrNormals = obr.GCNormals;
 
-        if (ContainsPoint(obr.SphereNormal) || obr.ContainsPoint(SphereNormal)) { return true; }
+        if (ContainsPoint(obr.Position) || obr.ContainsPoint(Position)) { return true; }
 
         for (int i = 0; i < 4; i++)
         {
@@ -315,7 +295,7 @@ public class SOBR : SBV //Spherical Oriented Bounding Rectangle
         // Instead of checking if gcClosest is within arc bounds, it can be checked to be within the SOBR, which would allow skipping normalizations.
         // The sign calculation also does not require normalized points.
         Vector3[] gcNormals = GCNormals;
-        if (ContainsPoint(circle.SphereNormal)) { return true; }
+        if (ContainsPoint(circle.Position)) { return true; }
 
         List<Vector3> corners = new();
         for (int i = 0; i < 4; i++)
@@ -326,7 +306,7 @@ public class SOBR : SBV //Spherical Oriented Bounding Rectangle
         for (int i = 0; i < 4; i++)
         {
             // Find the closest point on the given great circle to the center of the spherical circle.
-            Vector3 gcClosest = (circle.SphereNormal - Vector3.Dot(gcNormals[i], circle.SphereNormal) * gcNormals[i]).normalized;
+            Vector3 gcClosest = (circle.Position - Vector3.Dot(gcNormals[i], circle.Position) * gcNormals[i]).normalized;
 
             // Find the ends of the great circle arc.
             Vector3 a = corners[i];
@@ -341,13 +321,13 @@ public class SOBR : SBV //Spherical Oriented Bounding Rectangle
             if (aAng < arcAngle && bAng < arcAngle) { pointOnArc = gcClosest; } // Inside the arc
             else // Outside the arc
             {
-                float sign = Mathf.Sign(Vector3.Dot(Vector3.Cross(a, gcClosest), Vector3.Cross(a, b)));
-                if (sign > 0) { pointOnArc = b; }
-                else { pointOnArc = a; }
+                pointOnArc = aAng < bAng 
+                    ? a
+                    : b;
             }
 
             // Check if the closest point on the arc is within the bounds of the spherical circle.
-            if (Vector3.Angle(pointOnArc, circle.SphereNormal) < circle.RadiusAngle * Mathf.Rad2Deg) { return true; }
+            if (Vector3.Angle(pointOnArc, circle.Position) <= circle.RadiusAngle * Mathf.Rad2Deg) { return true; }
         }
         return false;
     }

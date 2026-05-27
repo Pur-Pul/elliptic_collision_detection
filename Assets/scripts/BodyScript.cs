@@ -12,7 +12,6 @@ public class BodyScript : MonoBehaviour, IItem
     public Sequence sequence;
     public Color color;
     public Color drawColor;
-    public Vector3 Position { get; set; }
     public int Id { get => sequence.Id; }
     private MeshRenderer meshRenderer;
     private MeshFilter meshFilter;
@@ -88,7 +87,7 @@ public class BodyScript : MonoBehaviour, IItem
 
     public void UpdateBBox (bool timed = false)
     {
-        BBox.Update(Position, sequence.Size, transform.rotation, timed);
+        BBox.Update(sequence.Size, transform.rotation, timed);
         transform.position = BBox.Position;
         transform.localScale = BBox.Size;
     }
@@ -96,15 +95,10 @@ public class BodyScript : MonoBehaviour, IItem
     public bool Move(int step)
     {
         Quaternion newRotation = sequence.SlerpOrientation(step);
-        Vector3 newPosition = sequence.SlerpPosition(step);
 
-        if (newRotation == transform.rotation && newPosition == Position)
-        {
-            return false;
-        }
+        if (newRotation == transform.rotation) { return false; }
 
         transform.rotation = newRotation;
-        Position = newPosition;
         return true;
     }
 

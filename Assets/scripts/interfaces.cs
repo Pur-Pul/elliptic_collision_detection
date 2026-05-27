@@ -22,7 +22,7 @@ public interface IBoundingVolume
     public Vector3 Up { get; set; }
     public Vector3 Forward { get; set; }
     public ISimpleBoundingVolume Simple { get; set; }
-    public void Update(Vector3 _pos, Vector3 _size, Quaternion _orientation, bool timed);
+    public void Update(Vector3 _size, Quaternion _orientation, bool timed);
     public void UpdateSimpleSize();
     public bool CheckCollision(IBoundingVolume other);
     public bool CheckFastOverlaps(IBoundingVolume other);
