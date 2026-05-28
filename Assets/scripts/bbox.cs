@@ -19,7 +19,20 @@ public class BBox : IBoundingVolume
     private Vector3 forward;
 
     private bool shapeUpdated = false;
-    public float sagitta;
+    public float? chordHeight = null;
+
+
+    public virtual float ChordHeight {
+        get
+        {
+            if (chordHeight == null)
+            {
+                float cordSqr = Size.x * Size.x + Size.y * Size.y;
+                chordHeight = SphericalUtils.CalculateChordHeight(cordSqr, true);
+            }
+            return chordHeight.Value;
+        }
+    }
 
     public virtual Vector3 Right
     { 
@@ -60,6 +73,7 @@ public class BBox : IBoundingVolume
 
     public RuntimeRecord Record { get; set; }
     public ISimpleBoundingVolume Simple { get; set; }
+    
     public virtual Vector3 Size {
         get => size;
         set
@@ -68,11 +82,7 @@ public class BBox : IBoundingVolume
             {
                 shapeUpdated = true;
                 Simple.Size = value;
-                if (size.x != value.x && size.y != value.y)
-                {
-                    float cordSqr = value.x * value.x + value.y * value.y;
-                    sagitta = SphericalUtils.CalculateSagitta(cordSqr, true);
-                }
+                if (size.x != value.x || size.y != value.y) { chordHeight = null; }
                 size = value;
             }
         }
@@ -82,7 +92,7 @@ public class BBox : IBoundingVolume
         get => position;
         set
         {
-            position = value * (1 - sagitta * 0.5f);
+            position = value;
             Simple.Position = position;
         }
     }
@@ -156,6 +166,21 @@ public class BBoxSphere : BBox
 {
     public BBoxSphere(int id) : base(id) {}
     public float Radius { get; set; }
+    public float CosRadius { get; set; }
+
+    public override float ChordHeight
+    {
+        get
+        {
+            chordHeight ??= SphericalUtils.CalculateChordHeight(Size.x);
+            return chordHeight.Value;
+        }
+    }
+
+    public override Vector3 Position { 
+        get => base.Position; 
+        set => base.Position = value * ChordHeight; 
+    }
     public override Vector3 Size
     {
         get => base.Size;
@@ -163,7 +188,8 @@ public class BBoxSphere : BBox
         {
             if (base.Size.x == value.x) { return; }
             base.Size = new Vector3(value.x, value.x, value.x);
-            Radius = value.x/2f;
+            Radius = value.x * 0.5f;
+            CosRadius = Mathf.Cos(SphericalUtils.ChordToAngle(value.x) * 0.5f);
         }
     }
     
@@ -172,7 +198,7 @@ public class BBoxSphere : BBox
     {
         float sqrDist = (sphere.Position - Position).sqrMagnitude;
         float combinedRadius = Radius + sphere.Radius;
-        return sqrDist < combinedRadius * combinedRadius;
+        return  combinedRadius * combinedRadius > sqrDist;
     }
     public override bool CheckOBB(OBBox obb) => obb.CheckSphere(this);
 }
@@ -189,10 +215,14 @@ public class OBBox : BBox
             if (base.Size.x == value.x && base.Size.y == value.y) { return; }
 
             base.Size = value;
-            base.Size = new(value.x, value.y, sagitta);
+            base.Size = new(value.x, value.y, 1f - ChordHeight);
             
             halfSize = base.Size * 0.5f;
         }
+    }
+    public override Vector3 Position { 
+        get => base.Position; 
+        set => base.Position = value * (0.5f + 0.5f*ChordHeight);
     }
 
     private Vector3 halfSize;
@@ -247,28 +277,25 @@ public class OBBox : BBox
         return true;
     }
 
-    public override bool CheckOBB (OBBox obb)
-    {
-        return SAT(obb);
-    }
+    public override bool CheckOBB (OBBox obb) => SAT(obb);
 
     public override bool CheckSphere(BBoxSphere sphere) //https://gamedev.stackexchange.com/questions/163873/separating-axis-theorem-obb-vs-sphere
     {
-        Vector3 obbToPoint = sphere.Position - Position;
+        Vector3 obbToSphere = sphere.Position - Position;
 
-        Vector3 spherePosLocal = new (
-            Vector3.Dot(obbToPoint, Right),
-            Vector3.Dot(obbToPoint, Up),
-            Vector3.Dot(obbToPoint, Forward)
+        Vector3 sphereLocalPos = new (
+            Vector3.Dot(obbToSphere, Right),
+            Vector3.Dot(obbToSphere, Up),
+            Vector3.Dot(obbToSphere, Forward)
         );
 
         Vector3 closestPointLocal = new(
-            Mathf.Clamp(spherePosLocal.x, -HalfSize.x, HalfSize.x),
-            Mathf.Clamp(spherePosLocal.y, -HalfSize.y, HalfSize.y),
-            Mathf.Clamp(spherePosLocal.z, -HalfSize.z, HalfSize.z)
+            Mathf.Clamp(sphereLocalPos.x, -HalfSize.x, HalfSize.x),
+            Mathf.Clamp(sphereLocalPos.y, -HalfSize.y, HalfSize.y),
+            Mathf.Clamp(sphereLocalPos.z, -HalfSize.z, HalfSize.z)
         );
 
-        float sqrDist = (closestPointLocal - spherePosLocal).sqrMagnitude;
-        return sqrDist < sphere.Radius * sphere.Radius;
+        float sqrDist = (closestPointLocal - sphereLocalPos).sqrMagnitude;
+        return sphere.Radius * sphere.Radius > sqrDist;
     }
 }

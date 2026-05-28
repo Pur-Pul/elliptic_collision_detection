@@ -96,11 +96,11 @@ Shader "Custom/sphere"
                 for (int i = 1; i < 1 + sphere_n; i++)
                 {
                     float3 position = _Bodies[i][0].xyz;
-                    float radius = _Bodies[i][1].x;
+                    float cosineRad = _Bodies[i][1].x;
                     float4 color = _Bodies[i][2];
                     float d = dot(normal, position);
-                    
-                    if (radius >= (1.0f - d) * 0.5)
+
+                    if (cosineRad < d)
                     {
                         fragColor *= color;
                     }
@@ -139,19 +139,6 @@ Shader "Custom/sphere"
                     {
                         fragColor *= color;
                     }
-                    
-                    /*
-                    float angle = acos(dot(forward, normal));
-                    float3 axis = normalize(cross(forward, normal));
-
-                    float3 toTangent = normalize(cross(cross(forward, normal), forward)) * angle;
-                    float ang1 = abs(dot(toTangent, right));
-                    float ang2 = abs(dot(toTangent, up));
-
-                    if (ang1 < widthAngle && ang2 < heightAngle) { 
-                        fragColor = color;
-                    }
-                    */
                 }
 
                 InputData lighting = (InputData) 0;

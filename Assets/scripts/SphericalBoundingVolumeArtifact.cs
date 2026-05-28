@@ -60,16 +60,26 @@ public class SBVA : IBoundingVolume //Spherical Bounding Volume
 
     public RuntimeRecord Record { get; set; }
     public ISimpleBoundingVolume Simple { get; set; }
+    public float? chordHeight = null;
 
-    float simpleOffset;
-    public float sagitta;
+    public virtual float ChordHeight {
+        get
+        {
+            if (chordHeight == null)
+            {
+                float cordSqr = Size.x * Size.x + Size.y * Size.y;
+                chordHeight = SphericalUtils.CalculateChordHeight(cordSqr, true);
+            }
+            return chordHeight.Value;
+        }
+    }
 
     public virtual Vector3 Position 
     {
         get => position;
         set
         {
-            Simple.Position = value * simpleOffset;
+            Simple.Position = value;
             position = value;
         }
     }
@@ -81,9 +91,7 @@ public class SBVA : IBoundingVolume //Spherical Bounding Volume
             {
                 shapeUpdated = true;
                 Simple.Size = value;
-                float cordSqr = value.x * value.x + value.y * value.y;
-                sagitta = SphericalUtils.CalculateSagitta(cordSqr, true);
-                simpleOffset = 1 - sagitta * 0.5f;
+                if (size.x != value.x || size.y != value.y) { chordHeight = null; }
                 size = value;    
             }
         }
@@ -170,8 +178,14 @@ public class SBCA : SBVA //Spherical Bounding Circle
     public float SinRadius { get; set; }
     public float CosRadius { get; set; }
 
-    public float SRadius { get; set; }
-
+    public override float ChordHeight
+    {
+        get
+        {
+            chordHeight ??= SphericalUtils.CalculateChordHeight(Size.x);
+            return chordHeight.Value;
+        }
+    }
     public override Vector3 Size { 
         get => base.Size;
         set
@@ -179,8 +193,15 @@ public class SBCA : SBVA //Spherical Bounding Circle
             if (base.Size.x == value.x) { return; }
             Radius = value.x/2f;
             RadiusAngle = SphericalUtils.ChordToAngle(value.x) * 0.5f;
-            SRadius = SphericalUtils.AngleToSphericalDistance(RadiusAngle);
             base.Size = new Vector3(value.x, value.x, value.x);
+        }
+    }
+    public override Vector3 Position {
+        get => base.Position;
+        set
+        {
+            base.Position = value;
+            Simple.Position = value * ChordHeight;   
         }
     }
     public override void UpdateSimpleSize () {}
@@ -197,7 +218,7 @@ public class SBCA : SBVA //Spherical Bounding Circle
         if (radiusAngle + other.radiusAngle >= Mathf.PI) { return true; }
         float cosine = Vector3.Dot(Position, other.Position);
         float radCosine = CosRadius * other.CosRadius - SinRadius * other.SinRadius;
-        return radCosine <= cosine;
+        return radCosine < cosine;
     }
     public override bool CheckOBRA(SOBRA obr) => obr.CheckSBCA(this);
 }
@@ -213,12 +234,21 @@ public class SOBRA : SBVA //Spherical Oriented Bounding Rectangle
         {
             if (base.Size.x == value.x && base.Size.y == value.y) { return; }
             base.Size = value;
+            base.Size = new(value.x, value.y, 1 - ChordHeight);
 
             RightAng = SphericalUtils.ChordToAngle(base.Size.x) * Mathf.Rad2Deg * 0.5f;
             UpAng = SphericalUtils.ChordToAngle(base.Size.y) * Mathf.Rad2Deg * 0.5f;
 
             _GCBaseNormals = null;
             _BaseCorners = null;
+        }
+    }
+    public override Vector3 Position {
+        get => base.Position;
+        set
+        {
+            base.Position = value;
+            Simple.Position = value * (0.5f + 0.5f * ChordHeight);
         }
     }
 

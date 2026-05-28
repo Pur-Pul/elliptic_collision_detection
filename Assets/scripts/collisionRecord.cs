@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using UnityEngine;
 
@@ -35,12 +36,12 @@ public class SumData
 
     public string Header()
     {
-        return $"{"Type",-15} | {"Precision",-9} | {"Recall",-9} | {"F1",-9} \n";
+        return $"{"Type",-20} | {"Precision",-9} | {"Recall",-9} | {"F1",-9} \n";
     }
 
     public override string ToString()
     {
-        return $"{type,-15} | {Precision,-9} | {Recall,-9} | {F1,-9} \n";
+        return $"{type,-20} | {Precision,-9} | {Recall,-9} | {F1,-9} \n";
     }
 }
 

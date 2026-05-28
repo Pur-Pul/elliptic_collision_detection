@@ -78,15 +78,6 @@ class VectorUtils
 }
 
 class SphericalUtils {
-    public static float SphericalDistance(Vector3 a, Vector3 b)
-    {
-        // assumes a unitsphere.
-        // dot product is in the range (-1, 1)
-        // distance score needs to be in the range (0, 1) where 0 is close and 1 is opposite sides of the sphere.
-        float d = Vector3.Dot(a, b);
-        return (1 - d) * 0.5f;
-    }
-
     public static float ChordToDot(float chord)
     {
         /* 
@@ -112,12 +103,7 @@ class SphericalUtils {
         where cos(C) equals the dot product between points A and B.
         */
 
-        return (chord*chord - 2) * (-0.5f);
-    }
-
-    public static float ChordToSphericalDistance(float chord)
-    {
-        return (1 - ChordToDot(chord)) * 0.5f;
+        return (chord*chord - 2f) * (-0.5f);
     }
 
     public static float ChordToAngle(float chord)
@@ -126,14 +112,14 @@ class SphericalUtils {
         return Mathf.Acos(ChordToDot(chord));
     }
 
-    public static float AngleToSphericalDistance(float angle)
+    public static float CalculateChordHeight(float chord, bool squared=false)
     {
-        return (1 - Mathf.Cos(angle)) * 0.5f;
+        float chordSquared = squared ? chord : chord * chord;
+        return Mathf.Sqrt(1f -  0.25f * chordSquared);
     }
 
     public static float CalculateSagitta(float chord, bool squared=false)
     {
-        float chordSquared = squared ? chord : chord * chord;
-        return 1f - Mathf.Sqrt(1f -  0.25f * chordSquared);
+        return 1f - CalculateChordHeight(chord, squared);
     }
 }
