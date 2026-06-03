@@ -12,6 +12,15 @@ public interface ISimpleBoundingVolume
     public Vector3[][] GetEdges();
 }
 
+public interface ISimpleSphericalBoundingVolume
+{
+    public Vector2 Position { get; set; }
+    public RuntimeRecord Record { get; set; }
+    public Vector2 Size { get; set; }
+    public bool SimpleContains(ISimpleSphericalBoundingVolume other);
+    public bool SimpleIntersects(ISimpleSphericalBoundingVolume other);
+}
+
 public interface IBoundingVolume
 {
     public int Id { get; }

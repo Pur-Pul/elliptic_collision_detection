@@ -122,4 +122,46 @@ class SphericalUtils {
     {
         return 1f - CalculateChordHeight(chord, squared);
     }
+
+    public static Vector2 CartesianToSpherical(Vector3 pos)
+    {
+        /*
+            Since we are dealing with a unit sphere, the magnitude of all vectors are assumed to be 1.
+            θ = arctan(y / x)
+            ϕ = arccos(z / sqrt(x^2 + y^2 + z^2)) = arccos(z)
+        */
+        float polar = Mathf.Acos(pos.z);
+        float azimuth = Mathf.Atan(pos.y / pos.x);
+
+        return new(azimuth, polar);
+    }
+
+    public static (Vector2, int, int) CartesianToFastSpherical(Vector3 pos)
+    {
+        int hemisphere = pos.z >= 0 ? 0 : 1;
+        float polar = (pos.x*pos.x + pos.y*pos.y) / pos.z;
+        if (pos.z == 0 && (pos.x != 0 || pos.y != 0)) { polar = Mathf.Infinity; }
+
+        float azimuth = pos.y / pos.x;
+        int side = 0;
+
+        if (pos.x < 0 && pos.y >= 0)
+        {
+            side = 1;
+        }
+        else if (pos.x < 0 && pos.y < 0)
+        {
+            side = -1;
+        }
+        else if (pos.x == 0 && pos.y > 0)
+        {
+            azimuth = Mathf.Infinity;
+        }
+        else if (pos.x == 0 && pos.y < 0)
+        {
+            azimuth = -Mathf.Infinity;
+        }
+
+        return (new(azimuth, polar), side, hemisphere);
+    }
 }

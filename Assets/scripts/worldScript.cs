@@ -59,7 +59,7 @@ public class worldScript : MonoBehaviour
                         m
                     );
                     break;
-                case SBCA circle:
+                case SBCA1 circle:
                     HandleCircle(
                         circle.Position,
                         circle.CosRadius,
@@ -86,7 +86,7 @@ public class worldScript : MonoBehaviour
                         m
                     );
                     break;
-                case SOBRA sobr:
+                case SOBRA1 sobr:
                     HandleRectangle(
                         sobr.Position,
                         sobr.Right,

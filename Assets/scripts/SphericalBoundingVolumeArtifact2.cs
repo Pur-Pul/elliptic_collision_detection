@@ -2,12 +2,12 @@ using UnityEngine;
 using System;
 using System.Diagnostics;
 
-public class SBVA : IBoundingVolume //Spherical Bounding Volume
+public class SBVA2 : IBoundingVolume //Spherical Bounding Volume
 {
     private int _id;
     public int Id { get => _id; }
 
-    public SBVA (int id)
+    public SBVA2 (int id)
     {
         _id = id;
     }
@@ -136,8 +136,8 @@ public class SBVA : IBoundingVolume //Spherical Bounding Volume
         }
     }
     public bool CheckFastOverlaps(IBoundingVolume other) => Simple.SimpleIntersects(other.Simple);
-    public virtual bool CheckSBCA (SBCA circle) => false;
-    public virtual bool CheckOBRA (SOBRA obr) => false;
+    public virtual bool CheckSBCA2 (SBCA2 circle) => false;
+    public virtual bool CheckSOBRA2 (SOBRA2 obr) => false;
 
     object Timed(Delegate func, params object[] args)
     {
@@ -154,16 +154,16 @@ public class SBVA : IBoundingVolume //Spherical Bounding Volume
     {
         return other switch
         {
-            SBCA circle => (bool)Timed(new Func<SBCA, bool>(CheckSBCA),circle),
-            SOBRA obr => (bool)Timed(new Func<SOBRA, bool>(CheckOBRA),obr),
+            SBCA2 circle => (bool)Timed(new Func<SBCA2, bool>(CheckSBCA2),circle),
+            SOBRA2 obr => (bool)Timed(new Func<SOBRA2, bool>(CheckSOBRA2),obr),
             _ => false
         };
     }
 }
 
-public class SBCA : SBVA //Spherical Bounding Circle
+public class SBCA2 : SBVA2 //Spherical Bounding Circle
 {
-    public SBCA(int id) : base(id) {}
+    public SBCA2(int id) : base(id) {}
     public float Radius { get; set; }
     public float radiusAngle;
     public float RadiusAngle {
@@ -205,7 +205,7 @@ public class SBCA : SBVA //Spherical Bounding Circle
         }
     }
     public override void UpdateSimpleSize () {}
-    public override bool CheckSBCA(SBCA other)
+    public override bool CheckSBCA2(SBCA2 other)
     // The dot product of two positions on a sphere is not a linear representation of spherical distance between them, but does contain the information.
     // Instead of adding the dot products together, adding the angles produces the actual combined spherical distance.
     // Trigonometric functions are expensive, so to avoid having to use cosinus during runtime, the cosine addition formula can be used to add the angles.
@@ -220,12 +220,12 @@ public class SBCA : SBVA //Spherical Bounding Circle
         float radCosine = CosRadius * other.CosRadius - SinRadius * other.SinRadius;
         return radCosine < cosine;
     }
-    public override bool CheckOBRA(SOBRA obr) => obr.CheckSBCA(this);
+    public override bool CheckSOBRA2(SOBRA2 obr) => obr.CheckSBCA2(this);
 }
 
-public class SOBRA : SBVA //Spherical Oriented Bounding Rectangle
+public class SOBRA2 : SBVA2 //Spherical Oriented Bounding Rectangle
 {
-    public SOBRA(int id) : base(id) {}
+    public SOBRA2(int id) : base(id) {}
 
     public override Vector3 Size
     {
@@ -332,30 +332,30 @@ public class SOBRA : SBVA //Spherical Oriented Bounding Rectangle
         return contains || containsInv;
     }
 
-    public bool GCIntersect(SOBRA obr)
+    public bool GCIntersect(SOBRA2 sobr)
     {
         Vector3[] normals = GCNormals;
-        Vector3[] obrNormals = obr.GCNormals;
+        Vector3[] obrNormals = sobr.GCNormals;
 
-        if (ContainsPoint(obr.Position) || obr.ContainsPoint(Position)) { return true; }
+        if (ContainsPoint(sobr.Position) || sobr.ContainsPoint(Position)) { return true; }
 
         for (int i = 0; i < 4; i++)
         {
             for (int j = 0; j < 4; j++)
             {
                 Vector3 i1 = Vector3.Cross(normals[i], obrNormals[j]);
-                if (ContainsPoint(i1, true) && obr.ContainsPoint(i1, true)) { return true; }
+                if (ContainsPoint(i1, true) && sobr.ContainsPoint(i1, true)) { return true; }
             }
         }
 
         return false;
     }
 
-    public override bool CheckOBRA (SOBRA obr) {
-        return GCIntersect(obr);
+    public override bool CheckSOBRA2 (SOBRA2 sobr) {
+        return GCIntersect(sobr);
     }
 
-    public override bool CheckSBCA(SBCA circle)
+    public override bool CheckSBCA2(SBCA2 circle)
     {
         Vector3[] gcNormals = GCNormals;
         if (ContainsPoint(circle.Position)) { return true; }

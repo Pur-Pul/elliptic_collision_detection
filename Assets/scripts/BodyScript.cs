@@ -72,10 +72,10 @@ public class BodyScript : MonoBehaviour, IItem
                 switch (sequence.BodyType)
                 {
                     case "circle":
-                        BBox = new SBCA(Id);
+                        BBox = new SBCA1(Id);
                         break;
                     case "rectangle":
-                        BBox = new SOBRA(Id);
+                        BBox = new SOBRA1(Id);
                         break;
                 }
                 break;
