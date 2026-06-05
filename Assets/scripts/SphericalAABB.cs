@@ -22,8 +22,15 @@ another problem would be that the cosine addition formula relies on the cosine a
 cos(ϕ) = dot((0,0,1), (x,y,z)) / |(0,0,1)| * |(x,y,z)|      , (|(0,0,1)| = |(x,y,z)| = 1)
     = 0 * x + 0 * y + 1 * z
     = z
-sin^2(ϕ) = 1 - cos^2(ϕ) = 1 - z^2
-<=> sin(ϕ) = sqrt(1 - z^2) = sqrt(x^2 + y^2)
+
+sin^2(ϕ) = 1 - cos^2(ϕ)             , (cos^2(x) + sin^2(x) = 1)
+    = 1 - z^2                       , (cos(ϕ) = z)
+    = x^2 + y^2                     , (x^2 + y^2 + z^2 = 1)
+<=> sin(ϕ) = sqrt(x^2 + y^2)
+
+sin^2(x) in combination with the sign of sin(x) could in theory be used to approximate the sine function.
+The sign can be obtained in this context by comparing the cross product of the position and north pole.
+sgn(sin(ϕ)) = sign(dot(cross((0,0,1), (x,y,z)), (1,0,0)))
 
 
 */
@@ -77,7 +84,7 @@ public class SAABB: ISimpleSphericalBoundingVolume
     {
         get => max_polar ??= Position.y + Size.y * 0.5f;
     }
-    public float MinAziumthal
+    public float MinAzimuthal
     {
         get => min_azimuthal ??= Position.x - Size.x * 0.5f;
     }
@@ -100,7 +107,7 @@ public class SAABB: ISimpleSphericalBoundingVolume
         return (
             MaxAzimuthal >= other.MaxAzimuthal &&
             MaxPolar >= other.MaxPolar &&
-            MinAziumthal <= other.MinAziumthal &&
+            MinAzimuthal <= other.MinAzimuthal &&
             MinPolar <= other.MinPolar
 		);
     }
@@ -117,7 +124,7 @@ public class SAABB: ISimpleSphericalBoundingVolume
     public virtual bool Intersects(SAABB other)
     {
         return !(
-            MaxAzimuthal < other.MinAziumthal || MinAziumthal > other.MaxAzimuthal ||
+            MaxAzimuthal < other.MinAzimuthal || MinAzimuthal > other.MaxAzimuthal ||
             MaxPolar < other.MinPolar || MinPolar > other.MaxPolar
 		);
     }

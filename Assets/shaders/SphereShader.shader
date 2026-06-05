@@ -21,6 +21,9 @@ Shader "Custom/sphere"
             HLSLPROGRAM
 
             static const float PI = 3.14159265359;
+            static const float pos_infinity = asfloat(0x7F800000);
+            static const float neg_infinity = asfloat(0xFF800000);
+
 
             #define _SPECULAR_COLOR
             #pragma vertex vert
@@ -72,19 +75,66 @@ Shader "Custom/sphere"
                     q1.w*q2.w - q1.x*q2.x - q1.y*q2.y - q1.z*q2.z
                 );
             }
-
-            float twistAngle(float4 q, float3 a) 
-            {
-                float ang = 0.0;
-                float d = dot(q.xyz, a);
-                float3 proj = a * d;
-
-                if (abs(d) > 0.0) {
-                    ang = acos(q.w / length(float4(proj, q.w))) * 2.0;
-                }
-                return ang;
-            }
             
+            float WrapAzimuth(float ang) {
+                return ang > PI 
+                    ? ang - PI
+                    : (
+                        ang < -PI
+                            ? ang + PI
+                            : ang
+                    );
+            }
+
+            float2 CartesianToSpherical(float3 pos)
+            {
+                float polar = acos(pos.z);
+                float azimuth = atan2(pos.y, pos.x);
+
+                return float2(azimuth, polar);
+            }
+
+            float WrappedAngleDiff(float ang1, float ang2)
+            {
+                float d = abs(ang1 - ang2);
+                return min(d, 2.0 * PI - d);
+            }
+            float LongitudeExtent(float3 c, float radius)
+            {
+                /*
+                    For small angles on the radius close to the equator of the sphere, function asin(sin(radius) / sqrt(1 - cos^2(polar)))
+                    is rougly equal to radius/sin^2(polar). As we move closer to the poles or when the radius grows, the function diverge more and more.
+                    To limit the diversion of the function, we can clamp the result of the second function. 
+                    - The first function approaches π/2 close to the poles, which means we can limit clamp the second function at π/2 as we move closer to the poles.
+                    - When the shapes overlap with the poles the value of the first function jumps to π in order to contain the whole shape, and we can do the same in the second function but with cosines instead of sines.
+                    We end up with the following two functions:
+                    f(polar)=If(
+                        sin(polar)≤sin(radius), π,
+                        asin(sin(radius) / sqrt(1 - cos^2(polar)))
+                    )
+                    g(polar)=If(
+                        cos(polar) ≥ cos(radius), π,
+                        Min(radius / Max(sin^2(polar), 0.001), π/2)
+                    )
+                    g(polar) does not actually require using any trigonometric functions since:
+                    cos(polar) = pos.z
+                    sin^2(polar) = 1 - cos(polar)
+                    and cos(radius) can be precalculated.
+                */
+                float sinSquaredC = 1.0 - c.z * c.z;
+                if (c.z >= cos(radius)) { return PI; } // When the shape overlaps with the pole, the SAABB is expanded to cover the spherical cap.
+                return min(radius / max(sinSquaredC, 1e-3), PI * 0.5); 
+            }
+
+            bool SAABBContains(float3 center, float size, float3 pos)
+            {
+                float lonExtent = LongitudeExtent(center, size * 0.5);
+                float2 c = CartesianToSpherical(center);
+                float2 p = CartesianToSpherical(pos);
+
+                return WrappedAngleDiff(c.x, p.x) <= lonExtent &&
+                    abs(c.y - p.y) <= size * 0.5;
+            }
 
             half4 frag(Varyings IN) : SV_Target
             {
@@ -92,6 +142,7 @@ Shader "Custom/sphere"
                 float3 normal = normalize(IN.positionWS);
                 int sphere_n = _Bodies[0][0].y;
                 int obb_n = _Bodies[0][0].z;
+                //float2 coord = CartesianToSpherical(normal);
                 
                 for (int i = 1; i < 1 + sphere_n; i++)
                 {
@@ -99,6 +150,11 @@ Shader "Custom/sphere"
                     float cosineRad = _Bodies[i][1].x;
                     float4 color = _Bodies[i][2];
                     float d = dot(normal, position);
+
+                    if (SAABBContains(position, acos(cosineRad)*2.0, normal))
+                    {
+                        fragColor *= float4(1.0, 0.412, 0.706, 1.0);
+                    }
 
                     if (cosineRad < d)
                     {
@@ -117,18 +173,23 @@ Shader "Custom/sphere"
                     float height = _Bodies[i][2].w;
                     float4 color = _Bodies[i][3];
 
-                    float widthAngle = acos((width*width - 2.0) * -0.5) * 0.5;
-                    float heightAngle = acos((height*height - 2.0) * -0.5) * 0.5;
+                    float widthAngle = acos((width*width - 2.0) * -0.5);
+                    float heightAngle = acos((height*height - 2.0) * -0.5);
                     
-                    float4 q1 = float4(sin(widthAngle * 0.5) * up, cos(widthAngle * 0.5));
+                    float4 q1 = float4(sin(widthAngle * 0.25) * up, cos(widthAngle * 0.25));
                     float4 q1Inverse = float4(-q1.xyz, q1.w);
-                    float4 q2 = float4(sin(heightAngle * 0.5) * right, cos(heightAngle * 0.5));
+                    float4 q2 = float4(sin(heightAngle * 0.25) * right, cos(heightAngle * 0.25));
                     float4 q2Inverse = float4(-q2.xyz, q2.w);
 
                     float3 h1 = qProduct(qProduct(q1, float4(right, 0)), q1Inverse).xyz;
                     float3 h2 = qProduct(qProduct(q1Inverse, float4(-right, 0)), q1).xyz;
                     float3 h3 = qProduct(qProduct(q2, float4(-up, 0)), q2Inverse).xyz;
                     float3 h4 = qProduct(qProduct(q2Inverse, float4(up, 0)), q2).xyz;
+
+                    if (SAABBContains(center, sqrt(widthAngle*widthAngle + heightAngle*heightAngle), normal))
+                    {
+                        fragColor *= float4(1.0, 0.412, 0.706, 1.0);
+                    }
 
                     if (
                         dot(normal, h1) >= 0.0 &&
