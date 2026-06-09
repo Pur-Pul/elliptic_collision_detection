@@ -21,6 +21,7 @@ Shader "Custom/sphere"
             HLSLPROGRAM
 
             static const float PI = 3.14159265359;
+            static const float tan_limit = tan(PI * 0.5);
             static const float pos_infinity = asfloat(0x7F800000);
             static const float neg_infinity = asfloat(0xFF800000);
 
@@ -94,6 +95,29 @@ Shader "Custom/sphere"
                 return float2(azimuth, polar);
             }
 
+            float3 CartesianToFastSpherical(float3 pos)
+            {
+                /*
+                    polar = acos(pos.z / pos.magnitude) = acos(pos.z)       , since pos.magnitude = 1
+                    pos.y/pos.x is the tangent of the azimuth angle. Problem is that pos.y/pos.x loses the sign of the angle, which means it needs to be added back.
+                    usually this is done with atan2:
+                    azimuth = atan2(pos.y, pos.x)
+
+                    We can somewhat avoid using trigonometric functions. 
+                    The polar angle is represented by the z component.
+                    The azimuth is more complicated as we need to keep track of the quadrants, but in general the x/y fraction represents the tangent of the azimuth.
+                */
+                float polar = cos(pos.z);
+                float azimuth = pos.y/pos.x;
+                float azimuthSign = sign(pos.x);
+
+                if(pos.x == 0) {
+                    azimuth = sign(pos.y) * tan_limit;
+                }
+
+                return float3(azimuth, polar, azimuthSign);
+            }
+
             float WrappedAngleDiff(float ang1, float ang2)
             {
                 float d = abs(ang1 - ang2);
@@ -123,7 +147,7 @@ Shader "Custom/sphere"
                 */
                 float sinSquaredC = 1.0 - c.z * c.z;
                 if (c.z >= cos(radius)) { return PI; } // When the shape overlaps with the pole, the SAABB is expanded to cover the spherical cap.
-                return min(radius / max(sinSquaredC, 1e-3), PI * 0.5); 
+                return min(radius / max(sinSquaredC, 1e-3), PI * 0.5);
             }
 
             bool SAABBContains(float3 center, float size, float3 pos)
@@ -131,8 +155,16 @@ Shader "Custom/sphere"
                 float lonExtent = LongitudeExtent(center, size * 0.5);
                 float2 c = CartesianToSpherical(center);
                 float2 p = CartesianToSpherical(pos);
+                
+                float3 cFast = CartesianToFastSpherical(center);
+                float3 pFast = CartesianToFastSpherical(pos);
 
-                return WrappedAngleDiff(c.x, p.x) <= lonExtent &&
+                float diffTangent = abs(cFast.x - pFast.x) / (1.0 + abs(cFast.x * pFast.x));
+
+                float ang = atan(diffTangent);
+                return (
+                    (ang <= lonExtent)
+                ) &&//WrappedAngleDiff(c.x, p.x) <= lonExtent &&
                     abs(c.y - p.y) <= size * 0.5;
             }
 
