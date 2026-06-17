@@ -107,7 +107,7 @@ Shader "Custom/sphere"
                     The polar angle is represented by the z component.
                     The azimuth is more complicated as we need to keep track of the quadrants, but in general the x/y fraction represents the tangent of the azimuth.
                 */
-                float polar = cos(pos.z);
+                float polar = acos(pos.z);
                 float azimuth = pos.y/pos.x;
                 float azimuthSign = sign(pos.x);
 
@@ -123,7 +123,7 @@ Shader "Custom/sphere"
                 float d = abs(ang1 - ang2);
                 return min(d, 2.0 * PI - d);
             }
-            float LongitudeExtent(float3 c, float radius)
+            float LongitudeExtent(float3 c, float radius, float cosR)
             {
                 /*
                     For small angles on the radius close to the equator of the sphere, function asin(sin(radius) / sqrt(1 - cos^2(polar)))
@@ -145,27 +145,66 @@ Shader "Custom/sphere"
                     sin^2(polar) = 1 - cos(polar)
                     and cos(radius) can be precalculated.
                 */
-                float sinSquaredC = 1.0 - c.z * c.z;
-                if (c.z >= cos(radius)) { return PI; } // When the shape overlaps with the pole, the SAABB is expanded to cover the spherical cap.
-                return min(radius / max(sinSquaredC, 1e-3), PI * 0.5);
+
+                //1 - (1 - cos(radius))/sin^2(polar) ~ cos(g(polar))
+                //since sin^2(x)/cos(x)
+
+                float sinSquaredC = max(1.0 - c.z * c.z, 1e-5);
+                float extent;
+                float cosExtent;
+
+                if (abs(c.z) >= abs(cosR)) { // When the shape overlaps with the pole, the SAABB is expanded to cover the spherical cap.
+                    return -1e-5;
+                }
+                
+                // Approximated longitude extent / Approximated cosine longitude extent 
+                //  ~ longEx / cosLongEx
+                //  ~ sin(longEx) / cos(longEx)
+                //  = tan(longEx)
+                return  min(radius / sinSquaredC, PI * 0.5) / max(1 - (1 - cosR) / sinSquaredC, 0); 
             }
 
             bool SAABBContains(float3 center, float size, float3 pos)
             {
-                float lonExtent = LongitudeExtent(center, size * 0.5);
-                float2 c = CartesianToSpherical(center);
-                float2 p = CartesianToSpherical(pos);
+                float radius = size * 0.5;
+                float cosR = cos(radius);
+                float lonExtent = LongitudeExtent(center, radius, cosR);                
+                float3 c = CartesianToFastSpherical(center);
+                float3 p = CartesianToFastSpherical(pos);
+
+                float diffTangent = tan_limit;
+                // We require the absolute value of the angle difference, but that is not directly possible tangent difference function.
+                // tan(alpha - beta) = (tan(alpha) - tan(beta)) / (1 + tan(alpha)tan(beta))
+                // By multiplying tan(alpha) and tan(beta) with the sign of the angle difference, we can still obtain the absolute value.
+                // The sign of the angle difference can be obtained with sign(dot(cross(center.xy, pos.xy), spole))
+         
+                float s = sign(center.x * pos.y - center.y * pos.x) * -1;
+
+                diffTangent = (s*c.x - s*p.x) / (1.0 + c.x * p.x);
+
+                //float ang = atan(diffTangent);
+                //ang = ang < 0 ? ang + PI : ang;
+
+                //What remains is to get rid of the atan in this function and the cos in the LongitudeExtent function.
+                //In order to do that there needs to be a way to compare the tangent of an angle with the cosine of another angle.
+                //Since tan(x) = sin(x)/cos(x) and sin(x) ~ x for small x 
+                //  -> it might be possible to make use of x/cos(x) as an approximation of the longitude extent angle tangent.
+                //  -> sign(sin(x)) * sin^2(x)/cos(x) is also a potential approximation option if the sign of sin(x) can be obtained.
+                //  -> if need be, since s = sign(sin(alpha-beta)), the sign can be removed to increase the width of the saabb.
+
+                float sinSquareC = 1 - center.z * center.z;
+                float sinSquareP = 1 - pos.z * pos.z;
+
                 
-                float3 cFast = CartesianToFastSpherical(center);
-                float3 pFast = CartesianToFastSpherical(pos);
 
-                float diffTangent = abs(cFast.x - pFast.x) / (1.0 + abs(cFast.x * pFast.x));
-
-                float ang = atan(diffTangent);
-                return (
-                    (ang <= lonExtent)
-                ) &&//WrappedAngleDiff(c.x, p.x) <= lonExtent &&
-                    abs(c.y - p.y) <= size * 0.5;
+                if ((diffTangent < 0 && lonExtent < 0) || (diffTangent > 0 && lonExtent > 0)) {
+                    return diffTangent <= lonExtent &&
+                    cos(abs(c.y - p.y)) >= cosR;
+                } else {
+                    return diffTangent > lonExtent &&
+                    cos(abs(c.y - p.y)) >= cosR;
+                    //abs(c.y - p.y) <= radius;
+                }
             }
 
             half4 frag(Varyings IN) : SV_Target
