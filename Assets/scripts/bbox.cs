@@ -10,6 +10,7 @@ public class BBox : IBoundingVolume
     public BBox (int id)
     {
         _id = id;
+        Simple = new AABB();
     }
 
     private Vector3 position;

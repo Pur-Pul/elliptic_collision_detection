@@ -261,18 +261,27 @@ public class ControlScript : MonoBehaviour
         {
             case 0:
                 _tree_width = 2*ellipseRadius + 2.5f;
-                collisionTree = new Octree<BodyScript>();
-                collisionTree.Size = new Vector3(_tree_width,_tree_width,_tree_width);
+                collisionTree = new Octree<BodyScript>
+                {
+                    Size = new Vector3(_tree_width, _tree_width, _tree_width)
+                };
                 break;
             case 1:
                 _tree_width = 2*ellipseRadius + 2.5f;
-                collisionTree = new Octree<BodyScript>();
-                collisionTree.Size = new Vector3(_tree_width,_tree_width,_tree_width);
+                collisionTree = new Octree<BodyScript>
+                {
+                    Size = new Vector3(_tree_width, _tree_width, _tree_width)
+                };
                 break;
             case 2:
                 _tree_width = 2*ellipseRadius + 2.5f;
-                collisionTree = new Octree<BodyScript>();
-                collisionTree.Size = new Vector3(_tree_width,_tree_width,_tree_width);
+                collisionTree = new Octree<BodyScript>
+                {
+                    Size = new Vector3(_tree_width, _tree_width, _tree_width)
+                };
+                break;
+            case 3:
+                collisionTree = new SOctree<BodyScript>();
                 break;
         }
         collisionTree.Record = runtimeRecord;
@@ -492,8 +501,8 @@ public class ControlScript : MonoBehaviour
     
     void OnDrawGizmos()
     {
-        if (collisionTree == null) { return; }
-        Vector3[][] _edges = collisionTree.GetTreeEdges();
+        if (collisionTree is not Octree<BodyScript> octree) { return; }
+        Vector3[][] _edges = octree.GetTreeEdges();
         foreach (BodyScript body in bodies)
         {
             Vector3[][] _body_edges = body.BBox.Simple.GetEdges();

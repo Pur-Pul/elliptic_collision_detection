@@ -67,6 +67,14 @@ public class worldScript : MonoBehaviour
                         m
                     );
                     break;
+                case SBCA2 circle:
+                    HandleCircle(
+                        circle.Position,
+                        circle.CosRadius,
+                        control.bodies[i].drawColor, 
+                        m
+                    );
+                    break;
                 case BBoxSphere sphere:
                     HandleCircle(
                         -sphere.Forward,
@@ -87,6 +95,17 @@ public class worldScript : MonoBehaviour
                     );
                     break;
                 case SOBRA1 sobr:
+                    HandleRectangle(
+                        sobr.Position,
+                        sobr.Right,
+                        sobr.Up,
+                        sobr.Size.x,
+                        sobr.Size.y,
+                        control.bodies[i].drawColor,
+                        m
+                    );
+                    break;
+                case SOBRA2 sobr:
                     HandleRectangle(
                         sobr.Position,
                         sobr.Right,

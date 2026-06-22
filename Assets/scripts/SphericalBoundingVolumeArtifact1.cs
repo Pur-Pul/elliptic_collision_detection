@@ -10,6 +10,7 @@ public class SBVA1 : IBoundingVolume //Spherical Bounding Volume
     public SBVA1 (int id)
     {
         _id = id;
+        Simple = new AABB();
     }
 
     private Vector3 right;

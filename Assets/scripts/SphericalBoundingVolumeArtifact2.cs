@@ -10,6 +10,7 @@ public class SBVA2 : IBoundingVolume //Spherical Bounding Volume
     public SBVA2 (int id)
     {
         _id = id;
+        Simple = new SAABB();
     }
 
     private Vector3 right;
@@ -60,19 +61,6 @@ public class SBVA2 : IBoundingVolume //Spherical Bounding Volume
 
     public RuntimeRecord Record { get; set; }
     public ISimpleBoundingVolume Simple { get; set; }
-    public float? chordHeight = null;
-
-    public virtual float ChordHeight {
-        get
-        {
-            if (chordHeight == null)
-            {
-                float cordSqr = Size.x * Size.x + Size.y * Size.y;
-                chordHeight = SphericalUtils.CalculateChordHeight(cordSqr, true);
-            }
-            return chordHeight.Value;
-        }
-    }
 
     public virtual Vector3 Position 
     {
@@ -90,9 +78,7 @@ public class SBVA2 : IBoundingVolume //Spherical Bounding Volume
             if (size != value)
             {
                 shapeUpdated = true;
-                Simple.Size = value;
-                if (size.x != value.x || size.y != value.y) { chordHeight = null; }
-                size = value;    
+                size = value;
             }
         }
     }
@@ -108,14 +94,9 @@ public class SBVA2 : IBoundingVolume //Spherical Bounding Volume
     public virtual void UpdateSimpleSize ()
     {
         if (shapeUpdated) {
-            Vector3 r = Right * Size.x;
-            Vector3 u = Up * Size.y;
-            Vector3 f = Forward * Size.z;
-            Simple.Size = new Vector3(
-                Mathf.Abs(r.x) + Mathf.Abs(u.x) + Mathf.Abs(f.x),
-                Mathf.Abs(r.y) + Mathf.Abs(u.y) + Mathf.Abs(f.y),
-                Mathf.Abs(r.z) + Mathf.Abs(u.z) + Mathf.Abs(f.z)
-            );
+            float chordSquared = Size.x * Size.x + Size.y * Size.y;
+            float ang = SphericalUtils.ChordToAngle(chordSquared, true);
+            Simple.Size = new(ang, ang, 1);
             shapeUpdated = false;
         }
     }
@@ -178,14 +159,6 @@ public class SBCA2 : SBVA2 //Spherical Bounding Circle
     public float SinRadius { get; set; }
     public float CosRadius { get; set; }
 
-    public override float ChordHeight
-    {
-        get
-        {
-            chordHeight ??= SphericalUtils.CalculateChordHeight(Size.x);
-            return chordHeight.Value;
-        }
-    }
     public override Vector3 Size { 
         get => base.Size;
         set
@@ -196,15 +169,14 @@ public class SBCA2 : SBVA2 //Spherical Bounding Circle
             base.Size = new Vector3(value.x, value.x, value.x);
         }
     }
-    public override Vector3 Position {
-        get => base.Position;
-        set
-        {
-            base.Position = value;
-            Simple.Position = value * ChordHeight;   
+    public override void UpdateSimpleSize ()
+    {
+        if (shapeUpdated) {
+            float ang = radiusAngle * 2f;
+            Simple.Size = new(ang, ang, 1);
+            shapeUpdated = false;
         }
     }
-    public override void UpdateSimpleSize () {}
     public override bool CheckSBCA2(SBCA2 other)
     // The dot product of two positions on a sphere is not a linear representation of spherical distance between them, but does contain the information.
     // Instead of adding the dot products together, adding the angles produces the actual combined spherical distance.
@@ -234,21 +206,12 @@ public class SOBRA2 : SBVA2 //Spherical Oriented Bounding Rectangle
         {
             if (base.Size.x == value.x && base.Size.y == value.y) { return; }
             base.Size = value;
-            base.Size = new(value.x, value.y, 1 - ChordHeight);
 
             RightAng = SphericalUtils.ChordToAngle(base.Size.x) * Mathf.Rad2Deg * 0.5f;
             UpAng = SphericalUtils.ChordToAngle(base.Size.y) * Mathf.Rad2Deg * 0.5f;
 
             _GCBaseNormals = null;
             _BaseCorners = null;
-        }
-    }
-    public override Vector3 Position {
-        get => base.Position;
-        set
-        {
-            base.Position = value;
-            Simple.Position = value * (0.5f + 0.5f * ChordHeight);
         }
     }
 

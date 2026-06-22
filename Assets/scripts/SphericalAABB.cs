@@ -35,65 +35,102 @@ sgn(sin(ϕ)) = sign(dot(cross((0,0,1), (x,y,z)), (1,0,0)))
 
 */
 
-public class SAABB: ISimpleSphericalBoundingVolume
+public class SAABB: ISimpleBoundingVolume
 {
-    private Vector2 position;
+    private Vector3? sphericalPos;
+    private Vector3? position;
     private Vector2 size;
     public RuntimeRecord Record { get; set; }
-    private float? max_azimuthal;
-    private float? max_polar;
-    private float? min_azimuthal;
-    private float? min_polar;
 
-    public Vector2 Position 
-    {
-        get => position;
+    private float? azimuthExtent;
+    private float? polarExtent;
+    
+    public Vector3 Position {
+        get {
+            if (sphericalPos == null && position == null) {
+                Debug.Log("Error: Both cartesian and spherical coordinates are undefined.");
+                return new(0,0,0);
+            }
+            if (position == null)
+            {
+                return SphericalUtils.SphericalToCartesian(SphericalPos);
+            } else
+            {
+                return position.Value;
+            }
+        }
         set
         {
-            max_azimuthal = null;
-            max_polar = null;
-            min_azimuthal = null;
-            min_polar = null;
+            if (position == null || value.z != position.Value.z)
+            {
+                azimuthExtent = null;
+            }
+
             position = value;
+            sphericalPos = null;
         }
     }
 
-    public Vector2 Size {
+    public Vector3 SphericalPos 
+    {
+        get
+        {
+            if (sphericalPos == null && position == null) {
+                Debug.Log("Error: Both cartesian and spherical coordinates are undefined.");
+                return new(0,0,0);
+            }
+            if (sphericalPos == null)
+            {
+                return SphericalUtils.CartesianToSpherical(Position);
+            } else
+            {
+                return sphericalPos.Value;
+            }
+        }
+        set
+        {
+            if (sphericalPos == null || sphericalPos.Value.y != value.y)
+            {
+                azimuthExtent = null;
+            }
+
+            position = null;
+            sphericalPos = value;
+        }
+    }
+
+    public Vector3 Size {
         get => size;
         set
         {
             if (size.x != value.x)
             {
-                max_azimuthal = null;
-                min_azimuthal = null;
+                azimuthExtent = null;
             }
             if (size.y != value.y)
             {
-                max_polar = null;
-                min_polar = null;
+                polarExtent = null;
             }
             size = value;
         }
     }
 
-    public float MaxAzimuthal
+    public float AzimuthalExtent
+    // Since the vertical edges of the SAABBs converge at the poles, the SAABBs need to be widened as the shapes they contain move closer to the poles.
+    // To widen the SAABBs the z component of the Size property can be set to larger than 0.
+    // The SAABBs of the s-octree should not use the additional longitude extent.
     {
-        get => max_azimuthal ??= Position.x + Size.x * 0.5f;
-    }
-    public float MaxPolar
-    {
-        get => max_polar ??= Position.y + Size.y * 0.5f;
-    }
-    public float MinAzimuthal
-    {
-        get => min_azimuthal ??= Position.x - Size.x * 0.5f;
-    }
-    public float MinPolar
-    {
-        get => min_polar ??= Position.y - Size.y * 0.5f;
+        get => azimuthExtent ??= Size.z > 0 
+            ? SphericalUtils.LongitudeExtent(SphericalPos, Size.y * 0.5f)
+            : Size.x * 0.5f;
     }
 
-    public bool SimpleContains(ISimpleSphericalBoundingVolume other)
+    public float PolarExtent
+    {
+        get => polarExtent ??= size.y * 0.5f;
+    }
+
+    public bool SimpleContains(ISimpleBoundingVolume other)
     {
         return other switch
         {
@@ -104,15 +141,30 @@ public class SAABB: ISimpleSphericalBoundingVolume
 
     public bool Contains (SAABB other)
     {
-        return (
-            MaxAzimuthal >= other.MaxAzimuthal &&
-            MaxPolar >= other.MaxPolar &&
-            MinAzimuthal <= other.MinAzimuthal &&
-            MinPolar <= other.MinPolar
-		);
+        if (Size.x == 2 * Mathf.PI && Size.y == Mathf.PI) { 
+            return true;
+        }
+
+        float azimuthDiff = Mathf.Abs(SphericalPos.x - other.SphericalPos.x) + other.AzimuthalExtent;
+        float polarDiff = Mathf.Abs(SphericalPos.y - other.SphericalPos.y) + other.PolarExtent;
+        return azimuthDiff <= AzimuthalExtent &&
+            polarDiff <= PolarExtent;
+
+        /*
+        float azimuthDiff = SphericalUtils.FastAzimuthAbsDifference(SphericalPos.x, other.SphericalPos.x, Position, other.Position);
+        azimuthDiff = SphericalUtils.TangentSum(azimuthDiff, other.AzimuthalExtent);
+
+        if ((azimuthDiff < 0 && AzimuthalExtent < 0) || (azimuthDiff > 0 && AzimuthalExtent > 0)) {
+            return azimuthDiff <= AzimuthalExtent &&
+            Mathf.Abs(SphericalPos.y - other.SphericalPos.y) + other.PolarExtent < PolarExtent;
+        } else {
+            return azimuthDiff > AzimuthalExtent &&
+            Mathf.Abs(SphericalPos.y - other.SphericalPos.y) + other.PolarExtent < PolarExtent;
+        }
+        */
     }
 
-    public bool SimpleIntersects(ISimpleSphericalBoundingVolume other)
+    public bool SimpleIntersects(ISimpleBoundingVolume other)
     {
         return other switch
         {
@@ -123,9 +175,24 @@ public class SAABB: ISimpleSphericalBoundingVolume
 
     public virtual bool Intersects(SAABB other)
     {
-        return !(
-            MaxAzimuthal < other.MinAzimuthal || MinAzimuthal > other.MaxAzimuthal ||
-            MaxPolar < other.MinPolar || MinPolar > other.MaxPolar
-		);
+        if (Size.x == 2 * Mathf.PI || other.Size.x == 2 * Mathf.PI) { return true; }
+        float azimuthDiff = Mathf.Abs(SphericalPos.x - other.SphericalPos.x);
+        float polarDiff = Mathf.Abs(SphericalPos.y - other.SphericalPos.y);
+        return azimuthDiff <= AzimuthalExtent + other.AzimuthalExtent &&
+            polarDiff <= PolarExtent + other.PolarExtent;
+        /*
+        float azimuthDiff = SphericalUtils.FastAzimuthAbsDifference(SphericalPos.x, other.SphericalPos.x, Position, other.Position);
+        azimuthDiff = SphericalUtils.TangentDiff(azimuthDiff, other.AzimuthalExtent);
+        
+        if ((azimuthDiff < 0 && AzimuthalExtent < 0) || (azimuthDiff > 0 && AzimuthalExtent > 0)) {
+            return azimuthDiff <= AzimuthalExtent &&
+            Mathf.Abs(SphericalPos.y - other.SphericalPos.y) - other.PolarExtent < PolarExtent;
+        } else {
+            return azimuthDiff > AzimuthalExtent &&
+            Mathf.Abs(SphericalPos.y - other.SphericalPos.y) - other.PolarExtent < PolarExtent;
+        }
+        */
     }
+
+    public Vector3[][] GetEdges() { return null; }
 }

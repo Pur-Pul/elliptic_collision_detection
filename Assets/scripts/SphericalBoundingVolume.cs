@@ -11,6 +11,7 @@ public class SBV : IBoundingVolume //Spherical Bounding Volume
     public SBV (int id)
     {
         _id = id;
+        Simple = new AABB();
     }
 
     private Vector3 right;
