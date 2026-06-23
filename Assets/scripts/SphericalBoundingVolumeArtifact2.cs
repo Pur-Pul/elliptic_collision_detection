@@ -96,7 +96,7 @@ public class SBVA2 : IBoundingVolume //Spherical Bounding Volume
         if (shapeUpdated) {
             float chordSquared = Size.x * Size.x + Size.y * Size.y;
             float ang = SphericalUtils.ChordToAngle(chordSquared, true);
-            Simple.Size = new(ang, ang, 1);
+            Simple.Size = new(ang, ang, 1f);
             shapeUpdated = false;
         }
     }
@@ -172,8 +172,8 @@ public class SBCA2 : SBVA2 //Spherical Bounding Circle
     public override void UpdateSimpleSize ()
     {
         if (shapeUpdated) {
-            float ang = radiusAngle * 2f;
-            Simple.Size = new(ang, ang, 1);
+            float ang = RadiusAngle * 2f;
+            Simple.Size = new(ang, ang, 1f);
             shapeUpdated = false;
         }
     }

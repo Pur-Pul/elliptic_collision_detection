@@ -123,7 +123,19 @@ Shader "Custom/sphere"
                 float d = abs(ang1 - ang2);
                 return min(d, 2.0 * PI - d);
             }
-            float LongitudeExtent(float3 c, float radius, float cosR)
+            float LongitudeExtent(float2 c, float2 radii)
+            {
+                float sinPolar = sin(c.y);
+                float cosPolar = cos(c.y);
+
+                if (sinPolar <= sin(radii.y))
+                {
+                    return PI;
+                }
+
+                return asin(sin(radii.x) / sinPolar);
+            }
+            float FastLongitudeExtent(float3 c, float radius, float cosR)
             {
                 /*
                     For small angles on the radius close to the equator of the sphere, function asin(sin(radius) / sqrt(1 - cos^2(polar)))
@@ -164,23 +176,36 @@ Shader "Custom/sphere"
                 return  min(radius / sinSquaredC, PI * 0.5) / max(1 - (1 - cosR) / sinSquaredC, 0); 
             }
 
-            bool SAABBContains(float3 center, float size, float3 pos)
+            //bool SAABBContains(float3 center, float2 size, float3 pos)
+            bool SAABBContains(float2 c, float2 extents, float2 p)
             {
-                float radius = size * 0.5;
-                float cosR = cos(radius);
-                float lonExtent = LongitudeExtent(center, radius, cosR);                
-                float3 c = CartesianToFastSpherical(center);
-                float3 p = CartesianToFastSpherical(pos);
+                //float2 radii = size * 0.5;
+                //float cosR = cos(radius);
+                //float lonExtent = FastLongitudeExtent(center, radius, cosR);
+                                 
+                //float2 c = CartesianToSpherical(center);
+                //float2 p = CartesianToSpherical(pos);
 
-                float diffTangent = tan_limit;
+                //float lonExtent = LongitudeExtent(c, radii);
+                float borderWidth = 0.01;
+
+                float azimuthDiff = abs(c.x - p.x);
+                if (azimuthDiff > PI) { azimuthDiff = 2.0 * PI - azimuthDiff; }
+
+                float polarDiff = abs(c.y - p.y);
+                return (azimuthDiff <= extents.x && polarDiff <= extents.y) && 
+                !(azimuthDiff <= extents.x - borderWidth && polarDiff <= extents.y - borderWidth);
+
+
+                //float diffTangent = tan_limit;
                 // We require the absolute value of the angle difference, but that is not directly possible tangent difference function.
                 // tan(alpha - beta) = (tan(alpha) - tan(beta)) / (1 + tan(alpha)tan(beta))
                 // By multiplying tan(alpha) and tan(beta) with the sign of the angle difference, we can still obtain the absolute value.
                 // The sign of the angle difference can be obtained with sign(dot(cross(center.xy, pos.xy), spole))
          
-                float s = sign(center.x * pos.y - center.y * pos.x) * -1;
+                //float s = sign(center.x * pos.y - center.y * pos.x) * -1;
 
-                diffTangent = (s*c.x - s*p.x) / (1.0 + c.x * p.x);
+                //diffTangent = (s*c.x - s*p.x) / (1.0 + c.x * p.x);
 
                 //float ang = atan(diffTangent);
                 //ang = ang < 0 ? ang + PI : ang;
@@ -192,6 +217,7 @@ Shader "Custom/sphere"
                 //  -> sign(sin(x)) * sin^2(x)/cos(x) is also a potential approximation option if the sign of sin(x) can be obtained.
                 //  -> if need be, since s = sign(sin(alpha-beta)), the sign can be removed to increase the width of the saabb.
 
+                /*
                 float sinSquareC = 1 - center.z * center.z;
                 float sinSquareP = 1 - pos.z * pos.z;
 
@@ -205,6 +231,7 @@ Shader "Custom/sphere"
                     cos(abs(c.y - p.y)) >= cosR;
                     //abs(c.y - p.y) <= radius;
                 }
+                    */
             }
 
             half4 frag(Varyings IN) : SV_Target
@@ -213,6 +240,7 @@ Shader "Custom/sphere"
                 float3 normal = normalize(IN.positionWS);
                 int sphere_n = _Bodies[0][0].y;
                 int obb_n = _Bodies[0][0].z;
+                int saabb_n = _Bodies[0][0].w;
                 //float2 coord = CartesianToSpherical(normal);
                 
                 for (int i = 1; i < 1 + sphere_n; i++)
@@ -222,17 +250,12 @@ Shader "Custom/sphere"
                     float4 color = _Bodies[i][2];
                     float d = dot(normal, position);
 
-                    if (SAABBContains(position, acos(cosineRad)*2.0, normal))
-                    {
-                        fragColor *= float4(1.0, 0.412, 0.706, 1.0);
-                    }
-
                     if (cosineRad < d)
                     {
                         fragColor *= color;
                     }
                 }
-                for (int i = 1+sphere_n; i < 1 + sphere_n + obb_n; i++)
+                for (int i = 1 + sphere_n; i < 1 + sphere_n + obb_n; i++)
                 {
                     float3 center = _Bodies[i][0].xyz;
                     float3 forward = normalize(center);
@@ -257,17 +280,23 @@ Shader "Custom/sphere"
                     float3 h3 = qProduct(qProduct(q2, float4(-up, 0)), q2Inverse).xyz;
                     float3 h4 = qProduct(qProduct(q2Inverse, float4(up, 0)), q2).xyz;
 
-                    if (SAABBContains(center, sqrt(widthAngle*widthAngle + heightAngle*heightAngle), normal))
-                    {
-                        fragColor *= float4(1.0, 0.412, 0.706, 1.0);
-                    }
-
                     if (
                         dot(normal, h1) >= 0.0 &&
                         dot(normal, h2) >= 0.0 &&
                         dot(normal, h3) >= 0.0 &&
                         dot(normal, h4) >= 0.0
                     )
+                    {
+                        fragColor *= color;
+                    }
+                }
+                float2 p = CartesianToSpherical(normal);
+                for (int i = 1 + sphere_n + obb_n; i < 1 + sphere_n + obb_n + saabb_n; i++)
+                {
+                    float2 c = _Bodies[i][0].xy;
+                    float2 extents = _Bodies[i][1].xy;
+                    float4 color = _Bodies[i][3];
+                    if (SAABBContains(c, extents, p))
                     {
                         fragColor *= color;
                     }

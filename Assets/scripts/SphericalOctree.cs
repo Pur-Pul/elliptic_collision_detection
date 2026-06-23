@@ -17,7 +17,7 @@ public class SOctree<T>: SAABB,
     public SOctree(Vector3? center = null, Vector2? size = null, int d = 0)
     {
         Size = size ?? new(2*Mathf.PI, Mathf.PI);
-        SphericalPos = center ?? new(0,0,1);
+        SphericalPos = center ?? new(0, Mathf.PI * 0.5f, 0);
         depth = d;
         segments = new SOctree<T>[depth == 0 ? 8 : 4];
         items = new List<T>();
@@ -188,5 +188,17 @@ public class SOctree<T>: SAABB,
         }
         return collisions;
     }
-
+    public List<SAABB> GetSAABBs(List<SAABB> saabbs = null)
+    {
+        saabbs ??= new();
+        saabbs.Add(this);
+        if (!IsLeaf())
+        {
+            foreach (SOctree<T> segment in segments)
+            {
+                segment.GetSAABBs(saabbs);
+            }    
+        }
+        return saabbs;
+    }
 }

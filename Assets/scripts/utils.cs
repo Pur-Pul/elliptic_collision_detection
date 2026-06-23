@@ -161,7 +161,6 @@ class SphericalUtils {
     public static float LongitudeExtent(Vector2 sphericalPos, float radius)
     {
         float sinPolar = Mathf.Sin(sphericalPos.y);
-        float cosPolar = Mathf.Cos(sphericalPos.y);
         float sinRadius = Mathf.Sin(radius);
 
         if (sinPolar <= sinRadius)
@@ -169,7 +168,7 @@ class SphericalUtils {
             return Mathf.PI;
         }
 
-        return Mathf.Asin(sinRadius / Mathf.Sqrt(1 - cosPolar));
+        return Mathf.Asin(sinRadius / sinPolar);
     }
 
     public static float FastLongitudeExtent(Vector3 pos, float radius, float cosR)

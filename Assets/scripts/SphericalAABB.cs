@@ -1,5 +1,6 @@
 using UnityEngine;
 using System;
+using Unity.VisualScripting;
 
 /*
 I should first optimize the Eulicdean octree+aabb as well as possible.
@@ -39,7 +40,7 @@ public class SAABB: ISimpleBoundingVolume
 {
     private Vector3? sphericalPos;
     private Vector3? position;
-    private Vector2 size;
+    private Vector3 size;
     public RuntimeRecord Record { get; set; }
 
     private float? azimuthExtent;
@@ -144,8 +145,9 @@ public class SAABB: ISimpleBoundingVolume
         if (Size.x == 2 * Mathf.PI && Size.y == Mathf.PI) { 
             return true;
         }
-
         float azimuthDiff = Mathf.Abs(SphericalPos.x - other.SphericalPos.x) + other.AzimuthalExtent;
+        if (azimuthDiff > Mathf.PI) { azimuthDiff = 2f * Mathf.PI - azimuthDiff; }
+
         float polarDiff = Mathf.Abs(SphericalPos.y - other.SphericalPos.y) + other.PolarExtent;
         return azimuthDiff <= AzimuthalExtent &&
             polarDiff <= PolarExtent;
@@ -177,7 +179,10 @@ public class SAABB: ISimpleBoundingVolume
     {
         if (Size.x == 2 * Mathf.PI || other.Size.x == 2 * Mathf.PI) { return true; }
         float azimuthDiff = Mathf.Abs(SphericalPos.x - other.SphericalPos.x);
+        if (azimuthDiff > Mathf.PI) {azimuthDiff = 2f * Mathf.PI - azimuthDiff; }
         float polarDiff = Mathf.Abs(SphericalPos.y - other.SphericalPos.y);
+
+
         return azimuthDiff <= AzimuthalExtent + other.AzimuthalExtent &&
             polarDiff <= PolarExtent + other.PolarExtent;
         /*

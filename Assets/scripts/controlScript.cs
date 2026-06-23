@@ -15,6 +15,7 @@ public class ControlScript : MonoBehaviour
     [SerializeField] private BodyScript _bodyPrefab;
     [SerializeField] private Material lineMaterial;
     public List<BodyScript> bodies;
+    public List<SAABB> SAABBs;
     public int step;
     bool active;
     public bool Active
@@ -154,6 +155,7 @@ public class ControlScript : MonoBehaviour
     public Toggle RectanglesInput;
     public Toggle RenderInput;
     public int body_n;
+    public int saabb_n;
     private int lastStep;
     private List<Sequence> sequences;
     public string currentSequenceList = null;
@@ -497,26 +499,48 @@ public class ControlScript : MonoBehaviour
             }
             CurrentSequenceListText.text = $"Current sequence list: {currentSequenceList ?? "Undefined*"} | Step {step} : {lastStep} | Iteration {iteration} : {Iterations}";
         }
+        if (saabb_n > 0) { 
+            SAABBs.Clear();
+            saabb_n = 0;
+        }
     }
     
     void OnDrawGizmos()
     {
-        if (collisionTree is not Octree<BodyScript> octree) { return; }
-        Vector3[][] _edges = octree.GetTreeEdges();
-        foreach (BodyScript body in bodies)
+
+        
+
+        switch (collisionTree)
         {
-            Vector3[][] _body_edges = body.BBox.Simple.GetEdges();
-            Vector3[][] _new_edges = new Vector3[_edges.Length + _body_edges.Length][];
-            _edges.CopyTo(_new_edges, 0);
-            _body_edges.CopyTo(_new_edges, _edges.Length);
-            _edges = _new_edges;
-        }
-        foreach (Vector3[] edge in _edges)
-        {
-            Vector3 cam_pos = cam.transform.position;
-            float dist = Mathf.Min((cam_pos - edge[0]).magnitude, (cam_pos - edge[1]).magnitude);
-            float t = (dist - (cam_pos.magnitude - 1f))/2f;            
-            UnityEngine.Debug.DrawLine(edge[0], edge[1], Color.Lerp(Color.magenta, Color.black, t));
+            case Octree<BodyScript> octree:
+                Vector3[][] _edges = octree.GetTreeEdges();
+                foreach (BodyScript body in bodies)
+                {
+                    Vector3[][] _body_edges = body.BBox.Simple.GetEdges();
+                    Vector3[][] _new_edges = new Vector3[_edges.Length + _body_edges.Length][];
+                    _edges.CopyTo(_new_edges, 0);
+                    _body_edges.CopyTo(_new_edges, _edges.Length);
+                    _edges = _new_edges;
+                }
+                foreach (Vector3[] edge in _edges)
+                {
+                    Vector3 cam_pos = cam.transform.position;
+                    float dist = Mathf.Min((cam_pos - edge[0]).magnitude, (cam_pos - edge[1]).magnitude);
+                    float t = (dist - (cam_pos.magnitude - 1f))/2f;            
+                    UnityEngine.Debug.DrawLine(edge[0], edge[1], Color.Lerp(Color.magenta, Color.black, t));
+                }
+                break;
+            case SOctree<BodyScript> soctree:
+                SAABBs = soctree.GetSAABBs();
+                foreach (BodyScript body in bodies)
+                {
+                    if (body.BBox.Simple is SAABB saabb)
+                    {
+                        SAABBs.Add(saabb);
+                    }
+                }
+                saabb_n = SAABBs.Count;
+                break;
         }
     }
 }

@@ -27,6 +27,7 @@ public class worldScript : MonoBehaviour
         if (rend.enabled == false) { return; }
         List<Matrix4x4> BSList = new();
         List<Matrix4x4> OBBList = new();
+        List<Matrix4x4> SAABBList = new();
 
         void HandleCircle (Vector3 pos, float sRadius, Color color, Matrix4x4 m)
         {
@@ -44,6 +45,14 @@ public class worldScript : MonoBehaviour
             m.SetRow(2, new Vector4(up.x, up.y, up.z, height));
             m.SetRow(3, color);
             OBBList.Add(m);
+        }
+
+        void HandleSAABB (Vector3 pos, Vector2 extents, Color color, Matrix4x4 m)
+        {
+            m.SetRow(0, new Vector4(pos.x, pos.y, 0, 0));
+            m.SetRow(1, new Vector4(extents.x, extents.y, 0, 0));
+            m.SetRow(3, color);
+            SAABBList.Add(m);
         }
 
         for (int i = 0; i < control.body_n; i++)
@@ -132,19 +141,37 @@ public class worldScript : MonoBehaviour
             }
         }
         
-        Matrix4x4[] BodyData = new Matrix4x4[control.body_n+1];
-        BodyData[0].SetRow(0, new Vector4(control.body_n, BSList.Count, OBBList.Count, 0));
+        for (int i = 0; i < control.saabb_n; i++)
+        {
+            
+            Matrix4x4 m = new();
+            SAABB saabb = control.SAABBs[i];
+            HandleSAABB(
+                saabb.SphericalPos,
+                new Vector2(saabb.AzimuthalExtent, saabb.PolarExtent),
+                saabb.Size.z > 0 ? Color.limeGreen : Color.hotPink,
+                m
+            );
+        }
+
+        Matrix4x4[] BodyData = new Matrix4x4[control.body_n + control.saabb_n + 1];
+        BodyData[0].SetRow(0, new Vector4(control.body_n, BSList.Count, OBBList.Count, SAABBList.Count));
 
         for (int i = 0; i < BSList.Count; i++)
         {
             BodyData[1 + i] = BSList[i];
         }
 
-        // Then OBBs
         for (int i = 0; i < OBBList.Count; i++)
         {
             BodyData[1 + BSList.Count + i] = OBBList[i];
         }
+
+        for (int i = 0; i < SAABBList.Count; i++)
+        {
+            BodyData[1 + BSList.Count + OBBList.Count + i] = SAABBList[i];
+        }
+
         BodyBuffer.SetData(BodyData);
         material.SetBuffer("_Bodies", BodyBuffer);
     }
