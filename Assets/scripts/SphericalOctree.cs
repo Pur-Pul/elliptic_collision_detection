@@ -93,7 +93,10 @@ public class SOctree<T>: SAABB,
 
     public bool Add(T item)
     {
-        if (!SimpleContains(item.BBox.Simple)) { return false; }
+        if (!SimpleContains(item.BBox.Simple)) {
+            if (depth == 0) { Debug.Log("Tree Add ERROR: Item does not fit tree."); }
+            return false;
+        }
         number_contained_items++;
         if (items.Count < MaxItems || depth == MaxDepth)
         {
@@ -147,7 +150,10 @@ public class SOctree<T>: SAABB,
 
     public void Query(IBoundingVolume collider, List<T> found_items)
     {
-        if (!SimpleIntersects(collider.Simple)) { return; }
+        if (!SimpleIntersects(collider.Simple)) { 
+            if (depth == 0) { Debug.Log("Tree Query ERROR: Item does not fit tree."); }
+            return;
+        }
         foreach (T item in items)
         {
             if (collider.CheckFastOverlaps(item.BBox))

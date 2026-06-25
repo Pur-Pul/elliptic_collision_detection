@@ -95,27 +95,16 @@ Shader "Custom/sphere"
                 return float2(azimuth, polar);
             }
 
-            float3 CartesianToFastSpherical(float3 pos)
+            float2 FastCartesianToSpherical(float3 pos)
             {
-                /*
-                    polar = acos(pos.z / pos.magnitude) = acos(pos.z)       , since pos.magnitude = 1
-                    pos.y/pos.x is the tangent of the azimuth angle. Problem is that pos.y/pos.x loses the sign of the angle, which means it needs to be added back.
-                    usually this is done with atan2:
-                    azimuth = atan2(pos.y, pos.x)
-
-                    We can somewhat avoid using trigonometric functions. 
-                    The polar angle is represented by the z component.
-                    The azimuth is more complicated as we need to keep track of the quadrants, but in general the x/y fraction represents the tangent of the azimuth.
-                */
                 float polar = acos(pos.z);
                 float azimuth = pos.y/pos.x;
-                float azimuthSign = sign(pos.x);
 
                 if(pos.x == 0) {
                     azimuth = sign(pos.y) * tan_limit;
                 }
 
-                return float3(azimuth, polar, azimuthSign);
+                return float2(azimuth, polar);
             }
 
             float WrappedAngleDiff(float ang1, float ang2)
@@ -162,8 +151,6 @@ Shader "Custom/sphere"
                 //since sin^2(x)/cos(x)
 
                 float sinSquaredC = max(1.0 - c.z * c.z, 1e-5);
-                float extent;
-                float cosExtent;
 
                 if (abs(c.z) >= abs(cosR)) { // When the shape overlaps with the pole, the SAABB is expanded to cover the spherical cap.
                     return -1e-5;
@@ -176,17 +163,36 @@ Shader "Custom/sphere"
                 return  min(radius / sinSquaredC, PI * 0.5) / max(1 - (1 - cosR) / sinSquaredC, 0); 
             }
 
-            //bool SAABBContains(float3 center, float2 size, float3 pos)
+            float TanAzimuthDifference(float a1, float a2, float3 c, float3 p)
+            {
+                // We require the absolute value of the angle difference, but that is not directly possible tangent difference function.
+                // tan(alpha - beta) = (tan(alpha) - tan(beta)) / (1 + tan(alpha)tan(beta))
+                // By multiplying tan(alpha) and tan(beta) with the sign of the angle difference, we can still obtain the absolute value.
+                // The sign of the angle difference can be obtained with sign(dot(cross(center.xy, pos.xy), spole))
+            
+                float s = sign(c.x * p.y - c.y * p.x) * -1.0;
+                return (s * a1 - s * a2) / (1.0 + a1 * a2);
+            }
+            float TangentDiff(float t1, float t2) { return (t1 - t2) / (1.0 + t1 * t2); }
+
+            bool FastSAABBContains(float3 center, float3 fragment, float2 centerSP, float2 fragmentSP, float2 extents)
+            {
+                float borderWidth = tan(0.01);
+
+                float tanAzimuthDiff = TanAzimuthDifference(centerSP.x, fragmentSP.x, center, fragment);
+                float polarDiff = abs(centerSP.y - fragmentSP.y);
+
+                if ((tanAzimuthDiff < 0 && extents.x < 0) || (tanAzimuthDiff > 0 && extents.x > 0)) {
+                    return (tanAzimuthDiff <= extents.x && polarDiff < extents.y) && 
+                        !(tanAzimuthDiff <= TangentDiff(extents.x, borderWidth) && polarDiff <= extents.y - borderWidth);
+                } else {
+                    return (tanAzimuthDiff > extents.x && polarDiff < extents.y) &&
+                        !(tanAzimuthDiff > TangentDiff(extents.x, borderWidth) && polarDiff <= extents.y - borderWidth);
+                }
+            }
+
             bool SAABBContains(float2 c, float2 extents, float2 p)
             {
-                //float2 radii = size * 0.5;
-                //float cosR = cos(radius);
-                //float lonExtent = FastLongitudeExtent(center, radius, cosR);
-                                 
-                //float2 c = CartesianToSpherical(center);
-                //float2 p = CartesianToSpherical(pos);
-
-                //float lonExtent = LongitudeExtent(c, radii);
                 float borderWidth = 0.01;
 
                 float azimuthDiff = abs(c.x - p.x);
@@ -195,53 +201,16 @@ Shader "Custom/sphere"
                 float polarDiff = abs(c.y - p.y);
                 return (azimuthDiff <= extents.x && polarDiff <= extents.y) && 
                 !(azimuthDiff <= extents.x - borderWidth && polarDiff <= extents.y - borderWidth);
-
-
-                //float diffTangent = tan_limit;
-                // We require the absolute value of the angle difference, but that is not directly possible tangent difference function.
-                // tan(alpha - beta) = (tan(alpha) - tan(beta)) / (1 + tan(alpha)tan(beta))
-                // By multiplying tan(alpha) and tan(beta) with the sign of the angle difference, we can still obtain the absolute value.
-                // The sign of the angle difference can be obtained with sign(dot(cross(center.xy, pos.xy), spole))
-         
-                //float s = sign(center.x * pos.y - center.y * pos.x) * -1;
-
-                //diffTangent = (s*c.x - s*p.x) / (1.0 + c.x * p.x);
-
-                //float ang = atan(diffTangent);
-                //ang = ang < 0 ? ang + PI : ang;
-
-                //What remains is to get rid of the atan in this function and the cos in the LongitudeExtent function.
-                //In order to do that there needs to be a way to compare the tangent of an angle with the cosine of another angle.
-                //Since tan(x) = sin(x)/cos(x) and sin(x) ~ x for small x 
-                //  -> it might be possible to make use of x/cos(x) as an approximation of the longitude extent angle tangent.
-                //  -> sign(sin(x)) * sin^2(x)/cos(x) is also a potential approximation option if the sign of sin(x) can be obtained.
-                //  -> if need be, since s = sign(sin(alpha-beta)), the sign can be removed to increase the width of the saabb.
-
-                /*
-                float sinSquareC = 1 - center.z * center.z;
-                float sinSquareP = 1 - pos.z * pos.z;
-
-                
-
-                if ((diffTangent < 0 && lonExtent < 0) || (diffTangent > 0 && lonExtent > 0)) {
-                    return diffTangent <= lonExtent &&
-                    cos(abs(c.y - p.y)) >= cosR;
-                } else {
-                    return diffTangent > lonExtent &&
-                    cos(abs(c.y - p.y)) >= cosR;
-                    //abs(c.y - p.y) <= radius;
-                }
-                    */
             }
 
             half4 frag(Varyings IN) : SV_Target
             {
                 half4 fragColor = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, IN.uv) * _BaseColor;
+                bool fullbright = false;
                 float3 normal = normalize(IN.positionWS);
                 int sphere_n = _Bodies[0][0].y;
                 int obb_n = _Bodies[0][0].z;
                 int saabb_n = _Bodies[0][0].w;
-                //float2 coord = CartesianToSpherical(normal);
                 
                 for (int i = 1; i < 1 + sphere_n; i++)
                 {
@@ -290,15 +259,26 @@ Shader "Custom/sphere"
                         fragColor *= color;
                     }
                 }
-                float2 p = CartesianToSpherical(normal);
+                float2 fragSphericalPos = CartesianToSpherical(normal);
+                float2 fastFragSphericalPos = FastCartesianToSpherical(normal);
                 for (int i = 1 + sphere_n + obb_n; i < 1 + sphere_n + obb_n + saabb_n; i++)
                 {
-                    float2 c = _Bodies[i][0].xy;
+                    float2 sphericalPos = _Bodies[i][0].xy;
+                    float2 fastSphericalPos = _Bodies[i][0].zy;
                     float2 extents = _Bodies[i][1].xy;
+                    float3 position = _Bodies[i][2].xyz;
+                    float2 fastExtents = _Bodies[i][1].zy;
+                    
                     float4 color = _Bodies[i][3];
-                    if (SAABBContains(c, extents, p))
+                    if (SAABBContains(sphericalPos, extents, fragSphericalPos))
                     {
-                        fragColor *= color;
+                        fullbright = true;
+                        fragColor = color;
+                    }
+                    if (FastSAABBContains(position, normal, fastSphericalPos, fastFragSphericalPos, fastExtents))
+                    {
+                        fullbright = true;
+                        fragColor = float4(float3(1.0, 1.0, 1.0) - color.rgb, 1.0);
                     }
                 }
 
@@ -313,9 +293,9 @@ Shader "Custom/sphere"
                 surface.smoothness = .9;
                 surface.specular = .9;
 
-                return UniversalFragmentBlinnPhong(lighting, surface) + unity_AmbientSky * fragColor;
-                
-                
+                return fullbright 
+                    ? fragColor
+                    : UniversalFragmentBlinnPhong(lighting, surface) + unity_AmbientSky * fragColor;
             }
             ENDHLSL
         }

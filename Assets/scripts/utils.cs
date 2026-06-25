@@ -145,22 +145,21 @@ class SphericalUtils {
         );
     }
 
-    public static Vector3 CartesianToFastSpherical(Vector3 pos)
+    public static Vector2 CartesianToFastSpherical(Vector3 pos)
     {
-        float polar = Mathf.Acos(pos.z);
+        float polar = pos.z;
         float azimuth = pos.y/pos.x;
-        float azimuthSign = Mathf.Sign(pos.x);
 
         if(pos.x == 0) {
             azimuth = Mathf.Sign(pos.y) * Mathf.Infinity;
         }
 
-        return new Vector3(azimuth, polar, azimuthSign);
+        return new Vector2(azimuth, polar);
     }
 
-    public static float LongitudeExtent(Vector2 sphericalPos, float radius)
+    public static float LongitudeExtent(float polar, float radius)
     {
-        float sinPolar = Mathf.Sin(sphericalPos.y);
+        float sinPolar = Mathf.Sin(polar);
         float sinRadius = Mathf.Sin(radius);
 
         if (sinPolar <= sinRadius)
@@ -171,7 +170,7 @@ class SphericalUtils {
         return Mathf.Asin(sinRadius / sinPolar);
     }
 
-    public static float FastLongitudeExtent(Vector3 pos, float radius, float cosR)
+    public static float TanLongitudeExtent(float cosPolar, float radius, float cosRadius)
     {
         /*
             For small angles on the radius close to the equator of the sphere, function asin(sin(radius) / sqrt(1 - cos^2(polar)))
@@ -197,9 +196,9 @@ class SphericalUtils {
         //1 - (1 - cos(radius))/sin^2(polar) ~ cos(g(polar))
         //since sin^2(x)/cos(x)
 
-        float sinSquaredC = Mathf.Max(1.0f - pos.z * pos.z, 1e-5f);
+        float inverseSquareCosPolar = Mathf.Max(1.0f - cosPolar * cosPolar, 1e-5f);
 
-        if (Mathf.Abs(pos.z) >= Mathf.Abs(cosR)) { // When the shape overlaps with the pole, the SAABB is expanded to cover the spherical cap.
+        if (Mathf.Abs(cosPolar) >= Mathf.Abs(cosRadius)) { // When the shape overlaps with the pole, the SAABB is expanded to cover the spherical cap.
             return -1e-5f;
         }
         
@@ -207,10 +206,10 @@ class SphericalUtils {
         //  ~ longEx / cosLongEx
         //  ~ sin(longEx) / cos(longEx)
         //  = tan(longEx)
-        return  Mathf.Min(radius / sinSquaredC, Mathf.PI * 0.5f) / Mathf.Max(1 - (1 - cosR) / sinSquaredC, 0); 
+        return  Mathf.Min(radius / inverseSquareCosPolar, Mathf.PI * 0.5f) / Mathf.Max(1 - (1 - cosRadius) / inverseSquareCosPolar, 0); 
     }
 
-    public static float FastAzimuthAbsDifference(float a1, float a2, Vector3 c, Vector3 p)
+    public static float TanAzimuthDifference(float a1, float a2, Vector3 c, Vector3 p)
     {
         // We require the absolute value of the angle difference, but that is not directly possible tangent difference function.
         // tan(alpha - beta) = (tan(alpha) - tan(beta)) / (1 + tan(alpha)tan(beta))
@@ -220,6 +219,11 @@ class SphericalUtils {
         float s = Mathf.Sign(c.x * p.y - c.y * p.x) * -1;
         return (s*a1 - s*a2) / (1.0f + a1 * a2);
     }
+
+    public static bool TanAzimuthLargerThan(float a1, float a2) => 
+        ((a1 < 0 && a2 < 0) || (a1 > 0 && a2 > 0))
+            ? a1 > a2
+            : a1 < a2;
 
     public static float TangentSum(float t1, float t2) => (t1 + t2) / (1.0f - t1 * t2);
     public static float TangentDiff(float t1, float t2) => (t1 - t2) / (1.0f + t1 * t2);
