@@ -36,12 +36,12 @@ public class SOctree<T>: SAABB,
             Vector3[] centers = new Vector3[] {
                 new(Mathf.PI * 0.25f, Mathf.PI * 0.25f),
                 new(Mathf.PI * 0.75f, Mathf.PI * 0.25f),
-                new(Mathf.PI * 1.25f, Mathf.PI * 0.25f),
-                new(Mathf.PI * 1.75f, Mathf.PI * 0.25f),
-                new(Mathf.PI * 0.25f, Mathf.PI * 0.75f),
-                new(Mathf.PI * 0.75f, Mathf.PI * 0.75f),
-                new(Mathf.PI * 1.25f, Mathf.PI * 0.75f),
-                new(Mathf.PI * 1.75f, Mathf.PI * 0.75f)
+                new(-Mathf.PI * 0.75f, Mathf.PI * 0.25f),
+                new(-Mathf.PI * 0.25f, Mathf.PI * 0.25f),
+                new(Mathf.PI * 0.25f,  Mathf.PI * 0.75f),
+                new(Mathf.PI * 0.75f,  Mathf.PI * 0.75f),
+                new(-Mathf.PI * 0.75f, Mathf.PI * 0.75f),
+                new(-Mathf.PI * 0.25f, Mathf.PI * 0.75f)
             };
 
             for (int i = 0; i < 8; i++)

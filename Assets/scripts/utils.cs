@@ -145,29 +145,32 @@ class SphericalUtils {
         );
     }
 
-    public static Vector2 CartesianToFastSpherical(Vector3 pos)
+    public static Vector3 CartesianToFastSpherical(Vector3 pos)
     {
-        float polar = pos.z;
-        float azimuth = pos.y/pos.x;
+        float cosPolar = pos.z;
+        float sinPolar = Mathf.Sqrt(pos.x*pos.x + pos.y*pos.y);
+        float tanAzimuth = pos.y/pos.x;
 
         if(pos.x == 0) {
-            azimuth = Mathf.Sign(pos.y) * Mathf.Infinity;
+            tanAzimuth = Mathf.Sign(pos.y) * Mathf.Infinity;
         }
 
-        return new Vector2(azimuth, polar);
+        return new Vector3(tanAzimuth, cosPolar, sinPolar);
     }
 
     public static float LongitudeExtent(float polar, float radius)
     {
-        float sinPolar = Mathf.Sin(polar);
-        float sinRadius = Mathf.Sin(radius);
+        //float sinPolar = Mathf.Sin(polar);
+        //float sinRadius = Mathf.Sin(radius);
 
-        if (sinPolar <= sinRadius)
+        float angleFromPole = Mathf.Min(polar, Mathf.PI - polar);
+        //if (sinPolar <= sinRadius)
+        if(angleFromPole < radius)
         {
             return Mathf.PI;
         }
 
-        return Mathf.Asin(sinRadius / sinPolar);
+        return radius / (angleFromPole / (0.5f * Mathf.PI));//Mathf.Asin(sinRadius / sinPolar);
     }
 
     public static float TanLongitudeExtent(float cosPolar, float radius, float cosRadius)
@@ -192,6 +195,8 @@ class SphericalUtils {
             sin^2(polar) = 1 - cos(polar)
             and cos(radius) can be precalculated.
         */
+        
+        
 
         //1 - (1 - cos(radius))/sin^2(polar) ~ cos(g(polar))
         //since sin^2(x)/cos(x)
@@ -218,6 +223,26 @@ class SphericalUtils {
     
         float s = Mathf.Sign(c.x * p.y - c.y * p.x) * -1;
         return (s*a1 - s*a2) / (1.0f + a1 * a2);
+    }
+
+    public static Vector2 PolarDifference(Vector2 polar1, Vector2 polar2)
+    {
+        // To get the angle difference between two cosines, the cosine subtraction formula can be used.
+        // cos(a - b) = cos(a)cos(b) + sin(a)sin(b)
+        // the sine of the polar angles can be obtained by taking the magnitude of their cartesian vectors projected onty the x,y plane.
+        // This does mean using a square root operation, but I do not see any way to avoid using one without making the vertical fitting of the saabb much worse.
+        return new (
+            polar1.x*polar2.x + polar1.y*polar2.y,
+            polar1.y*polar2.x - polar1.x*polar2.y
+        );
+    }
+
+    public static Vector2 PolarAddition(Vector2 polar1, Vector2 polar2)
+    {
+        return new (
+            polar1.x*polar2.x - polar1.y*polar2.y,
+            polar1.y*polar2.x + polar1.x*polar2.y
+        );
     }
 
     public static bool TanAzimuthLargerThan(float a1, float a2) => 

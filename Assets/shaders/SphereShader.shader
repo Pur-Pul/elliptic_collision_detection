@@ -97,7 +97,7 @@ Shader "Custom/sphere"
 
             float2 FastCartesianToSpherical(float3 pos)
             {
-                float polar = acos(pos.z);
+                float polar = pos.z;
                 float azimuth = pos.y/pos.x;
 
                 if(pos.x == 0) {
@@ -173,6 +173,21 @@ Shader "Custom/sphere"
                 float s = sign(c.x * p.y - c.y * p.x) * -1.0;
                 return (s * a1 - s * a2) / (1.0 + a1 * a2);
             }
+            float CosPolarDifference(float cos1, float cos2, float3 c, float3 p)
+            {
+                // To get the angle difference between two cosines, the cosine subtraction formula can be used.
+                // cos(a - b) = cos(a)cos(b) + sin(a)sin(b)
+                // the sine of the polar angles can be obtained by taking the magnitude of their cartesian vectors projected onty the x,y plane.
+                // This does mean using a square root operation, but I do not see any way to avoid using one without making the vertical fitting of the saabb much worse.
+
+                float sin1 = sqrt(c.x*c.x + c.y*c.y);
+                float sin2 = sqrt(p.x*p.x + p.y*p.y);
+
+                //float approxSin1 = 1.0 - c1*c1*0.5;
+                //float approxSin2 = 1.0 - c2*c2*0.5;
+
+                return cos1 * cos2 + sin1 * sin2;
+            }
             float TangentDiff(float t1, float t2) { return (t1 - t2) / (1.0 + t1 * t2); }
 
             bool FastSAABBContains(float3 center, float3 fragment, float2 centerSP, float2 fragmentSP, float2 extents)
@@ -180,14 +195,14 @@ Shader "Custom/sphere"
                 float borderWidth = tan(0.01);
 
                 float tanAzimuthDiff = TanAzimuthDifference(centerSP.x, fragmentSP.x, center, fragment);
-                float polarDiff = abs(centerSP.y - fragmentSP.y);
+                float polarDiff = CosPolarDifference(center.z, fragment.z, center, fragment);
 
                 if ((tanAzimuthDiff < 0 && extents.x < 0) || (tanAzimuthDiff > 0 && extents.x > 0)) {
-                    return (tanAzimuthDiff <= extents.x && polarDiff < extents.y) && 
-                        !(tanAzimuthDiff <= TangentDiff(extents.x, borderWidth) && polarDiff <= extents.y - borderWidth);
+                    return (tanAzimuthDiff <= extents.x && polarDiff > cos(extents.y)) && 
+                        !(tanAzimuthDiff <= TangentDiff(extents.x, borderWidth) && polarDiff >= cos(extents.y - borderWidth));
                 } else {
-                    return (tanAzimuthDiff > extents.x && polarDiff < extents.y) &&
-                        !(tanAzimuthDiff > TangentDiff(extents.x, borderWidth) && polarDiff <= extents.y - borderWidth);
+                    return (tanAzimuthDiff > extents.x && polarDiff > cos(extents.y)) &&
+                        !(tanAzimuthDiff > TangentDiff(extents.x, borderWidth) && polarDiff >= cos(extents.y - borderWidth));
                 }
             }
 
@@ -264,17 +279,17 @@ Shader "Custom/sphere"
                 for (int i = 1 + sphere_n + obb_n; i < 1 + sphere_n + obb_n + saabb_n; i++)
                 {
                     float2 sphericalPos = _Bodies[i][0].xy;
-                    float2 fastSphericalPos = _Bodies[i][0].zy;
+                    float2 fastSphericalPos = _Bodies[i][0].zw;
                     float2 extents = _Bodies[i][1].xy;
                     float3 position = _Bodies[i][2].xyz;
                     float2 fastExtents = _Bodies[i][1].zy;
                     
                     float4 color = _Bodies[i][3];
-                    if (SAABBContains(sphericalPos, extents, fragSphericalPos))
-                    {
-                        fullbright = true;
-                        fragColor = color;
-                    }
+                    //if (SAABBContains(sphericalPos, extents, fragSphericalPos))
+                    //{
+                    //    fullbright = true;
+                    //    fragColor = color;
+                    //}
                     if (FastSAABBContains(position, normal, fastSphericalPos, fastFragSphericalPos, fastExtents))
                     {
                         fullbright = true;

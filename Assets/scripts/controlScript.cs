@@ -39,6 +39,7 @@ public class ControlScript : MonoBehaviour
         }
     }
     (int,int,long) best = ( 0, 0, long.MaxValue );
+    (int,int,long) depthBest = ( 0, 0, long.MaxValue );
     int iteration = 1;
     public int Iterations { 
         get {
@@ -305,6 +306,7 @@ public class ControlScript : MonoBehaviour
         sequences = sl;
         lastStep = SequenceUtils.GetLastStep(sl);
         step = 0;
+        iteration = 1;
         body_n = sequences.Count;
         SpawnBodies();
         SetMethod();
@@ -471,27 +473,48 @@ public class ControlScript : MonoBehaviour
                     if (Optimize)
                     {
                         long averageRuntime = (long)Math.Round(runtimeRecord.total_time / (double)Iterations);
-                        UnityEngine.Debug.Log(averageRuntime);
-                        UnityEngine.Debug.Log(best);
-                        best = best.Item3 > averageRuntime
+                        UnityEngine.Debug.Log($"New: ({MaxDepth}, {MaxItems}, {averageRuntime})");
+                        UnityEngine.Debug.Log($"Depth best: {depthBest}");
+                        UnityEngine.Debug.Log($"Best: {best}");
+
+                        bool newDepthBest = depthBest.Item3 >= averageRuntime;
+                        depthBest = newDepthBest
                             ? (MaxDepth, MaxItems, averageRuntime)
-                            : best;
-                        if (MaxDepth < optimizeEnd.Item1 && MaxItems == optimizeEnd.Item2 || (MaxDepth == 0 && MaxItems == 0))
+                            : depthBest;
+
+                        bool skipToNextDepth = depthBest.Item3 <= best.Item3 && (
+                            (MaxDepth < optimizeEnd.Item1 && MaxItems == optimizeEnd.Item2)
+                            || !newDepthBest
+                        );
+
+                        if (skipToNextDepth)
                         {
+                            best = (depthBest.Item1, depthBest.Item2, depthBest.Item3);
+                            depthBest = (0, 0, long.MaxValue);
                             MaxItems = 1;
                             MaxDepth++;
                             Active = true;
-                        } else if (collisionTree.MaxItems < optimizeEnd.Item2)
+                        } 
+                        else if (MaxDepth == 0)
                         {
-                            MaxItems++;
+                            best = (0, 0, averageRuntime);
+                            MaxDepth = 1;
+                            MaxItems = 1;
                             Active = true;
-                        } else
+                        }
+                        else if (collisionTree.MaxItems < optimizeEnd.Item2 && newDepthBest)
+                        {
+                            MaxItems++;    
+                            Active = true;
+                        }
+                        else
                         {
                             MaxDepth = best.Item1;
                             MaxItems = best.Item2;
                             Optimize = false;
                             UnityEngine.Debug.Log($"Best item limit: {MaxItems}");
                             UnityEngine.Debug.Log($"Best depth: {MaxDepth}");
+                            depthBest = (0,0,long.MaxValue);
                             best = (0,0,long.MaxValue);
                         }
                     }

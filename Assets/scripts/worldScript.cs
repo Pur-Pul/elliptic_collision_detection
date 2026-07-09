@@ -147,6 +147,7 @@ public class worldScript : MonoBehaviour
             
             Matrix4x4 m = new();
             SAABB saabb = control.SAABBs[i];
+            
             HandleSAABB(
                 saabb.Position,
                 saabb.SphericalPos,

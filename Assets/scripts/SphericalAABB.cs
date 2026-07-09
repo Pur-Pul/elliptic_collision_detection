@@ -1,6 +1,7 @@
 using UnityEngine;
 using System;
 using Unity.VisualScripting;
+using System.Diagnostics;
 
 /*
 I should first optimize the Eulicdean octree+aabb as well as possible.
@@ -42,26 +43,28 @@ public class SAABB: ISimpleBoundingVolume
     private Vector3? fastSphericalPos;
     private Vector3? position;
     private Vector3 size;
+    private Vector2 radii;
+    private Vector3 fastRadii;
     public RuntimeRecord Record { get; set; }
 
     private float? azimuthExtent;
     private float? polarExtent;
     private float? tanAzimuthExtent;
     private float? cosPolarExtent;
+    private float? sinPolarExtent;
     
     public Vector3 Position {
-        get {
+        get 
+        {
             if (sphericalPos == null && position == null) {
-                Debug.Log("Error: Both cartesian and spherical coordinates are undefined.");
+                UnityEngine.Debug.Log("Error: Both cartesian and spherical coordinates are undefined.");
                 return new(0,0,0);
             }
             if (position == null)
             {
-                return SphericalUtils.SphericalToCartesian(SphericalPos);
-            } else
-            {
-                return position.Value;
+                position = SphericalUtils.SphericalToCartesian(SphericalPos);
             }
+            return position.Value;
         }
         set
         {
@@ -72,26 +75,20 @@ public class SAABB: ISimpleBoundingVolume
             }
 
             position = value;
-            sphericalPos = null;
+            sphericalPos = null;//SphericalUtils.CartesianToSpherical(Position);
             fastSphericalPos = null;
         }
     }
 
-    public Vector3 SphericalPos 
+    public Vector3 SphericalPos
     {
         get
         {
             if (sphericalPos == null && position == null) {
-                Debug.Log("Error: Both cartesian and spherical coordinates are undefined.");
+                UnityEngine.Debug.Log("Error: Both cartesian and spherical coordinates are undefined.");
                 return new(0,0,0);
             }
-            if (sphericalPos == null)
-            {
-                return SphericalUtils.CartesianToSpherical(Position);
-            } else
-            {
-                return sphericalPos.Value;
-            }
+            return sphericalPos ??= SphericalUtils.CartesianToSpherical(Position);
         }
         set
         {
@@ -112,18 +109,13 @@ public class SAABB: ISimpleBoundingVolume
         get
         {
             if (fastSphericalPos == null && sphericalPos == null && position == null) {
-                Debug.Log("Error: Both cartesian and spherical coordinates are undefined.");
+                UnityEngine.Debug.Log("Error: Both cartesian and spherical coordinates are undefined.");
                 return new(0,0,0);
             }
-            else if (fastSphericalPos == null)
-            {
-                return position != null
-                    ? SphericalUtils.CartesianToFastSpherical(Position)
-                    : new(Mathf.Tan(SphericalPos.x), Mathf.Cos(SphericalPos.y));
-            } else
-            {
-                return fastSphericalPos.Value;
-            }
+            return fastSphericalPos ??= (position != null
+                ? SphericalUtils.CartesianToFastSpherical(Position)
+                : new(Mathf.Tan(SphericalPos.x), Mathf.Cos(SphericalPos.y), Mathf.Sin(SphericalPos.y))
+            );
         }
     }
 
@@ -135,11 +127,17 @@ public class SAABB: ISimpleBoundingVolume
             {
                 azimuthExtent = null;
                 tanAzimuthExtent = null;
+                radii.x = value.x * 0.5f;
+                fastRadii.x = Mathf.Tan(radii.x);
             }
             if (size.y != value.y)
             {
                 polarExtent = null;
                 cosPolarExtent = null;
+                sinPolarExtent = null;
+                radii.y = value.y * 0.5f;
+                fastRadii.y = Mathf.Cos(radii.y);
+                fastRadii.z = Mathf.Sin(radii.y);
             }
             size = value;
         }
@@ -151,73 +149,110 @@ public class SAABB: ISimpleBoundingVolume
     // The SAABBs of the s-octree should not use the additional longitude extent.
     {
         get => azimuthExtent ??= Size.z > 0 
-            ? SphericalUtils.LongitudeExtent(SphericalPos.y, Size.y * 0.5f)
-            : Size.x * 0.5f;
+            ? SphericalUtils.LongitudeExtent(SphericalPos.y, radii.y)
+            : radii.x;
     }
 
     public float PolarExtent
     {
-        get => polarExtent ??= Size.y * 0.5f;
+        get => polarExtent ??= radii.y;
     }
 
     public float TanAzimuthalExtent
     {
         get 
         {
-            Vector3 radii = Size * 0.5f;
             return tanAzimuthExtent ??= Size.z > 0 
-                ? SphericalUtils.TanLongitudeExtent(FastSphericalPos.y, radii.y, Mathf.Cos(radii.y))
+                ? SphericalUtils.TanLongitudeExtent(FastSphericalPos.y, radii.y, fastRadii.y)
                 : (Size.x == 2 * Mathf.PI
                     ? -1e-5f
-                    : Mathf.Tan(radii.x)
+                    : fastRadii.x
                 );
         }
     }
 
     public float CosPolarExtent
     {
-        get => cosPolarExtent ??= Mathf.Cos(Size.y * 0.5f);
+        get => cosPolarExtent ??= fastRadii.y;
+    }
+
+    public float SinPolarExtent
+    {
+        get => sinPolarExtent ??= fastRadii.z;
+    }
+
+    object Timed(Delegate func, params object[] args)
+    {
+        long start = Stopwatch.GetTimestamp();
+        object result = func.DynamicInvoke(args);
+        long end = Stopwatch.GetTimestamp();
+
+        Record.Write(start, end, (this.GetType(), func.Method));
+
+        return result;
     }
 
     public bool SimpleContains(ISimpleBoundingVolume other)
     {
         return other switch
         {
-            SAABB saabb => FastContains(saabb),
+            SAABB saabb => (bool)Timed(new Func<SAABB, bool>(FastContains),saabb),
             _ => false
         };
     }
 
     public bool Contains (SAABB other)
     {
+        //Since this function is used when objects are added to the tree, this is where the spherical coordinates are first calculated.
+        // In other words SOctree.contains will appear to be the slowest of the SAABB functions.
         if (Size.x == 2 * Mathf.PI && Size.y == Mathf.PI) { return true; }
-        float azimuthDiff = Mathf.Abs(SphericalPos.x - other.SphericalPos.x) + other.AzimuthalExtent;
+        float azimuthDiff = Mathf.Abs(SphericalPos.x - other.SphericalPos.x);
         if (azimuthDiff > Mathf.PI) { azimuthDiff = 2f * Mathf.PI - azimuthDiff; }
-        float polarDiff = Mathf.Abs(SphericalPos.y - other.SphericalPos.y) + other.PolarExtent;
-        return azimuthDiff <= AzimuthalExtent &&
-            polarDiff <= PolarExtent;
+        float polarDiff = Mathf.Abs(SphericalPos.y - other.SphericalPos.y);
+
+        return polarDiff <= PolarExtent - other.PolarExtent &&
+            azimuthDiff <= AzimuthalExtent - other.AzimuthalExtent;
+    }
+
+    public bool FastAzimuthContain (SAABB other)
+    {
+        if (SphericalUtils.TanAzimuthLargerThan(other.TanAzimuthalExtent, TanAzimuthalExtent)) { return false; }
+        float tanAzimuthDiff = SphericalUtils.TanAzimuthDifference(
+            FastSphericalPos.x,
+            other.FastSphericalPos.x,
+            Position,
+            other.Position
+        );
+        float tanAzimuthExtDiff = SphericalUtils.TangentDiff(TanAzimuthalExtent, other.TanAzimuthalExtent);
+        return SphericalUtils.TanAzimuthLargerThan(tanAzimuthExtDiff, tanAzimuthDiff);
+    }
+
+    public bool FastPolarContain (SAABB other)
+    {
+        if (other.CosPolarExtent < CosPolarExtent) { return false; }
+        Vector2 polarDiff = SphericalUtils.PolarDifference(
+            new (FastSphericalPos.y, FastSphericalPos.z), 
+            new (other.FastSphericalPos.y, other.FastSphericalPos.z)
+        );
+        Vector2 polarExtDiff = SphericalUtils.PolarDifference(
+            new(CosPolarExtent, SinPolarExtent),
+            new(other.CosPolarExtent, other.SinPolarExtent)
+        );
+
+        return polarDiff.x > polarExtDiff.x;
     }
 
     public bool FastContains (SAABB other)
     {
         if (Size.x == 2 * Mathf.PI && Size.y == Mathf.PI) { return true; }
-        float tanAzimuthDiff = SphericalUtils.TanAzimuthDifference(FastSphericalPos.x, other.FastSphericalPos.x, Position, other.Position);
-        tanAzimuthDiff = SphericalUtils.TangentSum(tanAzimuthDiff, other.TanAzimuthalExtent);  
-        float polarDiff = Mathf.Abs(SphericalPos.y - other.SphericalPos.y) + other.PolarExtent;
-        if ((tanAzimuthDiff < 0 && TanAzimuthalExtent < 0) || (tanAzimuthDiff > 0 && TanAzimuthalExtent > 0)) {
-            return tanAzimuthDiff <= TanAzimuthalExtent &&
-            polarDiff < PolarExtent;
-        } else {
-            return tanAzimuthDiff > TanAzimuthalExtent &&
-            polarDiff < PolarExtent;
-        }
+        return FastPolarContain(other) && FastAzimuthContain(other);
     }
 
     public bool SimpleIntersects(ISimpleBoundingVolume other)
     {
         return other switch
         {
-            SAABB saabb => FastIntersects(saabb),
+            SAABB saabb => (bool)Timed(new Func<SAABB, bool>(FastIntersects),saabb),
             _ => false
         };
     }
@@ -226,27 +261,54 @@ public class SAABB: ISimpleBoundingVolume
     {
         if (Size.x == 2 * Mathf.PI || other.Size.x == 2 * Mathf.PI) { return true; }
         float azimuthDiff = Mathf.Abs(SphericalPos.x - other.SphericalPos.x);
-        if (azimuthDiff > Mathf.PI) {azimuthDiff = 2f * Mathf.PI - azimuthDiff; }
+        if (azimuthDiff > Mathf.PI) { azimuthDiff = 2f * Mathf.PI - azimuthDiff; }
         float polarDiff = Mathf.Abs(SphericalPos.y - other.SphericalPos.y);
-        return azimuthDiff <= AzimuthalExtent + other.AzimuthalExtent &&
-            polarDiff <= PolarExtent + other.PolarExtent;
+
+        return polarDiff <= PolarExtent + other.PolarExtent &&
+            azimuthDiff <= AzimuthalExtent + other.AzimuthalExtent;
+    }
+
+    public bool FastAzimuthOverlap(SAABB other)
+    {
+        if (Size.x + other.Size.x > Math.PI) { return true; }
+        
+        float tanAzimuthDiff = SphericalUtils.TanAzimuthDifference(
+            FastSphericalPos.x,
+            other.FastSphericalPos.x,
+            Position,
+            other.Position
+        );
+
+        float tanAzimuthExtSum = SphericalUtils.TangentSum(TanAzimuthalExtent, other.TanAzimuthalExtent);
+        return SphericalUtils.TanAzimuthLargerThan(tanAzimuthExtSum, tanAzimuthDiff);
+    }
+
+    public bool FastPolarOverlap(SAABB other)
+    {
+        if (Size.y + other.Size.y > Math.PI) { return true; }
+        
+        Vector2 polarDiff = SphericalUtils.PolarDifference(
+            new (FastSphericalPos.y, FastSphericalPos.z), 
+            new (other.FastSphericalPos.y, other.FastSphericalPos.z)
+        );
+        Vector2 polarExtSum = SphericalUtils.PolarAddition(
+            new(CosPolarExtent, SinPolarExtent),
+            new(other.CosPolarExtent, other.SinPolarExtent)
+        );
+
+        return polarDiff.x > polarExtSum.x;
     }
 
     public virtual bool FastIntersects(SAABB other)
     {
+        /*
+            For some reason this function is slower than the normal intersects function.
+            The normal SphericalPos function is not called when this is used, which means the problem lies elsewhere.
+
+        */
         if (Size.x == 2 * Mathf.PI || other.Size.x == 2 * Mathf.PI) { return true; }
-        float polarDiff = Mathf.Abs(SphericalPos.y - other.SphericalPos.y);
-        float tanAzimuthDiff = SphericalUtils.TanAzimuthDifference(FastSphericalPos.x, other.FastSphericalPos.x, Position, other.Position);
-        if (SphericalUtils.TanAzimuthLargerThan(other.TanAzimuthalExtent, tanAzimuthDiff))
-        {
-            return polarDiff <= PolarExtent + other.PolarExtent;
-        }
-        else
-        {
-            tanAzimuthDiff = SphericalUtils.TangentDiff(tanAzimuthDiff, other.TanAzimuthalExtent);
-        }
-        return SphericalUtils.TanAzimuthLargerThan(TanAzimuthalExtent, tanAzimuthDiff) 
-            && polarDiff <= PolarExtent + other.PolarExtent;
+
+        return FastPolarOverlap(other) && FastAzimuthOverlap(other);
     }
 
     public Vector3[][] GetEdges() { return null; }

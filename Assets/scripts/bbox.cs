@@ -72,7 +72,15 @@ public class BBox : IBoundingVolume
         }
     }
 
-    public RuntimeRecord Record { get; set; }
+    private RuntimeRecord record; 
+    public RuntimeRecord Record {
+        get => record;
+        set
+        {
+            record = value;
+            Simple.Record = value;
+        }
+    }
     public ISimpleBoundingVolume Simple { get; set; }
     
     public virtual Vector3 Size {

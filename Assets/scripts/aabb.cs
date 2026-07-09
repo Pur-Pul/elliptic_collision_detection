@@ -1,5 +1,6 @@
 using UnityEngine;
 using System;
+using System.Diagnostics;
 
 public class AABB : ISimpleBoundingVolume
 {
@@ -56,27 +57,27 @@ public class AABB : ISimpleBoundingVolume
 
     public float MaxX
     {
-        get => max_x ??= Position.x + Size.x/2f;
+        get => max_x ??= Position.x + Size.x * 0.5f;
     }
     public float MaxY
     {
-        get => max_y ??= Position.y + Size.y/2f;
+        get => max_y ??= Position.y + Size.y * 0.5f;
     }
     public float MaxZ
     {
-        get => max_z ??= Position.z + Size.z/2f;
+        get => max_z ??= Position.z + Size.z * 0.5f;
     }
     public float MinX
     {
-        get => min_x ??= Position.x - Size.x/2f;
+        get => min_x ??= Position.x - Size.x * 0.5f;
     }
     public float MinY
     {
-        get => min_y ??= Position.y - Size.y/2f;
+        get => min_y ??= Position.y - Size.y * 0.5f;
     }
     public float MinZ
     {
-        get => min_z ??= Position.z - Size.z/2f;
+        get => min_z ??= Position.z - Size.z * 0.5f;
     }
 
     public Vector3[][] GetEdges()
@@ -114,11 +115,22 @@ public class AABB : ISimpleBoundingVolume
         return _edges;
     }
 
+    object Timed(Delegate func, params object[] args)
+    {
+        long start = Stopwatch.GetTimestamp();
+        object result = func.DynamicInvoke(args);
+        long end = Stopwatch.GetTimestamp();
+
+        Record.Write(start, end, (this.GetType(), func.Method));
+
+        return result;
+    }
+
     public bool SimpleContains(ISimpleBoundingVolume other)
     {
         return other switch
         {
-            AABB aabb => Contains(aabb),
+            AABB aabb => (bool)Timed(new Func<AABB, bool>(Contains),aabb),
             _ => false
         };
     }
@@ -139,7 +151,7 @@ public class AABB : ISimpleBoundingVolume
     {
         return other switch
         {
-            AABB aabb => Intersects(aabb),
+            AABB aabb => (bool)Timed(new Func<AABB, bool>(Intersects),aabb),
             _ => false
         };
     }

@@ -59,7 +59,15 @@ public class SBVA1 : IBoundingVolume //Spherical Bounding Volume
     private Vector3 position;
     private Vector3 size;
 
-    public RuntimeRecord Record { get; set; }
+    private RuntimeRecord record; 
+    public RuntimeRecord Record {
+        get => record;
+        set
+        {
+            record = value;
+            Simple.Record = value;
+        }
+    }
     public ISimpleBoundingVolume Simple { get; set; }
     public float? chordHeight = null;
 
