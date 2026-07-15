@@ -285,16 +285,16 @@ Shader "Custom/sphere"
                     float2 fastExtents = _Bodies[i][1].zy;
                     
                     float4 color = _Bodies[i][3];
-                    //if (SAABBContains(sphericalPos, extents, fragSphericalPos))
-                    //{
-                    //    fullbright = true;
-                    //    fragColor = color;
-                    //}
-                    if (FastSAABBContains(position, normal, fastSphericalPos, fastFragSphericalPos, fastExtents))
+                    if (SAABBContains(sphericalPos, extents, fragSphericalPos))
                     {
                         fullbright = true;
-                        fragColor = float4(float3(1.0, 1.0, 1.0) - color.rgb, 1.0);
+                        fragColor = color;
                     }
+                    //if (FastSAABBContains(position, normal, fastSphericalPos, fastFragSphericalPos, fastExtents))
+                    //{
+                    //    fullbright = true;
+                    //    fragColor = float4(float3(1.0, 1.0, 1.0) - color.rgb, 1.0);
+                    //}
                 }
 
                 InputData lighting = (InputData) 0;

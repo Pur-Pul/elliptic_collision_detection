@@ -354,18 +354,33 @@ public class ControlScript : MonoBehaviour
                 collisionTree.Add(body);
             }
         }
+        List<(IItem, IItem)> collisions = new();
+        collisionTree.CheckAllCollisions(collisions);
+        foreach ((IItem, IItem) collision in collisions)
+        {
+            collision.Item1.Collision();
+            collision.Item2.Collision();
+        }
+        if (CollisionList != null)
+        {
+            CollisionList.RecordCollisions(collisions, step);    
+        }
+        /*
         foreach (BodyScript body in bodies) 
         {
             body.CheckForCollision(step);
         }
+        */
         step++;
+        
     }
 
     void Restart()
     {
         if (CollisionList != null)
         {
-            CollisionList.Finish(step);
+            //CollisionList.Finish(step);
+            CollisionList.StopRecording(step);
             Dictionary<string, SumData> accuracy_data = CollisionRecord.CalculateAccuracy(baselineList, artifactList);
             AccuracyText.text = $"Baseline: {baselineList.method}\nArtifact: {artifactList.method}\n{accuracy_data["all"].Header()}";
             foreach (string key in accuracy_data.Keys)

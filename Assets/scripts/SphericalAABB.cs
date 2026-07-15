@@ -75,7 +75,7 @@ public class SAABB: ISimpleBoundingVolume
             }
 
             position = value;
-            sphericalPos = null;//SphericalUtils.CartesianToSpherical(Position);
+            sphericalPos = null;
             fastSphericalPos = null;
         }
     }
@@ -149,7 +149,7 @@ public class SAABB: ISimpleBoundingVolume
     // The SAABBs of the s-octree should not use the additional longitude extent.
     {
         get => azimuthExtent ??= Size.z > 0 
-            ? SphericalUtils.LongitudeExtent(SphericalPos.y, radii.y)
+            ? SphericalUtils.LongitudeExtent(SphericalPos.z, fastRadii.z)
             : radii.x;
     }
 

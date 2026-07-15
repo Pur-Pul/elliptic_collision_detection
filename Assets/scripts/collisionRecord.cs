@@ -23,6 +23,15 @@ public class ItemIdComparer : IEqualityComparer<IItem>
     }
 }
 
+public sealed class CollisionIdComparer : IEqualityComparer<(long Id, string Type)>
+{
+    public bool Equals((long Id, string Type) x, (long Id, string Type) y)
+        => x.Id == y.Id;
+
+    public int GetHashCode((long Id, string Type) obj)
+        => obj.Id.GetHashCode();
+}
+
 public class SumData
 {
     public int Intersect = 0;
@@ -48,7 +57,9 @@ public class SumData
 public class CollisionRecord
 {
     List<IItem>[] activeColliders;
+    List<(long Id, string Type)> activeCollisions;
     ItemIdComparer comparer = new();
+    CollisionIdComparer comparer2 = new();
     public string method;
     Dictionary<long, (List<(int start, int stop)> list, string type)> collisions;
     private int idN = 0;
@@ -62,6 +73,7 @@ public class CollisionRecord
     }
     public CollisionRecord(){
         activeColliders = new List<IItem>[idN];
+        activeCollisions = new();
         collisions = new();
     }
 
@@ -75,10 +87,67 @@ public class CollisionRecord
     public void Reset()
     {
         activeColliders = new List<IItem>[idN];
+        activeCollisions.Clear();
         collisions = new();
     }
 
-    //public void Collision(int id, List<int> colliderIds, int step)
+    public void RecordCollisions(List<(IItem, IItem)> collisionPairs, int step)
+    {
+        (long Id, string Type) [] collisionIds = collisionPairs
+            .Select(collisionPair => (
+                GetCollisionId(collisionPair.Item1.Id, collisionPair.Item2.Id), 
+                string.Compare(collisionPair.Item1.BodyType, collisionPair.Item2.BodyType) < 0 
+                    ? $"{collisionPair.Item1.BodyType}-{collisionPair.Item2.BodyType}"
+                    : $"{collisionPair.Item2.BodyType}-{collisionPair.Item1.BodyType}"
+            ))
+            .ToArray();
+        (long Id, string Type) [] newCollisions = collisionIds
+            .Except(activeCollisions, comparer2)
+            .ToArray();
+        (long Id, string Type) [] stoppedCollisions = activeCollisions
+            .Except(collisionIds, comparer2)
+            .ToArray();
+
+        foreach ((long Id, string Type) collision in stoppedCollisions)
+        {
+            var list = collisions[collision.Id].list;
+            list[^1] = (list[^1].start, step);
+            collisions[collision.Id] = (
+                list,
+                collisions[collision.Id].type
+            );
+        }
+        foreach ((long Id, string Type) collision in newCollisions)
+        {
+            collisions[collision.Id] = (
+                collisions.TryGetValue(collision.Id, out var record)
+                    ? record.list
+                    : new List<(int,int)>(),
+                    collision.Type
+            );
+
+            collisions[collision.Id].list.Add((step, -1));
+        }
+        activeCollisions = activeCollisions
+            .Except(stoppedCollisions, comparer2)
+            .Concat(newCollisions)
+            .ToList();
+    }
+
+    public void StopRecording(int step)
+    {
+        foreach ((long Id, string Type) collision in activeCollisions)
+        {
+            var list = collisions[collision.Id].list;
+                list[^1] = (list[^1].start, step);
+                collisions[collision.Id] = (
+                    list,
+                    collisions[collision.Id].type
+                );
+        }
+        activeCollisions.Clear();
+    }
+
     public void Collision(IItem item, List<IItem> colliders, int step)
     {
         activeColliders[item.Id] ??= new();

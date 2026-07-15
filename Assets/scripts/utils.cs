@@ -123,7 +123,7 @@ class SphericalUtils {
         return 1f - CalculateChordHeight(chord, squared);
     }
 
-    public static Vector2 CartesianToSpherical(Vector3 pos)
+    public static Vector3 CartesianToSpherical(Vector3 pos)
     {
         /*
             Since we are dealing with a unit sphere, the magnitude of all vectors are assumed to be 1.
@@ -131,9 +131,10 @@ class SphericalUtils {
             θ = arctan2(y, x)
         */
         float polar = Mathf.Acos(pos.z);
+        float sinPolar = Mathf.Sqrt(pos.x*pos.x + pos.y*pos.y);
         float azimuth = Mathf.Atan2(pos.y, pos.x);
 
-        return new(azimuth, polar);
+        return new(azimuth, polar, sinPolar);
     }
 
     public static Vector3 SphericalToCartesian(Vector2 pos)
@@ -158,19 +159,14 @@ class SphericalUtils {
         return new Vector3(tanAzimuth, cosPolar, sinPolar);
     }
 
-    public static float LongitudeExtent(float polar, float radius)
+    public static float LongitudeExtent(float sinPolar, float sinRadius)
     {
-        //float sinPolar = Mathf.Sin(polar);
-        //float sinRadius = Mathf.Sin(radius);
-
-        float angleFromPole = Mathf.Min(polar, Mathf.PI - polar);
-        //if (sinPolar <= sinRadius)
-        if(angleFromPole < radius)
+        if (sinPolar <= sinRadius)
         {
             return Mathf.PI;
         }
 
-        return radius / (angleFromPole / (0.5f * Mathf.PI));//Mathf.Asin(sinRadius / sinPolar);
+        return Mathf.Asin(sinRadius / sinPolar);
     }
 
     public static float TanLongitudeExtent(float cosPolar, float radius, float cosRadius)

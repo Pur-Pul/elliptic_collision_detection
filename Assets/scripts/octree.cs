@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using UnityEngine;
 
 public class Octree<T>: AABB,
@@ -173,5 +174,37 @@ public class Octree<T>: AABB,
             }
         }
         return _edges;
+    }
+
+    public void CheckAllCollisions(List<(IItem, IItem)> collisions)
+    {
+        CheckAllCollisions(collisions, null);
+    }
+
+    public void CheckAllCollisions(List<(IItem,IItem)> collisions, Octree<T>[] ancestors = null)
+    {
+        ancestors ??= new Octree<T>[MaxDepth+1];
+        ancestors[depth] = this;
+        for (int n = 0; n <= depth; n++) {
+            foreach (T a in ancestors[n].items)
+            {
+                foreach (T b in items)
+                {
+                    if (a == b) { break; }
+                    if (a.BBox.CheckFastOverlaps(b.BBox) && a.BBox.CheckCollision(b.BBox))
+                    {
+                        collisions.Add((a, b));
+                    }
+                }
+            }
+        }
+
+        if (!IsLeaf())
+        {
+            foreach (Octree<T> octant in octants)
+            {
+                octant.CheckAllCollisions(collisions, ancestors);
+            }    
+        }
     }
 }

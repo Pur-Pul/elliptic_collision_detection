@@ -207,4 +207,35 @@ public class SOctree<T>: SAABB,
         }
         return saabbs;
     }
+    public void CheckAllCollisions(List<(IItem, IItem)> collisions)
+    {
+        CheckAllCollisions(collisions, null);
+    }
+
+    public void CheckAllCollisions(List<(IItem,IItem)> collisions, SOctree<T>[] ancestors = null)
+    {
+        ancestors ??= new SOctree<T>[MaxDepth+1];
+        ancestors[depth] = this;
+        for (int n = 0; n <= depth; n++) {
+            foreach (T a in ancestors[n].items)
+            {
+                foreach (T b in items)
+                {
+                    if (a == b) { break; }
+                    if (a.BBox.CheckFastOverlaps(b.BBox) && a.BBox.CheckCollision(b.BBox))
+                    {
+                        collisions.Add((a, b));
+                    }
+                }
+            }
+        }
+
+        if (!IsLeaf())
+        {
+            foreach (SOctree<T> segment in segments)
+            {
+                segment.CheckAllCollisions(collisions, ancestors);
+            }    
+        }
+    }
 }

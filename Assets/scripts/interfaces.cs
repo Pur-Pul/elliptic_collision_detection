@@ -33,6 +33,7 @@ public interface IItem
     IBoundingVolume BBox { get; }
     public string BodyType { get; }
     public int Id { get; }
+    public void Collision();
 }
 
 public interface ICollisionTree
@@ -44,4 +45,5 @@ public interface ICollisionTree
     public int MaxItems { get; set; }
     public int MaxDepth { get; set; }
     public List<IItem> CheckCollisions(IItem item);
+    public void CheckAllCollisions(List<(IItem, IItem)> collisions);
 }
