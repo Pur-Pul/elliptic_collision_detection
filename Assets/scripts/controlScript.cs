@@ -486,14 +486,18 @@ public class ControlScript : MonoBehaviour
                     Stop();    
                     if (Optimize)
                     {
-                        long averageRuntime = (long)Math.Round(runtimeRecord.total_time / (double)Iterations);
-                        UnityEngine.Debug.Log($"New: ({MaxDepth}, {MaxItems}, {averageRuntime})");
+                        //long averageRuntime = (long)Math.Round(runtimeRecord.total_time / (double)Iterations);
+                        
+                        long score = collisionTree.GetScore();
+
+                        //UnityEngine.Debug.Log($"New: ({MaxDepth}, {MaxItems}, {averageRuntime})");
+                        UnityEngine.Debug.Log($"New: ({MaxDepth}, {MaxItems}, {score})");
                         UnityEngine.Debug.Log($"Depth best: {depthBest}");
                         UnityEngine.Debug.Log($"Best: {best}");
 
-                        bool newDepthBest = depthBest.Item3 >= averageRuntime;
+                        bool newDepthBest = depthBest.Item3 >= score;//averageRuntime;
                         depthBest = newDepthBest
-                            ? (MaxDepth, MaxItems, averageRuntime)
+                            ? (MaxDepth, MaxItems, score)//averageRuntime)
                             : depthBest;
 
                         bool skipToNextDepth = depthBest.Item3 <= best.Item3 && (
@@ -511,7 +515,7 @@ public class ControlScript : MonoBehaviour
                         } 
                         else if (MaxDepth == 0)
                         {
-                            best = (0, 0, averageRuntime);
+                            best = (0, 0, score);//averageRuntime);
                             MaxDepth = 1;
                             MaxItems = 1;
                             Active = true;

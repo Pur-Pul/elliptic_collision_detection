@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using UnityEngine;
 
@@ -204,6 +203,9 @@ public class Octree<T>: AABB,
     {
         ancestors ??= new Octree<T>[MaxDepth+1];
         ancestors[depth] = this;
+        // Performs intersection checks between all items in each branch.
+        // Does not perform intersections checks between items in separated branches.
+        // No collision pair is checked more than once.
         for (int n = 0; n <= depth; n++) {
             foreach (T a in ancestors[n].items)
             {
@@ -225,5 +227,10 @@ public class Octree<T>: AABB,
                 octant.CheckAllCollisions(collisions, ancestors);
             }    
         }
+    }
+
+    public long GetScore()
+    {
+        return Record.CollisionTreeScore(this.GetType(), typeof(AABB));
     }
 }

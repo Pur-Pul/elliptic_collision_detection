@@ -19,7 +19,7 @@ public class SOctree<T>: SAABB,
         Size = size ?? new(2*Mathf.PI, Mathf.PI);
         SphericalPos = center ?? new(0, Mathf.PI * 0.5f, 0);
         depth = d;
-        segments = new SOctree<T>[depth == 0 ? 8 : 4];
+        segments = new SOctree<T>[4];
         items = new List<T>();
     }
 
@@ -34,19 +34,15 @@ public class SOctree<T>: SAABB,
         if (depth == 0)
         {
             Vector3[] centers = new Vector3[] {
-                new(Mathf.PI * 0.25f, Mathf.PI * 0.25f),
-                new(Mathf.PI * 0.75f, Mathf.PI * 0.25f),
-                new(-Mathf.PI * 0.75f, Mathf.PI * 0.25f),
-                new(-Mathf.PI * 0.25f, Mathf.PI * 0.25f),
-                new(Mathf.PI * 0.25f,  Mathf.PI * 0.75f),
-                new(Mathf.PI * 0.75f,  Mathf.PI * 0.75f),
-                new(-Mathf.PI * 0.75f, Mathf.PI * 0.75f),
-                new(-Mathf.PI * 0.25f, Mathf.PI * 0.75f)
+                new(Mathf.PI * 0.25f, Mathf.PI * 0.5f),
+                new(Mathf.PI * 0.75f, Mathf.PI * 0.5f),
+                new(-Mathf.PI * 0.75f, Mathf.PI * 0.5f),
+                new(-Mathf.PI * 0.25f, Mathf.PI * 0.5f)
             };
 
-            for (int i = 0; i < 8; i++)
+            for (int i = 0; i < 4; i++)
             {
-                segments[i] = new SOctree<T>(centers[i], new(Mathf.PI * 0.5f, Mathf.PI * 0.5f), depth + 1)
+                segments[i] = new SOctree<T>(centers[i], new(Mathf.PI * 0.5f, Mathf.PI), depth + 1)
                 {
                     Record = Record,
                     MaxDepth = MaxDepth,
@@ -256,5 +252,10 @@ public class SOctree<T>: SAABB,
                 segment.CheckAllCollisions(collisions, ancestors);
             }    
         }
+    }
+
+    public long GetScore()
+    {
+        return Record.CollisionTreeScore(this.GetType(), typeof(SAABB));
     }
 }

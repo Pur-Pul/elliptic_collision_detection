@@ -67,5 +67,5 @@
         "*.sln": "*.csproj",
         "*.slnx": "*.csproj"
     },
-    "dotnet.defaultSolution": "elliptic_collision_detection.slnx"
+    "dotnet.defaultSolution": "gradu.slnx"
 }

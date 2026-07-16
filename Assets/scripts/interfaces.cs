@@ -46,4 +46,5 @@ public interface ICollisionTree
     public int MaxDepth { get; set; }
     public List<IItem> CheckCollisions(IItem item);
     public void CheckAllCollisions(List<(IItem, IItem)> collisions);
+    public long GetScore();
 }

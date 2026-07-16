@@ -196,7 +196,7 @@ public class SAABB: ISimpleBoundingVolume
     {
         return other switch
         {
-            SAABB saabb => (bool)Timed(new Func<SAABB, bool>(FastContains),saabb),
+            SAABB saabb => (bool)Timed(new Func<SAABB, bool>(Contains),saabb),
             _ => false
         };
     }
@@ -252,7 +252,7 @@ public class SAABB: ISimpleBoundingVolume
     {
         return other switch
         {
-            SAABB saabb => (bool)Timed(new Func<SAABB, bool>(FastIntersects),saabb),
+            SAABB saabb => (bool)Timed(new Func<SAABB, bool>(Intersects),saabb),
             _ => false
         };
     }
