@@ -345,12 +345,12 @@ public class ControlScript : MonoBehaviour
 
     void Step()
     {
-        foreach (BodyScript body in bodies) 
+        foreach (BodyScript body in bodies)
         {
             if (body.Move(step))
             {
                 collisionTree.Remove(body);
-                body.UpdateBBox(true);
+                body.UpdateBBox(true);    
                 collisionTree.Add(body);
             }
         }
@@ -372,7 +372,6 @@ public class ControlScript : MonoBehaviour
         }
         */
         step++;
-        
     }
 
     void Restart()

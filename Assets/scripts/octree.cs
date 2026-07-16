@@ -45,6 +45,25 @@ public class Octree<T>: AABB,
                 MaxItems = MaxItems
             };
         }
+        
+        List<T> newItems = new();
+        // Distribute the current items into the new octants if they fit.
+        foreach (T item in items)
+        {
+            int i = 0;
+            foreach (Octree<T> octant in octants)
+            {
+                if (octant.Add(item)) {
+                    break;
+                }
+                if (i == octants.Count()-1)
+                {
+                    newItems.Add(item);
+                }
+                i++;
+            }
+        }
+        items = newItems;
     }
 
     public bool Add(IItem item)
@@ -127,7 +146,6 @@ public class Octree<T>: AABB,
     }
     public bool Remove(T item)
     {
-        if (!SimpleContains(item.BBox.Simple)) { return false; }
         if (items.Remove(item)) {
             number_contained_items--;
             return true;
@@ -136,6 +154,7 @@ public class Octree<T>: AABB,
 		if (IsLeaf()) { return false; }
         foreach (Octree<T> octant in octants)
         {
+            if (!octant.SimpleContains(item.BBox.Simple)) { continue; }
             if (octant.Remove(item)) {
                 number_contained_items--;
                 if (number_contained_items == items.Count) //Delete children if they are empty.

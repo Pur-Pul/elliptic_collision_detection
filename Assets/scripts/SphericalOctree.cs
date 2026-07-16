@@ -71,6 +71,25 @@ public class SOctree<T>: SAABB,
                 };
             }
         }
+
+        List<T> newItems = new();
+        // Distribute the current items into the new octants if they fit.
+        foreach (T item in items)
+        {
+            int i = 0;
+            foreach (SOctree<T> segment in segments)
+            {
+                if (segment.Add(item)) {
+                    break;
+                }
+                if (i == segments.Length)
+                {
+                    newItems.Add(item);
+                }
+                i++;
+            }
+        }
+        items = newItems;
     }
 
     public bool Add(IItem item)
@@ -115,7 +134,6 @@ public class SOctree<T>: SAABB,
 
     public bool Remove(T item)
     {
-        if (!SimpleContains(item.BBox.Simple)) { return false; }
         if (items.Remove(item)) {
             number_contained_items--;
             return true;
@@ -124,6 +142,7 @@ public class SOctree<T>: SAABB,
 		if (IsLeaf()) { return false; }
         foreach (SOctree<T> segment in segments)
         {
+            if (!segment.SimpleContains(item.BBox.Simple)) { continue; }
             if (segment.Remove(item)) {
                 number_contained_items--;
                 if (number_contained_items == items.Count) //Delete children if they are empty.
