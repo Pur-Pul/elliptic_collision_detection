@@ -1,16 +1,20 @@
 using UnityEngine;
 using System;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 public class SBVA2 : IBoundingVolume //Spherical Bounding Volume
 {
     private int _id;
     public int Id { get => _id; }
-
+    private string typeName = "";
+    private int?[] methodIds;
     public SBVA2 (int id)
     {
         _id = id;
         Simple = new SAABB();
+        typeName = GetType().Name;
+        methodIds = new int?[6];
     }
 
     private Vector3 right;
@@ -112,10 +116,10 @@ public class SBVA2 : IBoundingVolume //Spherical Bounding Volume
     {
         if (timed)
         {
-            Timed(new Action<Vector3>(Resize), _size);
-            Timed(new Action<Quaternion>(Reorient), _orientation);
-            Timed(new Action<Vector3>(Reposition), -Forward);
-            Timed(new Action(UpdateSimpleSize));    
+            Timed(() => Resize(_size), methodIds[3] ??= Record.GetId(typeName, nameof(Resize)));
+            Timed(() => Reorient(_orientation), methodIds[2] ??= Record.GetId(typeName, nameof(Reorient)));
+            Timed(() => Reposition(-Forward), methodIds[4] ??= Record.GetId(typeName, nameof(Reposition)));
+            Timed(() => UpdateSimpleSize(), methodIds[5] ??= Record.GetId(typeName, nameof(UpdateSimpleSize)));
         } else
         {
             Resize(_size);
@@ -128,23 +132,32 @@ public class SBVA2 : IBoundingVolume //Spherical Bounding Volume
     public virtual bool CheckSBCA2 (SBCA2 circle) => false;
     public virtual bool CheckSOBRA2 (SOBRA2 obr) => false;
 
-    object Timed(Delegate func, params object[] args)
+    T Timed<T> (Func<T> func, int id)
     {
         long start = Stopwatch.GetTimestamp();
-        object result = func.DynamicInvoke(args);
+        T result = func();
         long end = Stopwatch.GetTimestamp();
 
-        Record.Write(start, end, (this.GetType(), func.Method));
+        Record.Write(start, end, id);
 
         return result;
+    }
+
+    void Timed (Action action, int id)
+    {
+        long start = Stopwatch.GetTimestamp();
+        action();
+        long end = Stopwatch.GetTimestamp();
+
+        Record.Write(start, end, id);
     }
 
     public bool CheckCollision(IBoundingVolume other)
     {
         return other switch
         {
-            SBCA2 circle => (bool)Timed(new Func<SBCA2, bool>(CheckSBCA2),circle),
-            SOBRA2 obr => (bool)Timed(new Func<SOBRA2, bool>(CheckSOBRA2),obr),
+            SBCA2 circle => Timed(() => CheckSBCA2(circle), methodIds[0] ??= Record.GetId(typeName, nameof(CheckSBCA2))),
+            SOBRA2 sobr => Timed(() => CheckSOBRA2(sobr), methodIds[1] ??= Record.GetId(typeName, nameof(CheckSOBRA2))),
             _ => false
         };
     }

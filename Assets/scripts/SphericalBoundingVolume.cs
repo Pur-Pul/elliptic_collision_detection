@@ -2,16 +2,20 @@ using UnityEngine;
 using System;
 using System.Diagnostics;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 
 public class SBV : IBoundingVolume //Spherical Bounding Volume
 {
     private int _id;
     public int Id { get => _id; }
-
+    private string typeName = "";
+    private int?[] methodIds;
     public SBV (int id)
     {
         _id = id;
         Simple = new AABB();
+        typeName = GetType().Name;
+        methodIds = new int?[6];
     }
 
     private Vector3 right;
@@ -136,10 +140,10 @@ public class SBV : IBoundingVolume //Spherical Bounding Volume
     {
         if (timed)
         {
-            Timed(new Action<Vector3>(Resize), _size);
-            Timed(new Action<Quaternion>(Reorient), _orientation);
-            Timed(new Action<Vector3>(Reposition), -Forward);
-            Timed(new Action(UpdateSimpleSize));    
+            Timed(() => Resize(_size), methodIds[3] ??= Record.GetId(typeName, nameof(Resize)));
+            Timed(() => Reorient(_orientation), methodIds[2] ??= Record.GetId(typeName, nameof(Reorient)));
+            Timed(() => Reposition(-Forward), methodIds[4] ??= Record.GetId(typeName, nameof(Reposition)));
+            Timed(() => UpdateSimpleSize(), methodIds[5] ??= Record.GetId(typeName, nameof(UpdateSimpleSize)));
         } else
         {
             Resize(_size);
@@ -151,25 +155,34 @@ public class SBV : IBoundingVolume //Spherical Bounding Volume
 
     public bool CheckFastOverlaps(IBoundingVolume other) => Simple.SimpleIntersects(other.Simple);
     public virtual bool CheckSBC (SBC circle) => false;
-    public virtual bool CheckOBR (SOBR obr) => false;
+    public virtual bool CheckSOBR (SOBR sobr) => false;
 
-    object Timed(Delegate func, params object[] args)
+    T Timed<T> (Func<T> func, int id)
     {
         long start = Stopwatch.GetTimestamp();
-        object result = func.DynamicInvoke(args);
+        T result = func();
         long end = Stopwatch.GetTimestamp();
 
-        Record.Write(start, end, (this.GetType(), func.Method));
+        Record.Write(start, end, id);
 
         return result;
+    }
+
+    void Timed (Action action, int id)
+    {
+        long start = Stopwatch.GetTimestamp();
+        action();
+        long end = Stopwatch.GetTimestamp();
+
+        Record.Write(start, end, id);
     }
 
     public bool CheckCollision(IBoundingVolume other)
     {
         return other switch
         {
-            SBC circle => (bool)Timed(new Func<SBC, bool>(CheckSBC),circle),
-            SOBR obr => (bool)Timed(new Func<SOBR, bool>(CheckOBR),obr),
+            SBC circle => Timed(() => CheckSBC(circle), methodIds[0] ??= Record.GetId(typeName, nameof(CheckSBC))),
+            SOBR sobr => Timed(() => CheckSOBR(sobr), methodIds[1] ??= Record.GetId(typeName, nameof(CheckSOBR))),
             _ => false
         };
     }
@@ -223,7 +236,7 @@ public class SBC : SBV //Spherical Bounding Circle
     {
         return radiusAngle + other.radiusAngle > Vector3.Angle(Position, other.Position) * Mathf.Deg2Rad;
     }
-    public override bool CheckOBR(SOBR obr) => obr.CheckSBC(this);
+    public override bool CheckSOBR(SOBR sobr) => sobr.CheckSBC(this);
 }
 
 public class SOBR : SBV //Spherical Oriented Bounding Rectangle
@@ -325,8 +338,8 @@ public class SOBR : SBV //Spherical Oriented Bounding Rectangle
         return false;
     }
 
-    public override bool CheckOBR (SOBR obr) {
-        return GCIntersect(obr);
+    public override bool CheckSOBR (SOBR sobr) {
+        return GCIntersect(sobr);
     }
 
     public override bool CheckSBC(SBC circle)

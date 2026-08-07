@@ -231,6 +231,6 @@ public class Octree<T>: AABB,
 
     public long GetScore()
     {
-        return Record.CollisionTreeScore(this.GetType(), typeof(AABB));
+        return Record.CollisionTreeScore(this.GetType().Name, "AABB");
     }
 }

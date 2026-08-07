@@ -1,6 +1,8 @@
 using UnityEngine;
 using System;
 using System.Diagnostics;
+using System.Reflection;
+using System.Runtime.CompilerServices;
 
 public class AABB : ISimpleBoundingVolume
 {
@@ -17,6 +19,12 @@ public class AABB : ISimpleBoundingVolume
     public virtual Vector3 Right { get => Vector3.right; }
     public virtual Vector3 Up { get => Vector3.up; }
     public virtual Vector3 Forward { get => Vector3.forward; }
+    private string typeName = "";
+    private int?[] methodIds;
+    public AABB() {
+        typeName = GetType().Name;
+        methodIds = new int?[2];
+    }
 
     public Vector3 Position 
     {
@@ -115,13 +123,13 @@ public class AABB : ISimpleBoundingVolume
         return _edges;
     }
 
-    object Timed(Delegate func, params object[] args)
+    T Timed<T> (Func<T> func, int id)
     {
         long start = Stopwatch.GetTimestamp();
-        object result = func.DynamicInvoke(args);
+        T result = func();
         long end = Stopwatch.GetTimestamp();
 
-        Record.Write(start, end, (this.GetType(), func.Method));
+        Record.Write(start, end, id);
 
         return result;
     }
@@ -130,7 +138,7 @@ public class AABB : ISimpleBoundingVolume
     {
         return other switch
         {
-            AABB aabb => (bool)Timed(new Func<AABB, bool>(Contains),aabb),
+            AABB aabb => Timed(() => Contains(aabb), methodIds[0] ??= Record.GetId(typeName, nameof(Contains))),
             _ => false
         };
     }
@@ -151,7 +159,7 @@ public class AABB : ISimpleBoundingVolume
     {
         return other switch
         {
-            AABB aabb => (bool)Timed(new Func<AABB, bool>(Intersects),aabb),
+            AABB aabb => Timed(() => Intersects(aabb), methodIds[1] ??= Record.GetId(typeName, nameof(Intersects))),
             _ => false
         };
     }

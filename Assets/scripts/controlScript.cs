@@ -33,6 +33,7 @@ public class ControlScript : MonoBehaviour
                 }
                 runtimeRecord.Reset();
                 collisionTree.Clear();
+                collisions.Clear();
                 collisionTree.MaxDepth = MaxDepth;
                 collisionTree.MaxItems = MaxItems;
             }
@@ -159,6 +160,7 @@ public class ControlScript : MonoBehaviour
     public int saabb_n;
     private int lastStep;
     private List<Sequence> sequences;
+    private List<(IItem, IItem)> collisions;
     public string currentSequenceList = null;
     public CameraScript cam;
     public CollisionRecord baselineList;
@@ -341,6 +343,7 @@ public class ControlScript : MonoBehaviour
         baselineList = new();
         artifactList = new();
         runtimeRecord = new();
+        collisions = new();
     }
 
     void Step()
@@ -354,7 +357,7 @@ public class ControlScript : MonoBehaviour
                 collisionTree.Add(body);
             }
         }
-        List<(IItem, IItem)> collisions = new();
+        
         collisionTree.CheckAllCollisions(collisions);
         foreach ((IItem, IItem) collision in collisions)
         {
@@ -365,12 +368,7 @@ public class ControlScript : MonoBehaviour
         {
             CollisionList.RecordCollisions(collisions, step);    
         }
-        /*
-        foreach (BodyScript body in bodies) 
-        {
-            body.CheckForCollision(step);
-        }
-        */
+        collisions.Clear();
         step++;
     }
 
@@ -409,15 +407,15 @@ public class ControlScript : MonoBehaviour
             $"#Tree depth: {MaxDepth}\n" +
             $"#Tree items: {MaxItems}\n" +
             "Class,Method,Runtime,Calls,Average\n";
-        foreach (var kvp in runtimeRecord.records
-            .OrderBy(kvp => kvp.Key.Item1.Name)
-            .ThenBy(kvp => kvp.Key.Item2.Name))
+        foreach (var kvp in runtimeRecord.ids
+            .OrderBy(kvp => kvp.Key.type)
+            .ThenBy(kvp => kvp.Key.method))
         {
             var key = kvp.Key;
-            (long time, int n) = kvp.Value;
+            (long time, int n) = runtimeRecord.records[kvp.Value];
 
-            string className = key.Item1.Name;
-            string functionName = key.Item2.Name;
+            string className = key.type;
+            string functionName = key.method;
             
             double microseconds = time * 1_000_000.0 / Stopwatch.Frequency;
             double average = (double)time / n * 1_000_000.0 / Stopwatch.Frequency;

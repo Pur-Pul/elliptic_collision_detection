@@ -1,16 +1,20 @@
 using UnityEngine;
 using System;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 public class BBox : IBoundingVolume
 {
     private int _id;
     public int Id { get => _id; }
-
+    private string typeName = "";
+    private int?[] methodIds;
     public BBox (int id)
     {
         _id = id;
         Simple = new AABB();
+        typeName = GetType().Name;
+        methodIds = new int?[6];
     }
 
     private Vector3 position;
@@ -132,10 +136,10 @@ public class BBox : IBoundingVolume
     {
         if (timed)
         {
-            Timed(new Action<Quaternion>(Reorient), _orientation);
-            Timed(new Action<Vector3>(Resize), _size);
-            Timed(new Action<Vector3>(Reposition), -Forward);
-            Timed(new Action(UpdateSimpleSize));    
+            Timed(() => Reorient(_orientation), methodIds[2] ??= Record.GetId(typeName, nameof(Reorient)));
+            Timed(() => Resize(_size), methodIds[3] ??= Record.GetId(typeName, nameof(Resize)));
+            Timed(() => Reposition(-Forward), methodIds[4] ??= Record.GetId(typeName, nameof(Reposition)));
+            Timed(() => UpdateSimpleSize(), methodIds[5] ??= Record.GetId(typeName, nameof(UpdateSimpleSize)));
         } else
         {
             Reorient(_orientation);
@@ -149,23 +153,32 @@ public class BBox : IBoundingVolume
 	public virtual bool CheckSphere (BBoxSphere sphere) => false;
     public virtual bool CheckOBB (OBBox obb) => false;
 
-    object Timed(Delegate func, params object[] args)
+    T Timed<T> (Func<T> func, int id)
     {
         long start = Stopwatch.GetTimestamp();
-        object result = func.DynamicInvoke(args);
+        T result = func();
         long end = Stopwatch.GetTimestamp();
 
-        Record.Write(start, end, (this.GetType(), func.Method));
+        Record.Write(start, end, id);
 
         return result;
+    }
+
+    void Timed (Action action, int id)
+    {
+        long start = Stopwatch.GetTimestamp();
+        action();
+        long end = Stopwatch.GetTimestamp();
+
+        Record.Write(start, end, id);
     }
 
     public bool CheckCollision(IBoundingVolume other)
     {
         return other switch
         {
-            BBoxSphere sphere => (bool)Timed(new Func<BBoxSphere, bool>(CheckSphere),sphere),
-            OBBox obb => (bool)Timed(new Func<OBBox, bool>(CheckOBB),obb),
+            BBoxSphere sphere => Timed(() => CheckSphere(sphere), methodIds[0] ??= Record.GetId(typeName, nameof(CheckSphere))),
+            OBBox obb => Timed(() => CheckOBB(obb), methodIds[1] ??= Record.GetId(typeName, nameof(CheckOBB))),
             _ => false
         };
     }

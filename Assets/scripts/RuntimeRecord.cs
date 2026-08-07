@@ -1,70 +1,79 @@
-using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Reflection;
 
 public class RuntimeRecord
 {
-    public Dictionary<(Type type, MethodInfo method), (long runtime, int calls)> records;
+    public Dictionary<(string type, string method), int> ids;
+    public List<(long runtime, int calls)> records;
     public long total_time = 0;
     public int total_n = 0;
     public RuntimeRecord() {
         records = new();
+        ids = new();
     }
 
     public void Reset()
     {
         records.Clear();
+        for (int i = 0; i < ids.Count; i++)
+        {
+            records.Add((0,0));
+        }
         total_time = 0;
         total_n = 0;
     }
 
-    public void Write (long start, long end, (Type type, MethodInfo method) key)
+    public void Write (long start, long end, int id)
     {
-        records.TryGetValue(key, out var record);
+        (long runtime, int calls) record = records[id];
         long time = end - start;
-        records[key] = (record.runtime + time, record.calls + 1);
+        records[id] = (record.runtime + time, record.calls + 1);
         total_time += time;
         total_n++;
     }
 
-    public long CollisionTreeScore(Type treeType, Type simpleType) {
-   
-        (Type type, MethodInfo method)[] keys =
+    public int GetId(string type, string method)
+    {
+        (string type, string method) key = (type, method);
+        if (!ids.TryGetValue(key, out int id)) {
+            id = ids.Count();
+            ids.Add(key, id);
+            records.Add((0,0));
+        }
+        return id;
+    }
+
+    public long CollisionTreeScore(string treeType, string simpleType) {
+        (string type, string method)[] keys =
         {
-            (treeType, simpleType.GetMethod("Intersects")),
-            (treeType, simpleType.GetMethod("Contains")),
-            (simpleType, simpleType.GetMethod("Intersects")),
-            (simpleType, simpleType.GetMethod("Contains"))
+            (treeType, "Intersects"),
+            (treeType, "Contains"),
+            (simpleType, "Intersects"),
+            (simpleType, "Contains")
         };
     
         long sum = 0;
-        foreach ((Type type, MethodInfo method) key in keys)
+        foreach ((string type, string method) key in keys)
         {
-            if (records.TryGetValue(key, out var record))
-            {
-                sum += record.calls;
-            }
+            int id = GetId(key.type, key.method);
+            sum += records[id].calls;
         }
-        
         return sum;
-    
     }
 
     public override string ToString()
     {
-
         string stats = $"{"Class", -15} | {"Method", -20} | {"Runtime", 10} | {"Calls", 5} | {"Average", 10}\n";
-        foreach (var kvp in records
-            .OrderBy(kvp => kvp.Key.type.Name)
-            .ThenBy(kvp => kvp.Key.method.Name))
+        foreach (var kvp in ids
+            .OrderBy(kvp => kvp.Key.type)
+            .ThenBy(kvp => kvp.Key.method))
         {
             var key = kvp.Key;
-            (long time, int n) = kvp.Value;
+            (long time, int n) = records[kvp.Value];
             
-            string className = key.type.Name;
-            string functionName = key.method.Name;
+            string className = key.type;
+            string functionName = key.method;
 
             double microseconds = time * 1_000_000.0 / Stopwatch.Frequency;
             double average = (double)time / n * 1_000_000.0 / Stopwatch.Frequency;

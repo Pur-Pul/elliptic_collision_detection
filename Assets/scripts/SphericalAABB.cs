@@ -2,6 +2,7 @@ using UnityEngine;
 using System;
 using Unity.VisualScripting;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 /*
 I should first optimize the Eulicdean octree+aabb as well as possible.
@@ -52,6 +53,12 @@ public class SAABB: ISimpleBoundingVolume
     private float? tanAzimuthExtent;
     private float? cosPolarExtent;
     private float? sinPolarExtent;
+    private string typeName = "";
+    private int?[] methodIds;
+    public SAABB() {
+        typeName = GetType().Name;    
+        methodIds = new int?[2];
+    }
     
     public Vector3 Position {
         get 
@@ -181,13 +188,13 @@ public class SAABB: ISimpleBoundingVolume
         get => sinPolarExtent ??= fastRadii.z;
     }
 
-    object Timed(Delegate func, params object[] args)
+    T Timed<T> (Func<T> func, int id)
     {
         long start = Stopwatch.GetTimestamp();
-        object result = func.DynamicInvoke(args);
+        T result = func();
         long end = Stopwatch.GetTimestamp();
 
-        Record.Write(start, end, (this.GetType(), func.Method));
+        Record.Write(start, end, id);
 
         return result;
     }
@@ -196,7 +203,7 @@ public class SAABB: ISimpleBoundingVolume
     {
         return other switch
         {
-            SAABB saabb => (bool)Timed(new Func<SAABB, bool>(Contains),saabb),
+            SAABB saabb => Timed(() => Contains(saabb), methodIds[0] ??= Record.GetId(typeName, nameof(Contains))), 
             _ => false
         };
     }
@@ -252,7 +259,7 @@ public class SAABB: ISimpleBoundingVolume
     {
         return other switch
         {
-            SAABB saabb => (bool)Timed(new Func<SAABB, bool>(Intersects),saabb),
+            SAABB saabb => Timed(() => Intersects(saabb), methodIds[1] ??= Record.GetId(typeName, nameof(Intersects))),
             _ => false
         };
     }

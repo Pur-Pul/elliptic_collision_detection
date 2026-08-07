@@ -256,6 +256,6 @@ public class SOctree<T>: SAABB,
 
     public long GetScore()
     {
-        return Record.CollisionTreeScore(this.GetType(), typeof(SAABB));
+        return Record.CollisionTreeScore(this.GetType().Name, "SAABB");
     }
 }
