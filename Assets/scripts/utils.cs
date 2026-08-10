@@ -1,5 +1,9 @@
 using System;
+using System.Diagnostics;
 using UnityEngine;
+#if UNITY_EDITOR
+    using UnityEditor;
+#endif
 
 class VectorUtils
 {
@@ -248,4 +252,51 @@ class SphericalUtils {
 
     public static float TangentSum(float t1, float t2) => (t1 + t2) / (1.0f - t1 * t2);
     public static float TangentDiff(float t1, float t2) => (t1 - t2) / (1.0f + t1 * t2);
+}
+
+class Tools
+{
+    public static string OpenFileDialog(string initialDirectory)
+    {
+        #if UNITY_STANDALONE_LINUX
+            ProcessStartInfo psi = new()
+            {
+                FileName = "zenity",
+                Arguments =
+                    $"--file-selection " +
+                    $"--title=\"Load sequence from file\" " +
+                    $"--filename=\"{initialDirectory}/\" " +
+                    $"--file-filter=\"XML files | *.xml\"",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+            try
+            {
+                using Process process = Process.Start(psi);
+
+                string result = process.StandardOutput.ReadToEnd().Trim();
+                process.WaitForExit();
+
+                return result;
+            }
+            catch (Exception e)
+            {
+                UnityEngine.Debug.LogError(
+                    $"Could not open Linux file dialog: {e.Message}");
+
+                return string.Empty;
+            }
+        #elif UNITY_EDITOR
+            return UnityEditor.EditorUtility.OpenFilePanel(
+                "Load sequence from file",
+                initialDirectory,
+                "xml"
+            );
+        #else
+            UnityEngine.Debug.LogError("No file dialog implementation for this platform.");
+            return string.Empty;
+        #endif
+    }
 }

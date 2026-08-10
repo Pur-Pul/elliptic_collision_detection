@@ -1,7 +1,6 @@
 using UnityEngine;
 using System;
 using System.Diagnostics;
-using System.Runtime.CompilerServices;
 
 public class SBVA2 : IBoundingVolume //Spherical Bounding Volume
 {

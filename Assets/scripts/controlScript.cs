@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using TMPro;
-using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
 using System.Linq;
@@ -299,7 +298,7 @@ public class ControlScript : MonoBehaviour
     public void LoadFromFile()
     {
         string wd = Directory.GetCurrentDirectory();
-        string f = EditorUtility.OpenFilePanel("Load sequence from file", wd, "xml");
+        string f = Tools.OpenFileDialog(wd);
         if (f == "") { return; }
         List<Sequence> sl = SequenceUtils.FromFile(f);
         DestroyBodies();
