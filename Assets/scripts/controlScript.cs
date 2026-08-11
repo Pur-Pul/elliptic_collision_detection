@@ -260,25 +260,23 @@ public class ControlScript : MonoBehaviour
 
     public void SetMethod()
     {
-        float _tree_width = 2*ellipseRadius;
+        
+        for (int i = 0; i < body_n; i++)
+        {
+            bodies[i].SetMethod(MethodDropdown.value);
+        }
+   
         switch (MethodDropdown.value)
         {
             case 0:
-                _tree_width = 2*ellipseRadius + 2.5f;
-                collisionTree = new Octree<BodyScript>
-                {
-                    Size = new Vector3(_tree_width, _tree_width, _tree_width)
-                };
-                break;
             case 1:
-                _tree_width = 2*ellipseRadius + 2.5f;
-                collisionTree = new Octree<BodyScript>
-                {
-                    Size = new Vector3(_tree_width, _tree_width, _tree_width)
-                };
-                break;
             case 2:
-                _tree_width = 2*ellipseRadius + 2.5f;
+                float maxExtent = 0;
+                foreach (BodyScript body in bodies)
+                {
+                    maxExtent = Mathf.Max(maxExtent, Mathf.Sqrt(body.BBox.Chord + body.BBox.Position.magnitude));
+                }
+                float _tree_width = 2*maxExtent;//2*ellipseRadius + 2.5f;
                 collisionTree = new Octree<BodyScript>
                 {
                     Size = new Vector3(_tree_width, _tree_width, _tree_width)
@@ -289,10 +287,6 @@ public class ControlScript : MonoBehaviour
                 break;
         }
         collisionTree.Record = runtimeRecord;
-        for (int i = 0; i < body_n; i++)
-        {
-            bodies[i].SetMethod(MethodDropdown.value);
-        }
     }
 
     public void LoadFromFile()

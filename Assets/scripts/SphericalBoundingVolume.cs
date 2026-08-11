@@ -106,11 +106,17 @@ public class SBV : IBoundingVolume //Spherical Bounding Volume
                 shapeUpdated = true;
                 Simple.Size = value;
                 
-                if (size.x != value.x || size.y != value.y) { chordHeight = null; }
+                if (size.x != value.x || size.y != value.y) {
+                    chordHeight = null;
+                    chord = null;
+                }
                 size = value;
             }
         }
     }
+
+    private float? chord;
+    public virtual float Chord => chord ??= Mathf.Sqrt(Size.x * Size.x + Size.y * Size.y);
 
     public virtual void Reorient(Quaternion _orientation)
     {
@@ -230,6 +236,9 @@ public class SBC : SBV //Spherical Bounding Circle
             base.Size = new Vector3(value.x, value.x, value.x);
         }
     }
+
+    public override float Chord => Size.x;
+
     public override void UpdateSimpleSize () {}
     public override bool CheckSBC(SBC other)
     {

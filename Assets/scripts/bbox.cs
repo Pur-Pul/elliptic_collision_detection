@@ -31,8 +31,8 @@ public class BBox : IBoundingVolume
         {
             if (chordHeight == null)
             {
-                float cordSqr = Size.x * Size.x + Size.y * Size.y;
-                chordHeight = SphericalUtils.CalculateChordHeight(cordSqr, true);
+                float chordSqr = Size.x * Size.x + Size.y * Size.y;
+                chordHeight = SphericalUtils.CalculateChordHeight(chordSqr, true);
             }
             return chordHeight.Value;
         }
@@ -94,11 +94,17 @@ public class BBox : IBoundingVolume
             {
                 shapeUpdated = true;
                 Simple.Size = value;
-                if (size.x != value.x || size.y != value.y) { chordHeight = null; }
+                if (size.x != value.x || size.y != value.y) {
+                    chordHeight = null;
+                    chord = null;
+                }
                 size = value;
             }
         }
     }
+    private float? chord;
+    public virtual float Chord => chord ??= Mathf.Sqrt(Size.x * Size.x + Size.y * Size.y);
+
     public virtual Vector3 Position 
     {
         get => position;
@@ -213,6 +219,7 @@ public class BBoxSphere : BBox
             CosRadius = Mathf.Cos(SphericalUtils.ChordToAngle(value.x) * 0.5f);
         }
     }
+    public override float Chord { get => Size.x; }
     
     public override void UpdateSimpleSize () {}
     public override bool CheckSphere(BBoxSphere sphere)

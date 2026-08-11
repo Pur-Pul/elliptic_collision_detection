@@ -89,10 +89,14 @@ public class SBVA2 : IBoundingVolume //Spherical Bounding Volume
             if (size != value)
             {
                 shapeUpdated = true;
+                chord = null;
                 size = value;
             }
         }
     }
+
+    private float? chord;
+    public virtual float Chord => chord ??= Mathf.Sqrt(Size.x * Size.x + Size.y * Size.y);
 
     public virtual void Reorient(Quaternion _orientation)
     {
@@ -189,6 +193,9 @@ public class SBCA2 : SBVA2 //Spherical Bounding Circle
             base.Size = new Vector3(value.x, value.x, value.x);
         }
     }
+
+    public override float Chord => Size.x;
+
     public override void UpdateSimpleSize ()
     {
         if (shapeUpdated) {
