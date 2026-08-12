@@ -10,15 +10,16 @@ public class Octree<T>: AABB,
     private int depth;
     public int MaxDepth { get; set; }
     public int MaxItems { get; set; }
-    int number_contained_items = 0;
     Octree<T>[] octants;
+    Octree<T> _parent;
     List<T> items;
-    public Octree(Vector3? bboxCenter = null, Vector3? size = null, int d = 0)
+    public Octree(Vector3? bboxCenter = null, Vector3? size = null, int d = 0, Octree<T> parent = null)
     {
         Position = bboxCenter ?? Vector3.zero;
         Size = size ?? Vector3.zero;
         depth = d;
         octants = new Octree<T>[8];
+        _parent = parent;
         items = new List<T>();
     }
 
@@ -42,6 +43,7 @@ public class Octree<T>: AABB,
                 Record = Record,
                 MaxDepth = MaxDepth,
                 MaxItems = MaxItems
+                
             };
         }
         
@@ -77,10 +79,10 @@ public class Octree<T>: AABB,
     public bool Add(T item)
     {
         if (!SimpleContains(item.BBox.Simple)) { return false; }
-        number_contained_items++;
         if (items.Count < MaxItems || depth == MaxDepth)
         {
             items.Add(item);
+            item.CollisionNode = this;
             return true;
         }
 
@@ -90,6 +92,7 @@ public class Octree<T>: AABB,
             if (octant.Add(item)) { return true; }
         }
         items.Add(item);
+        item.CollisionNode = this;
         return true;
 	}
 
@@ -143,23 +146,41 @@ public class Octree<T>: AABB,
             _ => false
         };
     }
+
+    bool IsEmptySubtree()
+    {
+        if (items.Count != 0)
+            return false;
+
+        if (IsLeaf())
+            return true;
+
+        foreach (var child in octants)
+        {
+            if (!child.IsEmptySubtree())
+                return false;
+        }
+
+        return true;
+    }
+
     public bool Remove(T item)
     {
         if (items.Remove(item)) {
-            number_contained_items--;
+            item.CollisionNode = null;
+            if (IsEmptySubtree())
+            {
+                Clear();
+            }
             return true;
         }
 
 		if (IsLeaf()) { return false; }
+
         foreach (Octree<T> octant in octants)
         {
             if (!octant.SimpleContains(item.BBox.Simple)) { continue; }
             if (octant.Remove(item)) {
-                number_contained_items--;
-                if (number_contained_items == items.Count) //Delete children if they are empty.
-                {
-                    Array.Clear(octants, 0, octants.Length);
-                }
                 return true;
             }
         }
@@ -167,13 +188,7 @@ public class Octree<T>: AABB,
 	}
 
     public void Clear() {
-        if (!IsLeaf())
-        {
-            for (int i = 0; i < octants.Length; i++) {
-                octants[i].Clear();
-                octants[i] = null;
-            }
-        }
+        Array.Clear(octants, 0, octants.Length);
 		items.Clear();
 	}
 

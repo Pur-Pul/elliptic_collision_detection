@@ -10,16 +10,17 @@ public class SOctree<T>: SAABB,
     private int depth;
     public int MaxDepth { get; set; }
     public int MaxItems { get; set; }
-    int number_contained_items = 0;
     
     SOctree<T>[] segments;
+    SOctree<T> _parent;
     List<T> items;
-    public SOctree(Vector3? center = null, Vector2? size = null, int d = 0)
+    public SOctree(Vector3? center = null, Vector2? size = null, int d = 0, SOctree<T> parent = null)
     {
         Size = size ?? new(2*Mathf.PI, Mathf.PI);
         SphericalPos = center ?? new(0, Mathf.PI * 0.5f, 0);
         depth = d;
         segments = new SOctree<T>[4];
+        _parent = parent;
         items = new List<T>();
     }
 
@@ -112,26 +113,47 @@ public class SOctree<T>: SAABB,
             if (depth == 0) { Debug.Log("Tree Add ERROR: Item does not fit tree."); }
             return false;
         }
-        number_contained_items++;
         if (items.Count < MaxItems || depth == MaxDepth)
         {
             items.Add(item);
+            item.CollisionNode = this;
             return true;
         }
-
 		if (IsLeaf()) { Split(); }
         foreach (SOctree<T> segment in segments)
         {
             if (segment.Add(item)) { return true; }
         }
         items.Add(item);
+        item.CollisionNode = this;
         return true;
 	}
+    
+    bool IsEmptySubtree()
+    {
+        if (items.Count != 0)
+            return false;
+
+        if (IsLeaf())
+            return true;
+
+        foreach (var segment in segments)
+        {
+            if (!segment.IsEmptySubtree())
+                return false;
+        }
+
+        return true;
+    }
 
     public bool Remove(T item)
     {
         if (items.Remove(item)) {
-            number_contained_items--;
+            if (IsEmptySubtree())
+            {
+                Clear();
+            }
+            item.CollisionNode = null;
             return true;
         }
 
@@ -140,28 +162,16 @@ public class SOctree<T>: SAABB,
         {
             if (!segment.SimpleContains(item.BBox.Simple)) { continue; }
             if (segment.Remove(item)) {
-                number_contained_items--;
-                if (number_contained_items == items.Count) //Delete children if they are empty.
-                {
-                    Array.Clear(segments, 0, segments.Length);
-                }
                 return true;
             }
         }
         return false;
     }
 
-    public void Clear()
-    {
-        if (!IsLeaf())
-        {
-            for (int i = 0; i < segments.Length; i++) {
-                segments[i].Clear();
-                segments[i] = null;
-            }
-        }
+    public void Clear() {
+        Array.Clear(segments, 0, segments.Length);
 		items.Clear();
-    }
+	}
 
     public void Query(IBoundingVolume collider, List<T> found_items)
     {

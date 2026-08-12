@@ -279,7 +279,6 @@ public class ControlScript : MonoBehaviour
                     } else if (body.sequence.BodyType == "rectangle")
                     {
                         float a = body.BBox.Chord*0.5f;
-                        float b = body.BBox.Position.magnitude + body.BBox.Size.z*0.5f;
                         float cSquared = a*a + 1;
                         maxExtent = Mathf.Max(maxExtent, Mathf.Sqrt(cSquared));
                     }
@@ -353,8 +352,9 @@ public class ControlScript : MonoBehaviour
         {
             if (body.Move(step))
             {
-                collisionTree.Remove(body);
-                body.UpdateBBox(true);    
+                //collisionTree.Remove(body);
+                body.CollisionNode.Remove(body);
+                body.UpdateBBox(true);
                 if (!collisionTree.Add(body))
                 {
                     UnityEngine.Debug.Log("Error: body does nto fit into collision tree.");
@@ -480,7 +480,7 @@ public class ControlScript : MonoBehaviour
                             ? (MaxDepth, MaxItems, score)//averageRuntime)
                             : depthBest;
 
-                        bool skipToNextDepth = depthBest.Item3 <= best.Item3 && (
+                        bool skipToNextDepth = depthBest.Item3 < best.Item3 && (
                             (MaxDepth < optimizeEnd.Item1 && MaxItems == optimizeEnd.Item2)
                             || !newDepthBest
                         );

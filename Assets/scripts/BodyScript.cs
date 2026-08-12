@@ -5,6 +5,7 @@ using UnityEngine;
 public class BodyScript : MonoBehaviour, IItem
 {   
     public IBoundingVolume BBox { get; set; }
+    public ICollisionTree CollisionNode { get; set; }
     public ControlScript control;
     public Material bodyMat;
     public Sequence sequence;

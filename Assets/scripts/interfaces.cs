@@ -32,6 +32,7 @@ public interface IBoundingVolume
 public interface IItem
 {
     IBoundingVolume BBox { get; }
+    ICollisionTree CollisionNode { get; set; }
     public string BodyType { get; }
     public int Id { get; }
     public void Collision();
