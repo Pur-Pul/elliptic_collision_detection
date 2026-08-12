@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 
 public class RuntimeRecord
@@ -71,7 +72,7 @@ public class RuntimeRecord
         {
             var key = kvp.Key;
             (long time, int n) = records[kvp.Value];
-            
+            if (n == 0) { continue; }
             string className = key.type;
             string functionName = key.method;
 
@@ -84,5 +85,30 @@ public class RuntimeRecord
         stats += $"{"Total",-15} | {"",-20} | {total_microseconds,10} | {total_n,5} | {total_average,10}\n";
         UnityEngine.Debug.Log(stats);
         return stats;
+    }
+
+    public void SaveToFile(string file, string runtimeText="")
+    {
+        runtimeText += "Class,Method,Runtime,Calls,Average\n";
+        foreach (var kvp in ids
+            .OrderBy(kvp => kvp.Key.type)
+            .ThenBy(kvp => kvp.Key.method))
+        {
+            var (type, method) = kvp.Key;
+            (long time, int n) = records[kvp.Value];
+            if (n == 0) { continue; }
+
+            string className = type;
+            string functionName = method;
+            
+            double microseconds = time * 1_000_000.0 / Stopwatch.Frequency;
+            double average = (double)time / n * 1_000_000.0 / Stopwatch.Frequency;
+
+            runtimeText += $"{className},{functionName},{microseconds},{n},{average}\n";
+        }
+        double total_microseconds = total_time * 1_000_000.0 / Stopwatch.Frequency;
+        double total_average = (double)total_time / total_n * 1_000_000.0 / Stopwatch.Frequency;
+        runtimeText += $"Total,,{total_microseconds},{total_n},{total_average}\n";
+        File.WriteAllText(file,runtimeText);
     }
 }

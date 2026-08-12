@@ -219,7 +219,8 @@ public class BBoxSphere : BBox
             CosRadius = Mathf.Cos(SphericalUtils.ChordToAngle(value.x) * 0.5f);
         }
     }
-    public override float Chord { get => Size.x; }
+
+    public override float Chord => Size.x;
     
     public override void UpdateSimpleSize () {}
     public override bool CheckSphere(BBoxSphere sphere)

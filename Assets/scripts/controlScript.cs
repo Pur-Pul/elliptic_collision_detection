@@ -260,7 +260,6 @@ public class ControlScript : MonoBehaviour
 
     public void SetMethod()
     {
-        
         for (int i = 0; i < body_n; i++)
         {
             bodies[i].SetMethod(MethodDropdown.value);
@@ -274,9 +273,18 @@ public class ControlScript : MonoBehaviour
                 float maxExtent = 0;
                 foreach (BodyScript body in bodies)
                 {
-                    maxExtent = Mathf.Max(maxExtent, Mathf.Sqrt(body.BBox.Chord + body.BBox.Position.magnitude));
+                    if (body.sequence.BodyType == "circle")
+                    {
+                        maxExtent = Mathf.Max(maxExtent, body.BBox.Simple.Position.magnitude + body.BBox.Chord*0.5f);
+                    } else if (body.sequence.BodyType == "rectangle")
+                    {
+                        float a = body.BBox.Chord*0.5f;
+                        float b = body.BBox.Position.magnitude + body.BBox.Size.z*0.5f;
+                        float cSquared = a*a + 1;
+                        maxExtent = Mathf.Max(maxExtent, Mathf.Sqrt(cSquared));
+                    }
                 }
-                float _tree_width = 2*maxExtent;//2*ellipseRadius + 2.5f;
+                float _tree_width = 2*maxExtent;
                 collisionTree = new Octree<BodyScript>
                 {
                     Size = new Vector3(_tree_width, _tree_width, _tree_width)
@@ -347,7 +355,10 @@ public class ControlScript : MonoBehaviour
             {
                 collisionTree.Remove(body);
                 body.UpdateBBox(true);    
-                collisionTree.Add(body);
+                if (!collisionTree.Add(body))
+                {
+                    UnityEngine.Debug.Log("Error: body does nto fit into collision tree.");
+                }
             }
         }
         
@@ -393,35 +404,13 @@ public class ControlScript : MonoBehaviour
         string currentDir = Directory.GetCurrentDirectory();
         string timeStamp = $"{DateTime.Now:yyyy.MM.dd_hh:mm:ss}";
         if (currentSequenceList == null) { SaveToFile(timeStamp); }
-
+        string file = Path.Combine(currentDir, $"out/runtime-{timeStamp}.csv");
         string runtimeText = 
             $"#Sequence: {currentSequenceList}\n" +
             $"#Iterations: {Iterations}\n" +
             $"#Tree depth: {MaxDepth}\n" +
-            $"#Tree items: {MaxItems}\n" +
-            "Class,Method,Runtime,Calls,Average\n";
-        foreach (var kvp in runtimeRecord.ids
-            .OrderBy(kvp => kvp.Key.type)
-            .ThenBy(kvp => kvp.Key.method))
-        {
-            var key = kvp.Key;
-            (long time, int n) = runtimeRecord.records[kvp.Value];
-
-            string className = key.type;
-            string functionName = key.method;
-            
-            double microseconds = time * 1_000_000.0 / Stopwatch.Frequency;
-            double average = (double)time / n * 1_000_000.0 / Stopwatch.Frequency;
-
-            runtimeText += $"{className},{functionName},{microseconds},{n},{average}\n";
-        }
-        double total_microseconds = runtimeRecord.total_time * 1_000_000.0 / Stopwatch.Frequency;
-        double total_average = (double)runtimeRecord.total_time / runtimeRecord.total_n * 1_000_000.0 / Stopwatch.Frequency;
-        runtimeText += $"Total,,{total_microseconds},{runtimeRecord.total_n},{total_average}\n";
-        File.WriteAllText(
-            Path.Combine(currentDir, $"out/runtime-{timeStamp}.csv"),
-            runtimeText
-        );
+            $"#Tree items: {MaxItems}\n";
+        runtimeRecord.SaveToFile(file, runtimeText);
     }
 
     public void SaveAccuracyMetrics()

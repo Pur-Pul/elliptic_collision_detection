@@ -6,6 +6,7 @@ public class AABB : ISimpleBoundingVolume
 {
     private Vector3 position;
     private Vector3 size;
+    private Vector3? halfSize;
 
     private float? max_x;
     private float? max_y;
@@ -58,8 +59,10 @@ public class AABB : ISimpleBoundingVolume
                 min_z = null;
             }
             size = value;
+            halfSize = null;
         }
     }
+    public Vector3 HalfSize => halfSize ??= Size*0.5f;
 
     public float MaxX
     {
@@ -143,14 +146,11 @@ public class AABB : ISimpleBoundingVolume
 
     public bool Contains (AABB other)
     {
-        return (
-            MaxX >= other.MaxX &&
-            MaxY >= other.MaxY &&
-            MaxZ >= other.MaxZ &&
-            MinX <= other.MinX &&
-            MinY <= other.MinY &&
-            MinZ <= other.MinZ
-		);
+        return !(
+            Mathf.Abs(Position.x - other.Position.x) > HalfSize.x - other.HalfSize.x ||
+            Mathf.Abs(Position.y - other.Position.y) > HalfSize.y - other.HalfSize.y ||
+            Mathf.Abs(Position.z - other.Position.z) > HalfSize.z - other.HalfSize.z
+        ); 
     }
 
     public bool SimpleIntersects(ISimpleBoundingVolume other)
@@ -164,11 +164,12 @@ public class AABB : ISimpleBoundingVolume
 
     public virtual bool Intersects(AABB other)
     {
+        
         return !(
-            MaxX < other.MinX || MinX > other.MaxX ||
-            MaxY < other.MinY || MinY > other.MaxY ||
-            MaxZ < other.MinZ || MinZ > other.MaxZ
-		);
+            Mathf.Abs(Position.x - other.Position.x) > HalfSize.x + other.HalfSize.x ||
+            Mathf.Abs(Position.y - other.Position.y) > HalfSize.y + other.HalfSize.y ||
+            Mathf.Abs(Position.z - other.Position.z) > HalfSize.z + other.HalfSize.z
+        ); 
     }
 
     public virtual Vector3 ContainsPoint (Vector3 point)
