@@ -79,7 +79,7 @@ public class SOctree<T>: SAABB,
                 if (segment.Add(item)) {
                     break;
                 }
-                if (i == segments.Length)
+                if (i == segments.Length-1)
                 {
                     newItems.Add(item);
                 }

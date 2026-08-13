@@ -199,7 +199,7 @@ public class SBCA2 : SBVA2 //Spherical Bounding Circle
     public override void UpdateSimpleSize ()
     {
         if (shapeUpdated) {
-            float ang = RadiusAngle * 2f;
+            float ang = RadiusAngle * 2.0f;
             Simple.Size = new(ang, ang, 1f);
             shapeUpdated = false;
         }

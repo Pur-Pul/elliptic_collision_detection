@@ -46,10 +46,10 @@ public class worldScript : MonoBehaviour
             OBBList.Add(m);
         }
 
-        void HandleSAABB (Vector3 position, Vector3 sphericalPos, Vector3 fastSphericalPos, Vector2 extents, Vector2 fastExtents, Color color, Matrix4x4 m)
+        void HandleSAABB (Vector3 position, Vector3 sphericalPos, Vector2 extents, Color color, Matrix4x4 m)
         {
-            m.SetRow(0, new Vector4(sphericalPos.x, sphericalPos.y, fastSphericalPos.x, fastSphericalPos.y));
-            m.SetRow(1, new Vector4(extents.x, extents.y, fastExtents.x, fastExtents.y));
+            m.SetRow(0, new Vector4(sphericalPos.x, sphericalPos.y, 0, 0));
+            m.SetRow(1, new Vector4(extents.x, extents.y, 0, 0));
             m.SetRow(2, new Vector4(position.x, position.y, position.z, 0));
             m.SetRow(3, color);
             SAABBList.Add(m);
@@ -150,9 +150,7 @@ public class worldScript : MonoBehaviour
             HandleSAABB(
                 saabb.Position,
                 saabb.SphericalPos,
-                saabb.FastSphericalPos,
                 new Vector2(saabb.AzimuthalExtent, saabb.PolarExtent),
-                new Vector2(saabb.TanAzimuthalExtent, saabb.CosPolarExtent),
                 saabb.Size.z > 0 ? Color.limeGreen : Color.hotPink,
                 m
             );

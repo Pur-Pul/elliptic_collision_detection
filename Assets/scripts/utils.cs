@@ -163,14 +163,14 @@ class SphericalUtils {
         return new Vector3(tanAzimuth, cosPolar, sinPolar);
     }
 
-    public static float LongitudeExtent(float sinPolar, float sinRadius)
+    public static float LongitudeExtent(float sinPolar, float sinAzimuthalRadius, float sinPolarRadius)
     {
-        if (sinPolar <= sinRadius)
+        if (sinPolar <= sinPolarRadius)
         {
             return Mathf.PI;
         }
 
-        return Mathf.Asin(sinRadius / sinPolar);
+        return Mathf.Asin(sinAzimuthalRadius / sinPolar);
     }
 
     public static float TanLongitudeExtent(float cosPolar, float radius, float cosRadius)
@@ -252,6 +252,27 @@ class SphericalUtils {
 
     public static float TangentSum(float t1, float t2) => (t1 + t2) / (1.0f - t1 * t2);
     public static float TangentDiff(float t1, float t2) => (t1 - t2) / (1.0f + t1 * t2);
+
+    public static Vector3 ProjectPointOnGC(Vector3 point, Vector3 normal)
+    {
+        return (point - Vector3.Dot(point, normal)*normal).normalized;
+    }
+
+    public static float GCLongitudeExtrema(float leftAzimuth, float rightAzimuth, Vector3 GCNormal)
+    {
+        float delta;
+        if (GCNormal.z < 0)
+        {
+            delta = rightAzimuth - leftAzimuth;
+        } else
+        {
+            delta = leftAzimuth - rightAzimuth;
+        }
+
+        if (delta < 0) { delta += 2 * Mathf.PI; }
+
+        return delta;
+    }
 }
 
 class Tools

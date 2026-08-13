@@ -147,9 +147,9 @@ public class AABB : ISimpleBoundingVolume
     public bool Contains (AABB other)
     {
         return !(
-            Mathf.Abs(Position.x - other.Position.x) > HalfSize.x - other.HalfSize.x ||
-            Mathf.Abs(Position.y - other.Position.y) > HalfSize.y - other.HalfSize.y ||
-            Mathf.Abs(Position.z - other.Position.z) > HalfSize.z - other.HalfSize.z
+            Mathf.Abs(Position.x - other.Position.x) >= HalfSize.x - other.HalfSize.x ||
+            Mathf.Abs(Position.y - other.Position.y) >= HalfSize.y - other.HalfSize.y ||
+            Mathf.Abs(Position.z - other.Position.z) >= HalfSize.z - other.HalfSize.z
         ); 
     }
 
