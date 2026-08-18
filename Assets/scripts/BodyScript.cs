@@ -128,24 +128,6 @@ public class BodyScript : MonoBehaviour, IItem
         drawColor = color;
     }
 
-    public void CheckForCollision(int step)
-    {
-        List<IItem> collisions = control.collisionTree.CheckCollisions(this);      
-        if (collisions.Count > 0)
-        {
-            bodyMat.SetColor("_BaseColor", Color.red);
-            drawColor = Color.red;
-        } else
-        {
-            bodyMat.SetColor("_BaseColor", color);
-            drawColor = color;
-        }
-        if (control.CollisionList != null)
-        {
-            control.CollisionList.Collision(this, collisions, step);
-        } 
-    }
-
     public void Collision()
     {
         bodyMat.SetColor("_BaseColor", Color.red);

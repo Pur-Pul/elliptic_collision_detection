@@ -163,14 +163,24 @@ class SphericalUtils {
         return new Vector3(tanAzimuth, cosPolar, sinPolar);
     }
 
-    public static float LongitudeExtent(float sinPolar, float sinAzimuthalRadius, float sinPolarRadius)
+    public static float SinLongitudeExtent(float sinPolar, float sinRadius)
     {
-        if (sinPolar <= sinPolarRadius)
+        if (sinPolar <= sinRadius)
+        {
+            return 1;
+        }
+
+        return sinRadius / sinPolar;
+    }
+
+    public static float LongitudeExtent(float sinPolar, float sinRadius)
+    {
+        if (sinPolar <= sinRadius)
         {
             return Mathf.PI;
         }
 
-        return Mathf.Asin(sinAzimuthalRadius / sinPolar);
+        return Mathf.Asin(sinRadius / sinPolar);
     }
 
     public static float TanLongitudeExtent(float cosPolar, float radius, float cosRadius)
@@ -273,6 +283,8 @@ class SphericalUtils {
 
         return delta;
     }
+
+    public const float TwoPI = Mathf.PI * 2;
 }
 
 class Tools

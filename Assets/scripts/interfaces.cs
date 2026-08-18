@@ -26,7 +26,6 @@ public interface IBoundingVolume
     public void Update(Vector3 _size, Quaternion _orientation, bool timed);
     public void UpdateSimpleSize();
     public bool CheckCollision(IBoundingVolume other);
-    public bool CheckFastOverlaps(IBoundingVolume other);
 }
 
 public interface IItem
@@ -46,7 +45,6 @@ public interface ICollisionTree
     public bool Remove(IItem item);
     public int MaxItems { get; set; }
     public int MaxDepth { get; set; }
-    public List<IItem> CheckCollisions(IItem item);
     public void CheckAllCollisions(List<(IItem, IItem)> collisions);
     public long GetScore();
 }

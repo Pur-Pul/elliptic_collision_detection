@@ -154,7 +154,6 @@ public class BBox : IBoundingVolume
         }
     }
 
-    public bool CheckFastOverlaps(IBoundingVolume other) => Simple.SimpleIntersects(other.Simple);
 	public virtual bool CheckSphere (BBoxSphere sphere) => false;
     public virtual bool CheckOBB (OBBox obb) => false;
 
@@ -182,8 +181,8 @@ public class BBox : IBoundingVolume
     {
         return other switch
         {
-            BBoxSphere sphere => Timed(() => CheckSphere(sphere), methodIds[0] ??= Record.GetId(typeName, nameof(CheckSphere))),
-            OBBox obb => Timed(() => CheckOBB(obb), methodIds[1] ??= Record.GetId(typeName, nameof(CheckOBB))),
+            BBoxSphere sphere => Simple.SimpleIntersects(sphere.Simple) && Timed(() => CheckSphere(sphere), methodIds[0] ??= Record.GetId(typeName, nameof(CheckSphere))),
+            OBBox obb => Simple.SimpleIntersects(obb.Simple) && Timed(() => CheckOBB(obb), methodIds[1] ??= Record.GetId(typeName, nameof(CheckOBB))),
             _ => false
         };
     }

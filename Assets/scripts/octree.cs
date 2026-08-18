@@ -95,49 +95,6 @@ public class Octree<T>: AABB,
         item.CollisionNode = this;
         return true;
 	}
-
-    public void Query(IBoundingVolume collider, List<T> found_items)
-    {
-        if (!SimpleIntersects(collider.Simple)) { return; }
-        foreach (T item in items)
-        {
-            if (collider.CheckFastOverlaps(item.BBox))
-            {
-                found_items.Add(item); 
-            }
-        }
-
-        if (!IsLeaf())
-        {
-            foreach (Octree<T> octant in octants)
-            {
-                octant.Query(collider, found_items);
-            }
-        }
-    }
-    public List<IItem> CheckCollisions(IItem item)
-    {
-        return item switch
-        {
-            T i => CheckCollisions(i),
-            _ =>  new ()
-        };
-    }
-    public List<IItem> CheckCollisions(T item)
-    {
-        List<T> found_items = new ();
-        Query(item.BBox, found_items);
-        List<IItem> collisions = new();
-        foreach (T other in found_items)
-        {
-            if (item == other) { continue; }
-            if (item.BBox.CheckCollision(other.BBox))
-            {
-                collisions.Add(other);
-            }
-        }
-        return collisions;
-    }
     public bool Remove(IItem item)
     {
         return item switch
@@ -227,7 +184,7 @@ public class Octree<T>: AABB,
                 foreach (T b in items)
                 {
                     if (a == b) { break; }
-                    if (a.BBox.CheckFastOverlaps(b.BBox) && a.BBox.CheckCollision(b.BBox))
+                    if (a.BBox.CheckCollision(b.BBox))
                     {
                         collisions.Add((a, b));
                     }

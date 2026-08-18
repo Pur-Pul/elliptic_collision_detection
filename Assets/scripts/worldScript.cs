@@ -146,12 +146,17 @@ public class worldScript : MonoBehaviour
             
             Matrix4x4 m = new();
             SAABB saabb = control.SAABBs[i];
-            
+            saabb.CalculateSphericalData();
             HandleSAABB(
                 saabb.Position,
                 saabb.SphericalPos,
-                new Vector2(saabb.AzimuthalExtent, saabb.PolarExtent),
-                saabb.Size.z > 0 ? Color.limeGreen : Color.hotPink,
+                new Vector2(
+                    saabb.Radius > 0 
+                        ? SphericalUtils.LongitudeExtent(saabb.SinPolar, saabb.SinRadius)
+                        : saabb.AzimuthExtent, 
+                    saabb.PolarExtent
+                ),
+                saabb.Radius > 0 ? Color.limeGreen : Color.hotPink,
                 m
             );
         }

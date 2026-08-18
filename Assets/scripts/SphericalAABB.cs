@@ -7,14 +7,24 @@ public class SAABB: ISimpleBoundingVolume
     private Vector3? sphericalPos;
     private Vector3? position;
     private Vector3 size;
-    private Vector2 radii;
-    private Vector2 sinRadii;
-    public RuntimeRecord Record { get; set; }
-
-    private float? azimuthExtent;
-    private float? polarExtent;
+    private bool sphericalDataDirty;
     private string typeName = "";
     private int?[] methodIds;
+    
+    public RuntimeRecord Record { get; set; }
+
+    public float AzimuthExtent;
+    public float PolarExtent;
+    public float CosAzimuthExtent;
+    public float SinAzimuthExtent;
+    public float CosPolarExtent;
+    public float SinPolarExtent;
+    public float SinPolar;
+    public float CosPolar;
+    public float Radius;
+    public float CosRadius;
+    public float SinRadius;
+
     public SAABB() {
         typeName = GetType().Name;    
         methodIds = new int?[2];
@@ -27,21 +37,13 @@ public class SAABB: ISimpleBoundingVolume
                 UnityEngine.Debug.Log("Error: Both cartesian and spherical coordinates are undefined.");
                 return new(0,0,0);
             }
-            if (position == null)
-            {
-                position = SphericalUtils.SphericalToCartesian(SphericalPos);
-            }
-            return position.Value;
+            return position ??= SphericalUtils.SphericalToCartesian(SphericalPos);
         }
         set
         {
-            if (position == null || value.z != position.Value.z)
-            {
-                azimuthExtent = null;
-            }
-
             position = value;
             sphericalPos = null;
+            sphericalDataDirty = true;
         }
     }
 
@@ -57,13 +59,9 @@ public class SAABB: ISimpleBoundingVolume
         }
         set
         {
-            if (sphericalPos == null || sphericalPos.Value.y != value.y)
-            {
-                azimuthExtent = null;
-            }
-
             position = null;
             sphericalPos = value;
+            sphericalDataDirty = true;
         }
     }
 
@@ -71,35 +69,49 @@ public class SAABB: ISimpleBoundingVolume
         get => size;
         set
         {
-            if (size.x != value.x)
+            if (value.z > 0)
             {
-                azimuthExtent = null;
-                radii.x = value.x * 0.5f;
-                sinRadii.x = Mathf.Sin(radii.x);
-            }
-            if (size.y != value.y)
+                if (size.z != value.z)
+                {
+                    Radius = value.z;
+                    AzimuthExtent = Radius;
+                    PolarExtent = Radius;
+                    CosPolarExtent = Mathf.Cos(PolarExtent);
+                    SinPolarExtent = Mathf.Sin(PolarExtent);
+                    CosRadius = Mathf.Cos(value.z);
+                    SinRadius = Mathf.Sin(value.z);
+                    sphericalDataDirty = true;
+                }
+            } else
             {
-                polarExtent = null;
-                radii.y = value.y * 0.5f;
-                sinRadii.y = Mathf.Sin(radii.y);
+                if (size.x != value.x)
+                {
+                    AzimuthExtent = value.x * 0.5f;
+                    CosAzimuthExtent = Mathf.Cos(AzimuthExtent);
+                    SinAzimuthExtent = Mathf.Sin(AzimuthExtent);
+                }
+                if (size.y != value.y)
+                {
+                    PolarExtent = value.y * 0.5f;
+                    CosPolarExtent = Mathf.Cos(PolarExtent);
+                    SinPolarExtent = Mathf.Sin(PolarExtent);
+                }   
             }
             size = value;
         }
     }
 
-    public float AzimuthalExtent
-    // Since the vertical edges of the SAABBs converge at the poles, the SAABBs need to be widened as the shapes they contain move closer to the poles.
-    // To widen the SAABBs the z component of the Size property can be set to larger than 0.
-    // The SAABBs of the s-octree should not use the additional longitude extent.
+    public void CalculateSphericalData ()
     {
-        get => azimuthExtent ??= Size.z > 0
-            ? SphericalUtils.LongitudeExtent(SphericalPos.z, sinRadii.x, sinRadii.y)
-            : radii.x;
-    }
-
-    public float PolarExtent
-    {
-        get => polarExtent ??= radii.y;
+        if (!sphericalDataDirty) { return; }
+        CosPolar = Position.z;
+        SinPolar = Mathf.Sqrt(1f - CosPolar * CosPolar);
+        if (Radius > 0)
+        {
+            SinAzimuthExtent = SphericalUtils.SinLongitudeExtent(SinPolar, SinRadius);
+            CosAzimuthExtent = Mathf.Sqrt(1f - SinAzimuthExtent * SinAzimuthExtent);
+        }
+        sphericalDataDirty = false;
     }
 
     T Timed<T> (Func<T> func, int id)
@@ -126,14 +138,62 @@ public class SAABB: ISimpleBoundingVolume
     {
         //Since this function is used when objects are added to the tree, this is where the spherical coordinates are first calculated.
         // In other words SOctree.contains will appear to be the slowest of the SAABB functions.
-        if (Size.x == 2 * Mathf.PI && Size.y == Mathf.PI) { return true; }
+        //UnityEngine.Debug.Log($"{Size.x*Mathf.Rad2Deg}, {Size.y*Mathf.Rad2Deg}");
+        
+        if (Size.x == SphericalUtils.TwoPI && Size.y == Mathf.PI) { return true; }
+        /*
         float azimuthDiff = Mathf.Abs(SphericalPos.x - other.SphericalPos.x);
         if (azimuthDiff > Mathf.PI) { azimuthDiff = 2f * Mathf.PI - azimuthDiff; }
         float polarDiff = Mathf.Abs(SphericalPos.y - other.SphericalPos.y);
 
-        return !(
+        bool contains1 = !(
             polarDiff >= PolarExtent - other.PolarExtent ||
             azimuthDiff >= AzimuthalExtent - other.AzimuthalExtent
+        );
+        */
+        
+        /*
+                p
+                /\
+               /︶\
+            a / Δθ \ b 
+             /      \
+            /        \
+           u----------v
+                c
+        */
+        // Note: u and v are not actually on the same latitude.
+        // Δθ represents the azimuthal difference between u and v
+        // a and b are the polar angles of the SAABB and u and v are their centers.
+        // cos(a) = v.z and sin(a) = sqrt(1 - v.z^2) and the same for w.
+        // cos(c) = dot(u, v)
+        // cos(c) = cos(a)cos(b) + sin(a)sin(b)cos(Δθ)
+        // => cos(Δθ)sin(a)sin(b) = cos(c) - cos(a)cos(b)
+
+        
+        /*        v
+                 / |
+                /  |
+             c /   | Δφ
+              /    | 
+             /    ┏|
+            u------q
+        */
+        // Δφ represents the difference between the polar angles of u and v.
+        // Cosine subtraction formula: cos(Δφ) = cos(a-b) = cos(a)cos(b) + sin(a)sin(b)
+        CalculateSphericalData();
+        other.CalculateSphericalData();
+        if (CosAzimuthExtent > other.CosAzimuthExtent || CosPolarExtent > other.CosPolarExtent) { return false; }
+        float cosC = Vector3.Dot(Position, other.Position);
+        float cosProd = CosPolar * other.CosPolar;
+        float sinProd = SinPolar * other.SinPolar;
+
+        float cosAzimuthExtDiff = CosAzimuthExtent * other.CosAzimuthExtent + SinAzimuthExtent * other.SinAzimuthExtent;
+        float cosPolarExtDiff = CosPolarExtent * other.CosPolarExtent + SinPolarExtent * other.SinPolarExtent;
+
+        return !(
+            cosProd + sinProd <= cosPolarExtDiff ||
+            (cosC - cosProd) <= cosAzimuthExtDiff * sinProd
         );
     }
 
@@ -148,7 +208,8 @@ public class SAABB: ISimpleBoundingVolume
 
     public virtual bool Intersects(SAABB other)
     {
-        if (Size.x == 2 * Mathf.PI || other.Size.x == 2 * Mathf.PI) { return true; }
+        if (Size.x == SphericalUtils.TwoPI || other.Size.x == SphericalUtils.TwoPI) { return true; }
+        /*
         float azimuthDiff = Mathf.Abs(SphericalPos.x - other.SphericalPos.x);
         if (azimuthDiff > Mathf.PI) { azimuthDiff = 2f * Mathf.PI - azimuthDiff; }
         float polarDiff = Mathf.Abs(SphericalPos.y - other.SphericalPos.y);
@@ -157,6 +218,26 @@ public class SAABB: ISimpleBoundingVolume
             polarDiff > PolarExtent + other.PolarExtent ||
             azimuthDiff > AzimuthalExtent + other.AzimuthalExtent
         );
+        */
+        /*
+        float cosC = Vector3.Dot(Position, other.Position);  
+        float cosProd = CosPolar * other.CosPolar;
+        float sinProd = SinPolar * other.SinPolar;
+
+        float cosAzimuthExtSum = CosAzimuthExtent * other.CosAzimuthExtent - SinAzimuthExtent * other.SinAzimuthExtent;
+        float cosPolarExtSum = CosPolarExtent * other.CosPolarExtent - SinPolarExtent * other.SinPolarExtent;
+
+        return !(
+            cosProd + sinProd <= cosPolarExtSum ||
+            (cosC - cosProd) <= cosAzimuthExtSum * sinProd
+        );
+        */
+        // Intersection detection between SBCs is faster than between SAABBs.
+        // Since the SAABBs of the spherical shapes are all fitted to SBCs (the SOBRs are first fitten to SBCs), it is possible to completely replace the SAABB intersection function with the SBC intersection function.
+        // SBC intersection detection between the inscribed SBCs of the SAABBs is also more accurate.
+        float cosC = Vector3.Dot(Position, other.Position);
+        float cosRadiusSum = CosRadius * other.CosRadius - SinRadius * other.SinRadius;
+        return cosRadiusSum < cosC;
     }
 
     public Vector3[][] GetEdges() { return null; }

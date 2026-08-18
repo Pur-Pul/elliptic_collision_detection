@@ -110,8 +110,8 @@ public class SBVA2 : IBoundingVolume //Spherical Bounding Volume
     {
         if (shapeUpdated) {
             float chordSquared = Size.x * Size.x + Size.y * Size.y;
-            float ang = SphericalUtils.ChordToAngle(chordSquared, true);
-            Simple.Size = new(ang, ang, 1f);
+            float radiusAngle = SphericalUtils.ChordToAngle(chordSquared, true)*0.5f;
+            Simple.Size = new Vector3(0,0,radiusAngle);
             shapeUpdated = false;
         }
     }
@@ -131,7 +131,6 @@ public class SBVA2 : IBoundingVolume //Spherical Bounding Volume
             UpdateSimpleSize();   
         }
     }
-    public bool CheckFastOverlaps(IBoundingVolume other) => Simple.SimpleIntersects(other.Simple);
     public virtual bool CheckSBCA2 (SBCA2 circle) => false;
     public virtual bool CheckSOBRA2 (SOBRA2 obr) => false;
 
@@ -159,8 +158,8 @@ public class SBVA2 : IBoundingVolume //Spherical Bounding Volume
     {
         return other switch
         {
-            SBCA2 circle => Timed(() => CheckSBCA2(circle), methodIds[0] ??= Record.GetId(typeName, nameof(CheckSBCA2))),
-            SOBRA2 sobr => Timed(() => CheckSOBRA2(sobr), methodIds[1] ??= Record.GetId(typeName, nameof(CheckSOBRA2))),
+            SBCA2 circle => Simple.SimpleIntersects(circle.Simple) && Timed(() => CheckSBCA2(circle), methodIds[0] ??= Record.GetId(typeName, nameof(CheckSBCA2))),
+            SOBRA2 sobr => Simple.SimpleIntersects(sobr.Simple) && Timed(() => CheckSOBRA2(sobr), methodIds[1] ??= Record.GetId(typeName, nameof(CheckSOBRA2))),
             _ => false
         };
     }
@@ -199,8 +198,7 @@ public class SBCA2 : SBVA2 //Spherical Bounding Circle
     public override void UpdateSimpleSize ()
     {
         if (shapeUpdated) {
-            float ang = RadiusAngle * 2.0f;
-            Simple.Size = new(ang, ang, 1f);
+            Simple.Size = new Vector3(0,0,radiusAngle);
             shapeUpdated = false;
         }
     }

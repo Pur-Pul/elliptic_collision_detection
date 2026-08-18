@@ -157,8 +157,6 @@ public class SBV : IBoundingVolume //Spherical Bounding Volume
             UpdateSimpleSize();   
         }
     }
-
-    public bool CheckFastOverlaps(IBoundingVolume other) => Simple.SimpleIntersects(other.Simple);
     public virtual bool CheckSBC (SBC circle) => false;
     public virtual bool CheckSOBR (SOBR sobr) => false;
 
@@ -186,8 +184,8 @@ public class SBV : IBoundingVolume //Spherical Bounding Volume
     {
         return other switch
         {
-            SBC circle => Timed(() => CheckSBC(circle), methodIds[0] ??= Record.GetId(typeName, nameof(CheckSBC))),
-            SOBR sobr => Timed(() => CheckSOBR(sobr), methodIds[1] ??= Record.GetId(typeName, nameof(CheckSOBR))),
+            SBC circle => Simple.SimpleIntersects(circle.Simple) && Timed(() => CheckSBC(circle), methodIds[0] ??= Record.GetId(typeName, nameof(CheckSBC))),
+            SOBR sobr => Simple.SimpleIntersects(sobr.Simple) && Timed(() => CheckSOBR(sobr), methodIds[1] ??= Record.GetId(typeName, nameof(CheckSOBR))),
             _ => false
         };
     }

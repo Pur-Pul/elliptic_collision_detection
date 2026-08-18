@@ -4,16 +4,8 @@ using System.Diagnostics;
 
 public class AABB : ISimpleBoundingVolume
 {
-    private Vector3 position;
     private Vector3 size;
-    private Vector3? halfSize;
-
-    private float? max_x;
-    private float? max_y;
-    private float? max_z;
-    private float? min_x;
-    private float? min_y;
-    private float? min_z;
+    
     public RuntimeRecord Record { get; set; }
     public virtual Vector3 Right { get => Vector3.right; }
     public virtual Vector3 Up { get => Vector3.up; }
@@ -25,82 +17,31 @@ public class AABB : ISimpleBoundingVolume
         methodIds = new int?[2];
     }
 
-    public Vector3 Position 
-    {
-        get => position;
-        set
-        {
-            max_x = null;
-            max_y = null;
-            max_z = null;
-            min_x = null;
-            min_y = null;
-            min_z = null;
-            position = value;
-        }
-    }
+    public Vector3 Position { get; set; }
+    public Vector3 HalfSize;
     public Vector3 Size {
         get => size;
         set
         {
-            if (size.x != value.x)
-            {
-                max_x = null;
-                min_x = null;
-            }
-            if (size.y != value.y)
-            {
-                max_y = null;
-                min_y = null;
-            }
-            if (size.z != value.z)
-            {
-                max_z = null;
-                min_z = null;
-            }
             size = value;
-            halfSize = null;
+            HalfSize = value*0.5f;
         }
-    }
-    public Vector3 HalfSize => halfSize ??= Size*0.5f;
-
-    public float MaxX
-    {
-        get => max_x ??= Position.x + Size.x * 0.5f;
-    }
-    public float MaxY
-    {
-        get => max_y ??= Position.y + Size.y * 0.5f;
-    }
-    public float MaxZ
-    {
-        get => max_z ??= Position.z + Size.z * 0.5f;
-    }
-    public float MinX
-    {
-        get => min_x ??= Position.x - Size.x * 0.5f;
-    }
-    public float MinY
-    {
-        get => min_y ??= Position.y - Size.y * 0.5f;
-    }
-    public float MinZ
-    {
-        get => min_z ??= Position.z - Size.z * 0.5f;
     }
 
     public Vector3[][] GetEdges()
     {
+        Vector3 Max = Position + HalfSize;
+        Vector3 Min = Position - HalfSize;
         Vector3[] _vertices =
         {
-            new (MinX, MinY, MinZ), //left    top     front
-            new (MaxX, MinY, MinZ), //right   top     front
-            new (MinX, MaxY, MinZ), //left    bottom  front
-            new (MaxX, MaxY, MinZ), //right   bottom  front
-            new (MinX, MinY, MaxZ), //left    top     back
-            new (MaxX, MinY, MaxZ), //right   top     back
-            new (MinX, MaxY, MaxZ), //left    bottom  back
-            new (MaxX, MaxY, MaxZ)  //right   bottom  back
+            new (Min.x, Min.y, Min.z), //left    top     front
+            new (Max.x, Min.y, Min.z), //right   top     front
+            new (Min.x, Max.y, Min.z), //left    bottom  front
+            new (Max.x, Max.y, Min.z), //right   bottom  front
+            new (Min.x, Min.y, Max.z), //left    top     back
+            new (Max.x, Min.y, Max.z), //right   top     back
+            new (Min.x, Max.y, Max.z), //left    bottom  back
+            new (Max.x, Max.y, Max.z)  //right   bottom  back
         };
 
         Face[] _faces =
@@ -164,31 +105,10 @@ public class AABB : ISimpleBoundingVolume
 
     public virtual bool Intersects(AABB other)
     {
-        
         return !(
             Mathf.Abs(Position.x - other.Position.x) > HalfSize.x + other.HalfSize.x ||
             Mathf.Abs(Position.y - other.Position.y) > HalfSize.y + other.HalfSize.y ||
             Mathf.Abs(Position.z - other.Position.z) > HalfSize.z + other.HalfSize.z
         ); 
-    }
-
-    public virtual Vector3 ContainsPoint (Vector3 point)
-    {
-        float overlapx = Math.Min(MaxX, point.x) - Math.Max(MinX, point.x);
-        float overlapy = Math.Min(MaxY, point.y) - Math.Max(MinY, point.y);
-        float overlapz = Math.Min(MaxZ, point.z) - Math.Max(MinZ, point.z);
-
-        if (overlapx <= overlapy && overlapx <= overlapz)
-        {
-            return new Vector3(Position.x < point.x ? -overlapx : overlapx, 0, 0);
-        }
-        else if (overlapy <= overlapx && overlapy <= overlapz)
-        {
-            return new Vector3(0, Position.y < point.y ? -overlapy : overlapy, 0);   
-        }
-        else
-        {
-            return new Vector3(0, 0, Position.z < point.z ? -overlapz : overlapz);   
-        }
     }
 }

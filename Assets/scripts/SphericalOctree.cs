@@ -16,7 +16,7 @@ public class SOctree<T>: SAABB,
     List<T> items;
     public SOctree(Vector3? center = null, Vector2? size = null, int d = 0, SOctree<T> parent = null)
     {
-        Size = size ?? new(2*Mathf.PI, Mathf.PI);
+        Size = size ?? new(SphericalUtils.TwoPI, Mathf.PI);
         SphericalPos = center ?? new(0, Mathf.PI * 0.5f, 0);
         depth = d;
         segments = new SOctree<T>[4];
@@ -172,53 +172,6 @@ public class SOctree<T>: SAABB,
         Array.Clear(segments, 0, segments.Length);
 		items.Clear();
 	}
-
-    public void Query(IBoundingVolume collider, List<T> found_items)
-    {
-        if (!SimpleIntersects(collider.Simple)) { 
-            if (depth == 0) { Debug.Log("Tree Query ERROR: Item does not fit tree."); }
-            return;
-        }
-        foreach (T item in items)
-        {
-            if (collider.CheckFastOverlaps(item.BBox))
-            {
-                found_items.Add(item); 
-            }
-        }
-
-        if (!IsLeaf())
-        {
-            foreach (SOctree<T> segment in segments)
-            {
-                segment.Query(collider, found_items);
-            }
-        }
-    }
-
-    public List<IItem> CheckCollisions(IItem item)
-    {
-        return item switch
-        {
-            T i => CheckCollisions(i),
-            _ =>  new ()
-        };
-    }
-    public List<IItem> CheckCollisions(T item)
-    {
-        List<T> found_items = new ();
-        Query(item.BBox, found_items);
-        List<IItem> collisions = new();
-        foreach (T other in found_items)
-        {
-            if (item == other) { continue; }
-            if (item.BBox.CheckCollision(other.BBox))
-            {
-                collisions.Add(other);
-            }
-        }
-        return collisions;
-    }
     public List<SAABB> GetSAABBs(List<SAABB> saabbs = null)
     {
         saabbs ??= new();
@@ -247,7 +200,7 @@ public class SOctree<T>: SAABB,
                 foreach (T b in items)
                 {
                     if (a == b) { break; }
-                    if (a.BBox.CheckFastOverlaps(b.BBox) && a.BBox.CheckCollision(b.BBox))
+                    if (a.BBox.CheckCollision(b.BBox))
                     {
                         collisions.Add((a, b));
                     }
