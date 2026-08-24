@@ -17,6 +17,8 @@ public class ControlScript : MonoBehaviour
     public List<SAABB> SAABBs;
     public int step;
     bool active;
+    public float startTime;
+    public float currentTime;
     public bool Active
     {
         get => active;
@@ -30,16 +32,18 @@ public class ControlScript : MonoBehaviour
                     CollisionList.Reset();
                     CollisionList.method = MethodDropdown.options[MethodDropdown.value].text;    
                 }
+                startTime = Stopwatch.GetTimestamp();
+                currentTime = startTime;
                 runtimeRecord.Reset();
-                collisionTree.Clear();
+                collisionTree.Reset();
                 collisions.Clear();
                 collisionTree.MaxDepth = MaxDepth;
                 collisionTree.MaxItems = MaxItems;
             }
         }
     }
-    (int,int,long) best = ( 0, 0, long.MaxValue );
-    (int,int,long) depthBest = ( 0, 0, long.MaxValue );
+    (int maxDepth, int maxItems, long score) best = ( 0, 0, long.MaxValue );
+    (int maxDepth, int maxItems, long score) depthBest = ( 0, 0, long.MaxValue );
     int iteration = 1;
     public int Iterations { 
         get {
@@ -229,7 +233,7 @@ public class ControlScript : MonoBehaviour
         AccuracyText.text = "Baseline: \nArtifact: \nType            | Precision | Recall    | F1";
         RuntimeText.text = "Class           | Method               | Runtime    | Calls     ";
         currentSequenceList = null;
-        CurrentSequenceListText.text = "Current sequence list: none | Step NaN : NaN | Iteration NaN : NaN";
+        CurrentSequenceListText.text = "Current sequence list: none | Step NaN : NaN | Iteration NaN : NaN | Time (μs) : 0";
     }
 
     public void GenerateBodies()
@@ -255,7 +259,7 @@ public class ControlScript : MonoBehaviour
         }
         SpawnBodies();
         SetMethod();
-        CurrentSequenceListText.text = $"Current sequence list: Undefined* | Step {step} : {lastStep} | Iteration {iteration} : {Iterations}";
+        CurrentSequenceListText.text = $"Current sequence list: Undefined* | Step {step} : {lastStep} | Iteration {iteration} : {Iterations} | Time (μs) : 0";
     }
 
     public void SetMethod()
@@ -304,7 +308,7 @@ public class ControlScript : MonoBehaviour
         List<Sequence> sl = SequenceUtils.FromFile(f);
         DestroyBodies();
         currentSequenceList = Path.GetRelativePath(wd, f);
-        CurrentSequenceListText.text = $"Current sequence list: {currentSequenceList} | Step {step} : {lastStep} | Iteration {iteration} : {Iterations}";
+        CurrentSequenceListText.text = $"Current sequence list: {currentSequenceList} | Step {step} : {lastStep} | Iteration {iteration} : {Iterations} | Time (μs) : 0";
         sequences = sl;
         lastStep = SequenceUtils.GetLastStep(sl);
         step = 0;
@@ -323,7 +327,7 @@ public class ControlScript : MonoBehaviour
         string wd = Directory.GetCurrentDirectory();
         currentSequenceList = $"out/{timestamp}-{body_n}-{lastStep}.xml";
         SequenceUtils.SaveToFile(Path.Combine(wd, currentSequenceList), sequences);
-        CurrentSequenceListText.text = $"Current sequence list: {currentSequenceList} | Step {step} : {lastStep} | Iteration {iteration} : {Iterations}";
+        CurrentSequenceListText.text = $"Current sequence list: {currentSequenceList} | Step {step} : {lastStep} | Iteration {iteration} : {Iterations} | Time (μs) : {(currentTime - startTime) * 1_000_000.0 / Stopwatch.Frequency}";
     }
 
     int ParseInputNumber(TMP_InputField input)
@@ -361,18 +365,24 @@ public class ControlScript : MonoBehaviour
                 }
             }
         }
-        
-        collisionTree.CheckAllCollisions(collisions);
-        foreach ((IItem, IItem) collision in collisions)
+        if (Optimize)
         {
-            collision.Item1.Collision();
-            collision.Item2.Collision();
+            collisionTree.CheckAllCollisions(collisions, true);
         }
-        if (CollisionList != null)
+        else
         {
-            CollisionList.RecordCollisions(collisions, step);    
+            collisionTree.CheckAllCollisions(collisions);
+            foreach ((IItem, IItem) collision in collisions)
+            {
+                collision.Item1.Collision();
+                collision.Item2.Collision();
+            }
+            if (CollisionList != null)
+            {
+                CollisionList.RecordCollisions(collisions, step);
+            }
+            collisions.Clear();
         }
-        collisions.Clear();
         step++;
     }
 
@@ -405,12 +415,13 @@ public class ControlScript : MonoBehaviour
         string timeStamp = $"{DateTime.Now:yyyy.MM.dd_hh:mm:ss}";
         if (currentSequenceList == null) { SaveToFile(timeStamp); }
         string file = Path.Combine(currentDir, $"out/runtime-{timeStamp}.csv");
-        string runtimeText = 
+        string header = 
             $"#Sequence: {currentSequenceList}\n" +
             $"#Iterations: {Iterations}\n" +
             $"#Tree depth: {MaxDepth}\n" +
             $"#Tree items: {MaxItems}\n";
-        runtimeRecord.SaveToFile(file, runtimeText);
+        string footer = $"Total time elapsed (μs): {(currentTime - startTime) * 1_000_000.0 / Stopwatch.Frequency}";
+        runtimeRecord.SaveToFile(file, header, footer);
     }
 
     public void SaveAccuracyMetrics()
@@ -431,8 +442,10 @@ public class ControlScript : MonoBehaviour
             accuracyText += $"{accuracy_data[key].type},{accuracy_data[key].Precision},{accuracy_data[key].Recall},{accuracy_data[key].F1}\n";
         }
         accuracyText += $"{accuracy_data["all"].type},{accuracy_data["all"].Precision},{accuracy_data["all"].Recall},{accuracy_data["all"].F1}\n";
+        string file = Path.Combine(currentDir, $"out/accuracy-{timeStamp}.csv");
+        Directory.CreateDirectory(Path.GetDirectoryName(file));
         File.WriteAllText(
-            Path.Combine(currentDir, $"out/accuracy-{timeStamp}.csv"),
+            file,
             accuracyText
         );
     }
@@ -475,19 +488,19 @@ public class ControlScript : MonoBehaviour
                         UnityEngine.Debug.Log($"Depth best: {depthBest}");
                         UnityEngine.Debug.Log($"Best: {best}");
 
-                        bool newDepthBest = depthBest.Item3 >= score;//averageRuntime;
+                        bool newDepthBest = depthBest.score >= score;//averageRuntime;
                         depthBest = newDepthBest
                             ? (MaxDepth, MaxItems, score)//averageRuntime)
                             : depthBest;
 
-                        bool skipToNextDepth = depthBest.Item3 < best.Item3 && (
+                        bool skipToNextDepth = depthBest.score < best.score && (
                             (MaxDepth < optimizeEnd.Item1 && MaxItems == optimizeEnd.Item2)
                             || !newDepthBest
                         );
 
                         if (skipToNextDepth)
                         {
-                            best = (depthBest.Item1, depthBest.Item2, depthBest.Item3);
+                            best = (depthBest.maxDepth, depthBest.maxItems, depthBest.score);
                             depthBest = (0, 0, long.MaxValue);
                             MaxItems = 1;
                             MaxDepth++;
@@ -507,8 +520,8 @@ public class ControlScript : MonoBehaviour
                         }
                         else
                         {
-                            MaxDepth = best.Item1;
-                            MaxItems = best.Item2;
+                            MaxDepth = best.maxDepth;
+                            MaxItems = best.maxItems;
                             Optimize = false;
                             UnityEngine.Debug.Log($"Best item limit: {MaxItems}");
                             UnityEngine.Debug.Log($"Best depth: {MaxDepth}");
@@ -518,7 +531,8 @@ public class ControlScript : MonoBehaviour
                     }
                 }
             }
-            CurrentSequenceListText.text = $"Current sequence list: {currentSequenceList ?? "Undefined*"} | Step {step} : {lastStep} | Iteration {iteration} : {Iterations}";
+            currentTime = Stopwatch.GetTimestamp();
+            CurrentSequenceListText.text = $"Current sequence list: {currentSequenceList ?? "Undefined*"} | Step {step} : {lastStep} | Iteration {iteration} : {Iterations} | Time (μs) : {(currentTime - startTime) * 1_000_000.0 / Stopwatch.Frequency}";
         }
         if (saabb_n > 0) { 
             SAABBs.Clear();

@@ -14,6 +14,7 @@ public class SOctree<T>: SAABB,
     SOctree<T>[] segments;
     SOctree<T> _parent;
     List<T> items;
+    private static long intersections;
     public SOctree(Vector3? center = null, Vector2? size = null, int d = 0, SOctree<T> parent = null)
     {
         Size = size ?? new(SphericalUtils.TwoPI, Mathf.PI);
@@ -172,6 +173,12 @@ public class SOctree<T>: SAABB,
         Array.Clear(segments, 0, segments.Length);
 		items.Clear();
 	}
+
+    public void Reset() {
+        Clear();
+        intersections = 0;
+    }
+
     public List<SAABB> GetSAABBs(List<SAABB> saabbs = null)
     {
         saabbs ??= new();
@@ -185,12 +192,12 @@ public class SOctree<T>: SAABB,
         }
         return saabbs;
     }
-    public void CheckAllCollisions(List<(IItem, IItem)> collisions)
+    public void CheckAllCollisions(List<(IItem, IItem)> collisions, bool countIntersectionChecks = false)
     {
-        CheckAllCollisions(collisions, null);
+        CheckAllCollisions(collisions, null, countIntersectionChecks);
     }
 
-    public void CheckAllCollisions(List<(IItem,IItem)> collisions, SOctree<T>[] ancestors = null)
+    public void CheckAllCollisions(List<(IItem,IItem)> collisions, SOctree<T>[] ancestors = null, bool countIntersectionChecks = false)
     {
         ancestors ??= new SOctree<T>[MaxDepth+1];
         ancestors[depth] = this;
@@ -200,7 +207,11 @@ public class SOctree<T>: SAABB,
                 foreach (T b in items)
                 {
                     if (a == b) { break; }
-                    if (a.BBox.CheckCollision(b.BBox))
+                    if (countIntersectionChecks)
+                    {
+                        intersections++;
+                    } 
+                    else if (a.BBox.CheckCollision(b.BBox))
                     {
                         collisions.Add((a, b));
                     }
@@ -212,13 +223,10 @@ public class SOctree<T>: SAABB,
         {
             foreach (SOctree<T> segment in segments)
             {
-                segment.CheckAllCollisions(collisions, ancestors);
+                segment.CheckAllCollisions(collisions, ancestors, countIntersectionChecks);
             }    
         }
     }
 
-    public long GetScore()
-    {
-        return Record.CollisionTreeScore(this.GetType().Name, "SAABB");
-    }
+    public long GetScore() => Record.CollisionTreeScore(this.GetType().Name, "SAABB") + intersections;
 }

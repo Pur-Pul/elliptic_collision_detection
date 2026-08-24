@@ -136,22 +136,6 @@ public class SAABB: ISimpleBoundingVolume
 
     public bool Contains (SAABB other)
     {
-        //Since this function is used when objects are added to the tree, this is where the spherical coordinates are first calculated.
-        // In other words SOctree.contains will appear to be the slowest of the SAABB functions.
-        //UnityEngine.Debug.Log($"{Size.x*Mathf.Rad2Deg}, {Size.y*Mathf.Rad2Deg}");
-        
-        if (Size.x == SphericalUtils.TwoPI && Size.y == Mathf.PI) { return true; }
-        /*
-        float azimuthDiff = Mathf.Abs(SphericalPos.x - other.SphericalPos.x);
-        if (azimuthDiff > Mathf.PI) { azimuthDiff = 2f * Mathf.PI - azimuthDiff; }
-        float polarDiff = Mathf.Abs(SphericalPos.y - other.SphericalPos.y);
-
-        bool contains1 = !(
-            polarDiff >= PolarExtent - other.PolarExtent ||
-            azimuthDiff >= AzimuthalExtent - other.AzimuthalExtent
-        );
-        */
-        
         /*
                 p
                 /\
@@ -181,6 +165,7 @@ public class SAABB: ISimpleBoundingVolume
         */
         // Δφ represents the difference between the polar angles of u and v.
         // Cosine subtraction formula: cos(Δφ) = cos(a-b) = cos(a)cos(b) + sin(a)sin(b)
+        if (Size.x == SphericalUtils.TwoPI && Size.y == Mathf.PI) { return true; }
         CalculateSphericalData();
         other.CalculateSphericalData();
         if (CosAzimuthExtent > other.CosAzimuthExtent || CosPolarExtent > other.CosPolarExtent) { return false; }
@@ -192,8 +177,8 @@ public class SAABB: ISimpleBoundingVolume
         float cosPolarExtDiff = CosPolarExtent * other.CosPolarExtent + SinPolarExtent * other.SinPolarExtent;
 
         return !(
-            cosProd + sinProd <= cosPolarExtDiff ||
-            (cosC - cosProd) <= cosAzimuthExtDiff * sinProd
+            cosProd + sinProd < cosPolarExtDiff ||
+            (cosC - cosProd) < cosAzimuthExtDiff * sinProd
         );
     }
 
@@ -209,29 +194,6 @@ public class SAABB: ISimpleBoundingVolume
     public virtual bool Intersects(SAABB other)
     {
         if (Size.x == SphericalUtils.TwoPI || other.Size.x == SphericalUtils.TwoPI) { return true; }
-        /*
-        float azimuthDiff = Mathf.Abs(SphericalPos.x - other.SphericalPos.x);
-        if (azimuthDiff > Mathf.PI) { azimuthDiff = 2f * Mathf.PI - azimuthDiff; }
-        float polarDiff = Mathf.Abs(SphericalPos.y - other.SphericalPos.y);
-
-        return !(
-            polarDiff > PolarExtent + other.PolarExtent ||
-            azimuthDiff > AzimuthalExtent + other.AzimuthalExtent
-        );
-        */
-        /*
-        float cosC = Vector3.Dot(Position, other.Position);  
-        float cosProd = CosPolar * other.CosPolar;
-        float sinProd = SinPolar * other.SinPolar;
-
-        float cosAzimuthExtSum = CosAzimuthExtent * other.CosAzimuthExtent - SinAzimuthExtent * other.SinAzimuthExtent;
-        float cosPolarExtSum = CosPolarExtent * other.CosPolarExtent - SinPolarExtent * other.SinPolarExtent;
-
-        return !(
-            cosProd + sinProd <= cosPolarExtSum ||
-            (cosC - cosProd) <= cosAzimuthExtSum * sinProd
-        );
-        */
         // Intersection detection between SBCs is faster than between SAABBs.
         // Since the SAABBs of the spherical shapes are all fitted to SBCs (the SOBRs are first fitten to SBCs), it is possible to completely replace the SAABB intersection function with the SBC intersection function.
         // SBC intersection detection between the inscribed SBCs of the SAABBs is also more accurate.

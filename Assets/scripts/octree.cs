@@ -13,6 +13,7 @@ public class Octree<T>: AABB,
     Octree<T>[] octants;
     Octree<T> _parent;
     List<T> items;
+    private static long intersections;
     public Octree(Vector3? bboxCenter = null, Vector3? size = null, int d = 0, Octree<T> parent = null)
     {
         Position = bboxCenter ?? Vector3.zero;
@@ -149,6 +150,11 @@ public class Octree<T>: AABB,
 		items.Clear();
 	}
 
+    public void Reset() {
+        Clear();
+        intersections = 0;
+    }
+
     public Vector3[][] GetTreeEdges()
     {
         Vector3[][] _edges = GetEdges();
@@ -166,12 +172,12 @@ public class Octree<T>: AABB,
         return _edges;
     }
 
-    public void CheckAllCollisions(List<(IItem, IItem)> collisions)
+    public void CheckAllCollisions(List<(IItem, IItem)> collisions, bool countIntersectionChecks = false)
     {
-        CheckAllCollisions(collisions, null);
+        CheckAllCollisions(collisions, null, countIntersectionChecks);
     }
 
-    public void CheckAllCollisions(List<(IItem,IItem)> collisions, Octree<T>[] ancestors = null)
+    public void CheckAllCollisions(List<(IItem,IItem)> collisions, Octree<T>[] ancestors = null, bool countIntersectionChecks = false)
     {
         ancestors ??= new Octree<T>[MaxDepth+1];
         ancestors[depth] = this;
@@ -184,7 +190,11 @@ public class Octree<T>: AABB,
                 foreach (T b in items)
                 {
                     if (a == b) { break; }
-                    if (a.BBox.CheckCollision(b.BBox))
+                    if (countIntersectionChecks)
+                    {
+                        intersections++;
+                    } 
+                    else if (a.BBox.CheckCollision(b.BBox))
                     {
                         collisions.Add((a, b));
                     }
@@ -196,13 +206,10 @@ public class Octree<T>: AABB,
         {
             foreach (Octree<T> octant in octants)
             {
-                octant.CheckAllCollisions(collisions, ancestors);
+                octant.CheckAllCollisions(collisions, ancestors, countIntersectionChecks);
             }    
         }
     }
 
-    public long GetScore()
-    {
-        return Record.CollisionTreeScore(this.GetType().Name, "AABB");
-    }
+    public long GetScore() => Record.CollisionTreeScore(this.GetType().Name, "AABB") + intersections;
 }

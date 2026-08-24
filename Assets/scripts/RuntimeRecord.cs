@@ -6,9 +6,9 @@ using System.Linq;
 public class RuntimeRecord
 {
     public Dictionary<(string type, string method), int> ids;
-    public List<(long runtime, int calls)> records;
+    public List<(long runtime, long calls)> records;
     public long total_time = 0;
-    public int total_n = 0;
+    public long total_n = 0;
     public RuntimeRecord() {
         records = new();
         ids = new();
@@ -27,7 +27,7 @@ public class RuntimeRecord
 
     public void Write (long start, long end, int id)
     {
-        (long runtime, int calls) record = records[id];
+        (long runtime, long calls) record = records[id];
         long time = end - start;
         records[id] = (record.runtime + time, record.calls + 1);
         total_time += time;
@@ -71,7 +71,7 @@ public class RuntimeRecord
             .ThenBy(kvp => kvp.Key.method))
         {
             var key = kvp.Key;
-            (long time, int n) = records[kvp.Value];
+            (long time, long n) = records[kvp.Value];
             if (n == 0) { continue; }
             string className = key.type;
             string functionName = key.method;
@@ -82,20 +82,20 @@ public class RuntimeRecord
         }
         double total_microseconds = total_time * 1_000_000.0 / Stopwatch.Frequency;
         double total_average = (double)total_time / total_n * 1_000_000.0 / Stopwatch.Frequency;
-        stats += $"{"Total",-15} | {"",-20} | {total_microseconds,10} | {total_n,5} | {total_average,10}\n";
+        stats += $"{"Sum",-15} | {"",-20} | {total_microseconds,10} | {total_n,5} | {total_average,10}\n";
         UnityEngine.Debug.Log(stats);
         return stats;
     }
 
-    public void SaveToFile(string file, string runtimeText="")
+    public void SaveToFile(string file, string header="", string footer="")
     {
-        runtimeText += "Class,Method,Runtime,Calls,Average\n";
+        string runtimeText = header+"Class,Method,Runtime,Calls,Average\n";
         foreach (var kvp in ids
             .OrderBy(kvp => kvp.Key.type)
             .ThenBy(kvp => kvp.Key.method))
         {
             var (type, method) = kvp.Key;
-            (long time, int n) = records[kvp.Value];
+            (long time, long n) = records[kvp.Value];
             if (n == 0) { continue; }
 
             string className = type;
@@ -108,7 +108,9 @@ public class RuntimeRecord
         }
         double total_microseconds = total_time * 1_000_000.0 / Stopwatch.Frequency;
         double total_average = (double)total_time / total_n * 1_000_000.0 / Stopwatch.Frequency;
-        runtimeText += $"Total,,{total_microseconds},{total_n},{total_average}\n";
+        runtimeText += $"Sum,,{total_microseconds},{total_n},{total_average}\n";
+        runtimeText += footer;
+        Directory.CreateDirectory(Path.GetDirectoryName(file));
         File.WriteAllText(file,runtimeText);
     }
 }

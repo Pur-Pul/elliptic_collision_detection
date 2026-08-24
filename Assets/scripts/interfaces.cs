@@ -40,11 +40,11 @@ public interface IItem
 public interface ICollisionTree
 {
     public RuntimeRecord Record { get; set; }
-    public void Clear();
+    public void Reset();
     public bool Add(IItem item);
     public bool Remove(IItem item);
     public int MaxItems { get; set; }
     public int MaxDepth { get; set; }
-    public void CheckAllCollisions(List<(IItem, IItem)> collisions);
+    public void CheckAllCollisions(List<(IItem, IItem)> collisions, bool countIntersectionChecks=false);
     public long GetScore();
 }

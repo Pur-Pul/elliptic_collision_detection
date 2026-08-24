@@ -21,6 +21,16 @@ public class worldScript : MonoBehaviour
         if (rend.enabled != shouldRender)
         {
             rend.enabled = shouldRender;
+            for (int i = 0; i < control.body_n; i++)
+            {
+                if (control.bodies[i].BBox is BBox)
+                {
+                    control.bodies[i].MeshRend.enabled = rend.enabled;
+                } else
+                {
+                    break;
+                }
+            }
         }
 
         if (rend.enabled == false) { return; }

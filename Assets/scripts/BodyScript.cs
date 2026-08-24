@@ -12,7 +12,7 @@ public class BodyScript : MonoBehaviour, IItem
     public Color color;
     public Color drawColor;
     public int Id { get => sequence.Id; }
-    private MeshRenderer meshRenderer;
+    public MeshRenderer MeshRend;
     private MeshFilter meshFilter;
     public string BodyType {
         get => sequence.BodyType;
@@ -20,7 +20,7 @@ public class BodyScript : MonoBehaviour, IItem
     void Awake()
     {
         Renderer r = GetComponent<Renderer>();
-        meshRenderer = GetComponent<MeshRenderer>();
+        MeshRend = GetComponent<MeshRenderer>();
         meshFilter = GetComponent<MeshFilter>();
         bodyMat = r.material;
     }
@@ -36,7 +36,7 @@ public class BodyScript : MonoBehaviour, IItem
         switch (method)
         {
             case 0:
-                meshRenderer.enabled = true;
+                MeshRend.enabled = control.RenderInput.isOn;
                 switch (sequence.BodyType)
                 {
                     case "circle":
@@ -55,7 +55,7 @@ public class BodyScript : MonoBehaviour, IItem
                 }
                 break;
             case 1:
-                meshRenderer.enabled = false;
+                MeshRend.enabled = false;
                 switch (sequence.BodyType)
                 {
                     case "circle":
@@ -67,7 +67,7 @@ public class BodyScript : MonoBehaviour, IItem
                 }
                 break;
             case 2:
-                meshRenderer.enabled = false;
+                MeshRend.enabled = false;
                 switch (sequence.BodyType)
                 {
                     case "circle":
@@ -79,7 +79,7 @@ public class BodyScript : MonoBehaviour, IItem
                 }
                 break;
             case 3:
-                meshRenderer.enabled = false;
+                MeshRend.enabled = false;
                 switch (sequence.BodyType)
                 {
                     case "circle":
