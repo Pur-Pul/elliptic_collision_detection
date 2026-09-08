@@ -102,6 +102,14 @@ public class worldScript : MonoBehaviour
                         m
                     );
                     break;
+                case BVH_BC bc:
+                    HandleCircle(
+                        -bc.Forward,
+                        bc.CosRadius,
+                        control.bodies[i].drawColor,
+                        m
+                    );
+                    break;
                 case SOBR sobr:
                     HandleRectangle(
                         sobr.Position,

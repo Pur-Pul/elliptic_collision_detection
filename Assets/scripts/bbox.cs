@@ -38,6 +38,8 @@ public class BBox : IBoundingVolume
         }
     }
 
+    public bool PruneSBC { get; set; }
+    public bool PruneSOBR { get; set; }
     public virtual Vector3 Right
     { 
         get => right;
@@ -181,8 +183,8 @@ public class BBox : IBoundingVolume
     {
         return other switch
         {
-            BBoxSphere sphere => Simple.SimpleIntersects(sphere.Simple) && Timed(() => CheckSphere(sphere), methodIds[0] ??= Record.GetId(typeName, nameof(CheckSphere))),
-            OBBox obb => Simple.SimpleIntersects(obb.Simple) && Timed(() => CheckOBB(obb), methodIds[1] ??= Record.GetId(typeName, nameof(CheckOBB))),
+            BBoxSphere sphere => (!PruneSBC || Simple.SimpleIntersects(sphere.Simple)) && Timed(() => CheckSphere(sphere), methodIds[0] ??= Record.GetId(typeName, nameof(CheckSphere))),
+            OBBox obb => (!PruneSOBR || Simple.SimpleIntersects(obb.Simple)) && Timed(() => CheckOBB(obb), methodIds[1] ??= Record.GetId(typeName, nameof(CheckOBB))),
             _ => false
         };
     }

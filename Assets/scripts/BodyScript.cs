@@ -40,17 +40,27 @@ public class BodyScript : MonoBehaviour, IItem
                 switch (sequence.BodyType)
                 {
                     case "circle":
+                        //MeshRend.enabled = false;
                         GameObject tempSphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
                         meshFilter.mesh = tempSphere.GetComponent<MeshFilter>().sharedMesh;
                         Destroy(tempSphere);
-                        BBox = new BBoxSphere(Id);
+                        BBox = new BBoxSphere(Id)
+                        {
+                            PruneSBC = control.PruneSBC_SBCInput.isOn,
+                            PruneSOBR = control.PruneSBC_SOBRInput.isOn
+                        };
+                        //BBox = new BVH_BC(Id);
                         break;
                     case "rectangle":
                         GameObject tempCube = GameObject.CreatePrimitive(PrimitiveType.Cube);
                         meshFilter.mesh = tempCube.GetComponent<MeshFilter>().sharedMesh;
                         Destroy(tempCube);
                         
-                        BBox = new OBBox(Id);
+                        BBox = new OBBox(Id)
+                        {
+                            PruneSBC = control.PruneSBC_SOBRInput.isOn,
+                            PruneSOBR = control.PruneSOBR_SOBRInput.isOn
+                        };
                         break;
                 }
                 break;
@@ -59,10 +69,18 @@ public class BodyScript : MonoBehaviour, IItem
                 switch (sequence.BodyType)
                 {
                     case "circle":
-                        BBox = new SBC(Id);
+                        BBox = new SBC(Id)
+                        {
+                            PruneSBC = control.PruneSBC_SBCInput.isOn,
+                            PruneSOBR = control.PruneSBC_SOBRInput.isOn
+                        };
                         break;
                     case "rectangle":
-                        BBox = new SOBR(Id);
+                        BBox = new SOBR(Id)
+                        {
+                            PruneSBC = control.PruneSBC_SOBRInput.isOn,
+                            PruneSOBR = control.PruneSOBR_SOBRInput.isOn
+                        };
                         break;
                 }
                 break;
@@ -71,10 +89,18 @@ public class BodyScript : MonoBehaviour, IItem
                 switch (sequence.BodyType)
                 {
                     case "circle":
-                        BBox = new SBCA1(Id);
+                        BBox = new SBCA1(Id)
+                        {
+                            PruneSBC = control.PruneSBC_SBCInput.isOn,
+                            PruneSOBR = control.PruneSBC_SOBRInput.isOn
+                        };
                         break;
                     case "rectangle":
-                        BBox = new SOBRA1(Id);
+                        BBox = new SOBRA1(Id)
+                        {
+                            PruneSBC = control.PruneSBC_SOBRInput.isOn,
+                            PruneSOBR = control.PruneSOBR_SOBRInput.isOn
+                        };
                         break;
                 }
                 break;
@@ -83,15 +109,24 @@ public class BodyScript : MonoBehaviour, IItem
                 switch (sequence.BodyType)
                 {
                     case "circle":
-                        BBox = new SBCA2(Id);
+                        BBox = new SBCA2(Id)
+                        {
+                            PruneSBC = control.PruneSBC_SBCInput.isOn,
+                            PruneSOBR = control.PruneSBC_SOBRInput.isOn
+                        };
                         break;
                     case "rectangle":
-                        BBox = new SOBRA2(Id);
+                        BBox = new SOBRA2(Id)
+                        {
+                            PruneSBC = control.PruneSBC_SOBRInput.isOn,
+                            PruneSOBR = control.PruneSOBR_SOBRInput.isOn
+                        };
                         break;
                 }
                 break;
         }
         BBox.Record = control.runtimeRecord;
+
         UpdateBBox();
     }
 

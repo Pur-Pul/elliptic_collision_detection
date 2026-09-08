@@ -17,8 +17,11 @@ public class ControlScript : MonoBehaviour
     public List<SAABB> SAABBs;
     public int step;
     bool active;
-    public float startTime;
-    public float currentTime;
+    public long startTime;
+    public long currentTime;
+    int fps;
+    float elapsed = 0;
+    int frames = 0;
     public bool Active
     {
         get => active;
@@ -34,6 +37,9 @@ public class ControlScript : MonoBehaviour
                 }
                 startTime = Stopwatch.GetTimestamp();
                 currentTime = startTime;
+                fps = Mathf.RoundToInt(1 / Time.unscaledDeltaTime);
+                elapsed = 0f;
+                frames = 0;
                 runtimeRecord.Reset();
                 collisionTree.Reset();
                 collisions.Clear();
@@ -159,6 +165,10 @@ public class ControlScript : MonoBehaviour
     public Toggle CirclesInput;
     public Toggle RectanglesInput;
     public Toggle RenderInput;
+    public Toggle PruneSBC_SBCInput;
+    public Toggle PruneSBC_SOBRInput;
+    public Toggle PruneSOBR_SOBRInput;
+    
     public int body_n;
     public int saabb_n;
     private int lastStep;
@@ -339,7 +349,6 @@ public class ControlScript : MonoBehaviour
         }
         return number;
     }
-
     void Start()
     {
         bodies = new();
@@ -531,8 +540,18 @@ public class ControlScript : MonoBehaviour
                     }
                 }
             }
+            elapsed += Time.unscaledDeltaTime;
+            frames++;
+
+            if (elapsed >= 0.5f)
+            {
+                
+                fps = Mathf.RoundToInt(frames / elapsed);
+                elapsed = 0f;
+                frames = 0;
+            }
             currentTime = Stopwatch.GetTimestamp();
-            CurrentSequenceListText.text = $"Current sequence list: {currentSequenceList ?? "Undefined*"} | Step {step} : {lastStep} | Iteration {iteration} : {Iterations} | Time (μs) : {(currentTime - startTime) * 1_000_000.0 / Stopwatch.Frequency}";
+            CurrentSequenceListText.text = $"Current sequence list: {currentSequenceList ?? "Undefined*"} | Step {step} : {lastStep} | Iteration {iteration} : {Iterations} | Time (μs) : {(currentTime - startTime) * 1_000_000.0 / Stopwatch.Frequency} | FPS {fps}";
         }
         if (saabb_n > 0) { 
             SAABBs.Clear();
@@ -542,28 +561,30 @@ public class ControlScript : MonoBehaviour
     
     void OnDrawGizmos()
     {
-
-        
-
         switch (collisionTree)
         {
             case Octree<BodyScript> octree:
-                Vector3[][] _edges = octree.GetTreeEdges();
-                foreach (BodyScript body in bodies)
-                {
-                    Vector3[][] _body_edges = body.BBox.Simple.GetEdges();
-                    Vector3[][] _new_edges = new Vector3[_edges.Length + _body_edges.Length][];
-                    _edges.CopyTo(_new_edges, 0);
-                    _body_edges.CopyTo(_new_edges, _edges.Length);
-                    _edges = _new_edges;
-                }
-                foreach (Vector3[] edge in _edges)
+                Vector3[][] _tree_edges = octree.GetTreeEdges();
+                foreach (Vector3[] edge in _tree_edges)
                 {
                     Vector3 cam_pos = cam.transform.position;
                     float dist = Mathf.Min((cam_pos - edge[0]).magnitude, (cam_pos - edge[1]).magnitude);
                     float t = (dist - (cam_pos.magnitude - 1f))/2f;            
-                    UnityEngine.Debug.DrawLine(edge[0], edge[1], Color.Lerp(Color.magenta, Color.black, t));
+                    UnityEngine.Debug.DrawLine(edge[0], edge[1], Color.Lerp(Color.hotPink, Color.black, t));
                 }
+                
+                foreach (BodyScript body in bodies)
+                {
+                    Vector3[][] _body_edges = body.BBox.Simple.GetEdges();
+                    foreach (Vector3[] edge in _body_edges)
+                    {
+                        Vector3 cam_pos = cam.transform.position;
+                        float dist = Mathf.Min((cam_pos - edge[0]).magnitude, (cam_pos - edge[1]).magnitude);
+                        float t = (dist - (cam_pos.magnitude - 1f))/2f;            
+                        UnityEngine.Debug.DrawLine(edge[0], edge[1], Color.Lerp(Color.limeGreen, Color.black, t));
+                    }
+                }
+                
                 break;
             case SOctree<BodyScript> soctree:
                 SAABBs = soctree.GetSAABBs();

@@ -22,6 +22,8 @@ public class SBVA1 : IBoundingVolume //Spherical Bounding Volume
 
     public bool shapeUpdated = false;
 
+    public bool PruneSBC { get; set; }
+    public bool PruneSOBR { get; set; }
     public virtual Vector3 Right
     { 
         get => right;
@@ -180,8 +182,8 @@ public class SBVA1 : IBoundingVolume //Spherical Bounding Volume
     {
         return other switch
         {
-            SBCA1 circle => Simple.SimpleIntersects(circle.Simple) && Timed(() => CheckSBCA1(circle), methodIds[0] ??= Record.GetId(typeName, nameof(CheckSBCA1))),
-            SOBRA1 sobr => Simple.SimpleIntersects(sobr.Simple) && Timed(() => CheckSOBRA1(sobr), methodIds[1] ??= Record.GetId(typeName, nameof(CheckSOBRA1))),
+            SBCA1 circle => (!PruneSBC || Simple.SimpleIntersects(circle.Simple)) && Timed(() => CheckSBCA1(circle), methodIds[0] ??= Record.GetId(typeName, nameof(CheckSBCA1))),
+            SOBRA1 sobr => (!PruneSOBR || Simple.SimpleIntersects(sobr.Simple)) && Timed(() => CheckSOBRA1(sobr), methodIds[1] ??= Record.GetId(typeName, nameof(CheckSOBRA1))),
             _ => false
         };
     }
