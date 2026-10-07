@@ -1,0 +1,8 @@
+#Sequence: ../../../gradu/experiments/2026.05.18_13:00:10-500-10000.xml
+#Baseline: Octree + AABB + SBV
+#Artifact: Octree + AABB + SBVA
+Type,Precision,Recall,F1
+circle-rectangle,0.9999955,0.9999993,0.9999974
+rectangle-rectangle,0.9999995,1,0.9999997
+circle-circle,0.9999987,0.9999995,0.999999
+all,0.9999974,0.9999996,0.9999985
