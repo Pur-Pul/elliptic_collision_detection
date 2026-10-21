@@ -1,5 +1,5 @@
 # Collision detection in a spherical geometry
-This repository contains the source code used to in a Master's thesis on optimizing collision detection for a spherical geometry. The runtime environment was created in Unity and the relevant source code is found in [Assets/scripts/](Assets/scripts/).
+This repository contains the source code used in a Master's thesis on optimizing collision detection for a spherical geometry. The runtime environment was created in Unity and the relevant source code is found in [Assets/scripts/](Assets/scripts/).
 
 - Baseline bounding volume implementation: [Assets/scripts/SphericalBoundingVolume.cs](Assets/scripts/SphericalBoundingVolume.cs)
 - Euclidean bounding volume implementation: [Assets/scripts/bbox.cs](Assets/scripts/bbox.cs)
